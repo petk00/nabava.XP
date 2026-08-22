@@ -1,4 +1,4 @@
-# veleri.XP
+# nabava.XP
 
 > Aplikacija za upravljanje zahtjevima za nabavu na Veleučilištu u Rijeci.
 
