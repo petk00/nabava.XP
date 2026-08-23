@@ -86,36 +86,11 @@
 
     </div>
 
-    <!-- Chat widget -->
-    <div class="chat-float" :class="{ open: chatOpen }">
-      <button class="chat-toggle" aria-label="Otvori chat" @click="chatOpen = !chatOpen">💬</button>
-      <div class="chat-panel">
-        <div class="chat-header">
-          <strong>Podrška</strong>
-          <button class="chat-close" aria-label="Zatvori chat" @click="chatOpen = false">✕</button>
-        </div>
-        <div ref="chatBodyEl" class="chat-body">
-          <div
-            v-for="(msg, idx) in chatMessages"
-            :key="idx"
-            class="message"
-            :class="msg.from"
-          >
-            {{ msg.text }}
-          </div>
-        </div>
-        <form class="chat-form" @submit.prevent="sendChatMessage">
-          <input v-model="chatInput" type="text" placeholder="Napiši poruku..." required />
-          <button type="submit">Pošalji</button>
-        </form>
-      </div>
-    </div>
-
   </q-page>
 </template>
 
 <script setup>
-import { ref, computed, onMounted, nextTick } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { api } from 'boot/axios';
 import { getStoredUser } from 'src/utils/authStorage';
 
@@ -226,34 +201,6 @@ const tlTitle = (entry) => {
   };
   return labels[entry.status_name] ?? entry.status_name;
 };
-
-// ── Chat widget state ──
-const chatOpen = ref(false);
-const chatInput = ref('');
-const chatBodyEl = ref(null);
-const chatMessages = ref([
-  { from: 'bot', text: 'Pozdrav! Kako mogu pomoći?' },
-]);
-
-async function scrollChatToBottom() {
-  await nextTick();
-  if (chatBodyEl.value) {
-    chatBodyEl.value.scrollTop = chatBodyEl.value.scrollHeight;
-  }
-}
-
-function sendChatMessage() {
-  const text = chatInput.value.trim();
-  if (!text) return;
-  chatMessages.value.push({ from: 'user', text });
-  chatInput.value = '';
-  scrollChatToBottom();
-
-  setTimeout(() => {
-    chatMessages.value.push({ from: 'bot', text: 'Hvala! Ovo je demo chat prozor.' });
-    scrollChatToBottom();
-  }, 600);
-}
 
 onMounted(async () => {
   try {
@@ -611,133 +558,4 @@ onMounted(async () => {
   .status-badge { min-width: unset; }
 }
 
-/* ── Chat widget ── */
-.chat-float {
-  position: fixed;
-  right: 24px;
-  bottom: 24px;
-  z-index: 9999;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-}
-
-.chat-toggle {
-  width: 56px;
-  height: 56px;
-  border: 0;
-  border-radius: 50%;
-  background: #00afdb;
-  color: white;
-  font-size: 24px;
-  cursor: pointer;
-  box-shadow: 0 8px 24px rgba(0, 175, 219, 0.3);
-  order: 2;
-  transition: background 0.15s, transform 0.15s;
-}
-
-.chat-toggle:hover {
-  background: #14bae4;
-  transform: scale(1.05);
-}
-
-.chat-panel {
-  display: none;
-  order: 1;
-  width: 320px;
-  max-width: calc(100vw - 32px);
-  background: white;
-  border-radius: 16px;
-  overflow: hidden;
-  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.18);
-  margin-bottom: 12px;
-  border: 1.5px solid rgba(0, 175, 219, 0.18);
-}
-
-.chat-float.open .chat-panel {
-  display: block;
-}
-
-.chat-header {
-  background: #16294e;
-  color: white;
-  padding: 12px 14px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.chat-close {
-  background: transparent;
-  border: 0;
-  color: white;
-  font-size: 18px;
-  cursor: pointer;
-  line-height: 1;
-}
-
-.chat-body {
-  padding: 14px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  min-height: 180px;
-  max-height: 320px;
-  overflow: auto;
-}
-
-.message {
-  padding: 10px 12px;
-  border-radius: 12px;
-  max-width: 85%;
-  font-size: 0.875rem;
-  line-height: 1.35;
-}
-
-.message.bot {
-  background: #f3f4f6;
-  color: #111827;
-  align-self: flex-start;
-}
-
-.message.user {
-  background: #00afdb;
-  color: white;
-  align-self: flex-end;
-}
-
-.chat-form {
-  display: flex;
-  gap: 8px;
-  padding: 12px;
-  border-top: 1px solid #e5e7eb;
-}
-
-.chat-form input {
-  flex: 1;
-  padding: 10px 12px;
-  border: 1px solid #d1d5db;
-  border-radius: 999px;
-  outline: none;
-  font-size: 0.875rem;
-}
-
-.chat-form input:focus {
-  border-color: #00afdb;
-}
-
-.chat-form button {
-  padding: 10px 14px;
-  border: 0;
-  border-radius: 999px;
-  background: #00afdb;
-  color: white;
-  cursor: pointer;
-  font-weight: 600;
-  transition: background 0.15s;
-}
-
-.chat-form button:hover {
-  background: #14bae4;
-}
 </style>
