@@ -11,6 +11,29 @@
         </div>
       </header>
 
+      <!-- Ask bar (placeholder) -->
+      <div class="ask-bar">
+        <button type="button" class="ask-bar__icon-btn" aria-label="Dodaj prilog">
+          <q-icon name="add" size="20px" />
+        </button>
+        <input
+          v-model="askInput"
+          type="text"
+          class="ask-bar__input"
+          placeholder="Pitajte nabava.XP asistenta..."
+          @keyup.enter="submitAsk"
+        />
+        <div class="ask-bar__right">
+          <button type="button" class="ask-bar__model">
+            Asistent
+            <q-icon name="expand_more" size="16px" />
+          </button>
+          <button type="button" class="ask-bar__icon-btn" aria-label="Govorna naredba">
+            <q-icon name="mic" size="18px" />
+          </button>
+        </div>
+      </div>
+
       <div v-if="loading" class="loading-block">
         <q-spinner color="primary" size="28px" />
       </div>
@@ -96,6 +119,13 @@ import { getStoredUser } from 'src/utils/authStorage';
 
 const user = getStoredUser();
 
+// Placeholder — treba spojiti na pravi backend/AI servis
+const askInput = ref('');
+function submitAsk() {
+  if (!askInput.value.trim()) return;
+  askInput.value = '';
+}
+
 const loading = ref(true);
 const allRequests = ref([]);
 
@@ -105,10 +135,6 @@ const todayFormatted = computed(() => {
   });
   return f.charAt(0).toUpperCase() + f.slice(1);
 });
-
-const returnedAlertItem = computed(() =>
-  allRequests.value.find(r => r.fk_request_status === 3) || null
-);
 
 const recentRows = computed(() =>
   [...allRequests.value]
@@ -146,79 +172,16 @@ const statusIcon = (row) => STATUS_ICONS[row.fk_request_status] ?? 'circle';
 function buildRequestStyle(row) {
   const s = STATUS_STYLES[row.fk_request_status] ?? DEFAULT_STYLE;
   return {
-    card:         { borderLeftColor: s.border },
-    featuredCard: { borderColor: s.border, background: s.background },
-    badge:        { color: s.badge, background: s.badgeBg },
+    card:  { borderLeftColor: s.border },
+    badge: { color: s.badge, background: s.badgeBg },
   };
 }
-
-const formatCurrency = (value) => {
-  if (value == null || value === 0) return '??? €';
-  return new Intl.NumberFormat('hr-HR', { style: 'currency', currency: 'EUR' }).format(value);
-};
-
-const truncate = (text, max) => {
-  if (!text) return '—';
-  return text.length > max ? text.slice(0, max) + '…' : text;
-};
-
-const formatDate = (value) => {
-  if (!value) return '—';
-  return new Date(value).toLocaleDateString('hr-HR', {
-    day: '2-digit', month: '2-digit', year: 'numeric',
-  });
-};
-
-const featuredHistory = ref([]);
-const featuredAttachments = ref([]);
-const featuredCreatedAt = ref(null);
-
-const featuredHasPonuda = computed(() => featuredAttachments.value.some(a => a.document_type === 'Ponuda'));
-const featuredHasOtpremnica = computed(() => featuredAttachments.value.some(a => a.document_type === 'Otpremnica'));
-
-const tlIcon = (entry) => {
-  if (entry.comment?.startsWith('Dokument dodan')) return 'attach_file';
-  if (entry.comment?.startsWith('Dokument obrisan')) return 'delete';
-  if (entry.comment?.startsWith('Zahtjev izmijenjen')) return 'edit';
-  if (entry.comment?.startsWith('Dodan procijenjeni iznos')) return 'payments';
-  const map = { 1: 'outbox', 2: 'pending', 3: 'undo', 5: 'close', 6: 'local_shipping', 7: 'task_alt' };
-  return map[entry.fk_request_status] ?? 'circle';
-};
-
-const tlTitle = (entry) => {
-  if (entry.comment?.startsWith('Dokument dodan: Ponuda')) return 'Priložena ponuda';
-  if (entry.comment?.startsWith('Dokument dodan: Otpremnica')) return 'Priložena otpremnica';
-  if (entry.comment?.startsWith('Dokument dodan')) return 'Priložen dokument';
-  if (entry.comment?.startsWith('Dokument obrisan')) return 'Uklonjen dokument';
-  if (entry.comment?.startsWith('Zahtjev izmijenjen')) return 'Izmjena zahtjeva';
-  if (entry.comment?.startsWith('Dodan procijenjeni iznos')) return 'Upisan iznos';
-  const labels = {
-    'Poslano': 'Zahtjev poslan',
-    'Na odobrenju': 'Preuzeto na obradu',
-    'Zahtjeva izmjene': 'Zahtjeva izmjene',
-    'Naručeno': 'Odobreno i naručeno',
-    'Zatvoreno': 'Zahtjev zatvoren',
-  };
-  return labels[entry.status_name] ?? entry.status_name;
-};
 
 onMounted(async () => {
   try {
     const currentYear = new Date().getFullYear();
     const { data } = await api.get('/requests', { params: { limit: 500, fiscalYear: currentYear, onlyMine: 1 } });
     allRequests.value = Array.isArray(data.data) ? data.data : [];
-
-    const sorted = [...allRequests.value].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-    if (sorted[0]) {
-      const id = sorted[0].id_purchase_request;
-      const [{ data: detail }, { data: atts }] = await Promise.all([
-        api.get(`/requests/${id}`),
-        api.get(`/requests/${id}/attachments`),
-      ]);
-      featuredHistory.value = detail.history || [];
-      featuredAttachments.value = Array.isArray(atts) ? atts : [];
-      featuredCreatedAt.value = detail.created_at || sorted[0].created_at;
-    }
   } catch (e) {
     console.error(e);
   } finally {
@@ -276,26 +239,83 @@ onMounted(async () => {
   padding: 64px 0;
 }
 
-/* ── Vraćen alert ── */
-.returned-alert {
+/* ── Ask bar (placeholder) ── */
+.ask-bar {
   display: flex;
   align-items: center;
   gap: 10px;
-  margin-bottom: 20px;
-  padding: 11px 16px;
-  border-left: 3px solid #c2410c;
-  background: #fff7ed;
-  color: #7c2d12;
-  font-size: 0.8125rem;
-  cursor: pointer;
-  border-radius: 6px;
-  transition: background 0.12s;
+  margin-bottom: 24px;
+  padding: 8px 10px 8px 14px;
+  background: #ffffff;
+  border: 1.5px solid rgba(0, 175, 219, 0.18);
+  border-radius: 999px;
+  box-shadow: 0 4px 18px rgba(0, 175, 219, 0.08);
+  transition: border-color 0.15s, box-shadow 0.15s;
 }
 
-.returned-alert:hover { background: #ffedd5; }
-.returned-alert__icon { flex-shrink: 0; color: #c2410c; }
-.returned-alert__chevron { margin-left: auto; flex-shrink: 0; color: #c2410c; }
+.ask-bar:focus-within {
+  border-color: #00afdb;
+  box-shadow: 0 4px 18px rgba(0, 175, 219, 0.16);
+}
 
+.ask-bar__icon-btn {
+  all: unset;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  color: #6b7280;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.ask-bar__icon-btn:hover {
+  background: #f0fbfe;
+  color: #00afdb;
+}
+
+.ask-bar__input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  outline: none;
+  background: transparent;
+  color: #111827;
+  font-size: 0.9375rem;
+  font-family: inherit;
+}
+
+.ask-bar__input::placeholder {
+  color: #9ca3af;
+}
+
+.ask-bar__right {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.ask-bar__model {
+  all: unset;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  color: #16294e;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.ask-bar__model:hover {
+  background: #f0fbfe;
+}
 
 /* ── Card grid ── */
 .card-grid {
