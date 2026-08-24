@@ -4,7 +4,7 @@
 > (ask-bar + fullscreen overlay na `client/src/pages/IndexPage.vue`) bez ikakve backend/AI logike —
 > `submitAsk()` i `sendChatMessage()` samo simuliraju odgovor kroz `setTimeout`.
 
-Ovaj dokument opisuje kako bi se u `veleri.XP` implementirao konverzacijski AI modul koji
+Ovaj dokument opisuje kako bi se u `nabava.XP` implementirao konverzacijski AI modul koji
 korisniku pomaže kreirati zahtjev za nabavu razgovorom, umjesto ručnog popunjavanja
 `NewRequestPage.vue` wizarda.
 
@@ -34,7 +34,7 @@ ne samo kroz env varijablu koju treba restartati server:
 
 | Provider | Kako radi | Prednost | Mana |
 |---|---|---|---|
-| **Lokalni Qwen (Ollama)** | Poziva lokalni `POST http://localhost:11434/api/chat`, model iz Qwen2.5 obitelji, podržava tool-calling preko Ollamine OpenAI-kompatibilne rute. | Podaci ne napuštaju server, nema troška po pozivu. | Treba GPU/RAM na serveru, sporiji i slabiji od cloud modela pri manjim varijantama. |
+| **Lokalni Gemma (Ollama)** | Poziva lokalni `POST http://localhost:11434/api/chat`, model `gemma4:12b`, podržava tool-calling preko Ollamine OpenAI-kompatibilne rute. | Podaci ne napuštaju server, nema troška po pozivu. | Treba GPU/RAM na serveru, sporiji i slabiji od cloud modela pri manjim varijantama. |
 | **Gemini Flash API** | Cloud poziv na Google-ov API, function-calling podržan nativno. | Brže, kvalitetnije zaključivanje. | Podaci idu na Google servere, trošak po pozivu, treba API ključ. |
 
 Toggle bi trebao biti runtime postavka (npr. admin postavka spremljena u bazi ili konfiguracijskoj
@@ -59,7 +59,7 @@ servera.
                |
                v
 +-----------------------------+        +-------------------------+
-|   LlmProvider (sučelje)      | -----> |  OllamaProvider (Qwen)  |
+|   LlmProvider (sučelje)      | -----> |  OllamaProvider (Gemma) |
 |   chat(messages, tools)      |        +-------------------------+
 +--------------+--------------+        +-------------------------+
                |                -----> |  GeminiProvider (Flash) |
@@ -90,6 +90,7 @@ sistemskom promptu:
 | `list_item_categories()` | `GET /api/reference/item-categories` (postoji) | Agent bira kategoriju samo iz stvarno postojećih. |
 | `get_active_fiscal_year()` | `GET /api/reference/active-fiscal-year` (postoji) | Zahtjev se uvijek veže na trenutno otvorenu poslovnu godinu. |
 | `find_similar_past_items(query)` | **novo** — pretraga po `PurchaseRequestItem.item_name` (npr. `LIKE` ili trigram/full-text) | Agent vidi kako su slični artikli kategorizirani u prošlim zahtjevima — najjači izvor točnog zaključivanja, jači od pukog nagađanja po nazivu kategorije. |
+| `get_user_recent_departments()` | **novo** — odjeli na koje je isti korisnik prije podnosio zahtjeve, poredani po učestalosti/nedavnosti (`PurchaseRequest.fk_created_by_user` + `fk_department`) | Korisnik može redovito raditi za više odjela (npr. troškove dijeli na 2 odjela) — nema jedinstven default. Ako je vraćena lista dužine 1, agent to tretira kao jaku pretpostavku i samo je pokaže u pregledu; ako je dužine 2+, agent pita, ali suženo na samo te odjele umjesto punog popisa iz `list_departments()`; ako je prazna, pita normalno s punim popisom. |
 | `add_item(name, quantity, fk_item_category)` | gradi lokalni draft state (ne piše u bazu) | Postupno slaganje liste stavki tijekom razgovora. |
 | `remove_item(index)` | gradi lokalni draft state | Ispravka ako korisnik promijeni mišljenje. |
 | `set_justification(text)` | gradi lokalni draft state | Obrazloženje nabave (obavezno polje, vidi `requestRoutes.js:491`). |
@@ -123,6 +124,11 @@ servisnu funkciju (npr. `server/src/services/requestService.js`, po uzoru na pos
 `budgetService.js`) koju zovu **i** `POST /api/requests` **i** `create_request()` tool. Time se
 jamči da AI-kreiran zahtjev nikad ne može zaobići provjeru koju ručni put provodi — nema dva
 izvora istine.
+
+Ovo postaje još važnije ako se s vremenom pojavi treći, četvrti... način podnošenja zahtjeva (npr.
+uvoz iz emaila, mobilna aplikacija). Svaki novi ulazni kanal mora zvati istu `requestService.js`
+funkciju, a ne pisati vlastitu verziju validacije — inače svaki novi kanal nosi rizik da provede
+nedosljednu provjeru koju drugi kanali ne provode.
 
 ## Baza podataka — moguće (opcionalne) izmjene sheme
 
@@ -186,17 +192,113 @@ integracijskim testovima, vidi `docs/TEST_PLAN.md`):
 
 ## Faze implementacije
 
-| Faza | Sadržaj | Prioritet |
-|---|---|---|
-| 0 | Scoping — točno koja polja agent smije popuniti, granice odgovornosti | Visoko |
-| 1 | `LlmProvider` sučelje + `OllamaProvider` + `GeminiProvider` + runtime toggle | Visoko |
-| 2 | Domenski tools (tablica gore) + izdvajanje `requestService.js` iz `requestRoutes.js` | Visoko |
-| 3 | Orkestracija razgovora (`/api/assistant/chat`, draft state, tool-calling petlja) | Visoko |
-| 4 | Finalna potvrda u UI-ju prije `create_request()` | Visoko |
-| 5 | Wiring na `IndexPage.vue` (zamjena `setTimeout` mocka pravim streaming pozivom) | Srednje |
-| 6 | Testiranje (unit + integracijski, po uzoru na postojeći test setup) | Visoko |
-| 7 | Sigurnosni pregled (rate limiting, prompt injection otpornost) | Visoko |
-| 8 | Evaluacija za diplomski (Qwen vs. Gemini Flash — brzina, točnost, broj koraka do dovršetka) | Za diplomski |
+### Faza 0 — Scoping
+
+Prioritet: **Visoko**
+
+- Definirati točno koja polja agent smije popuniti (odjel, kategorija, stavke: naziv/količina,
+  procijenjena cijena, obrazloženje) i što je out-of-scope (npr. batch kreiranje više zahtjeva
+  odjednom).
+- Odlučiti što se događa kod dvosmislenosti (npr. korisnik kaže "kupi mi laptope" bez broja
+  komada — agent mora pitati, ne pogađati).
+- Ovo se dobrim dijelom preklapa s onim što već postoji u ovom dokumentu — vrijedi ga oživjeti
+  kao radni dokument za diplomski, umjesto pisati iznova.
+
+### Faza 1 — LLM provider abstraction layer (backend)
+
+Prioritet: **Visoko**
+
+- Zajedničko sučelje: `chat(messages, tools) -> { text?, tool_calls? }`, s podrškom za streaming.
+- `OllamaProvider` — poziva lokalni `POST http://localhost:11434/api/chat` s `gemma4:12b`
+  modelom, podržava tool-calling preko Ollamine OpenAI-kompatibilne rute.
+- `GeminiProvider` — poziva Gemini Flash API, isto s function-calling podrškom.
+- Toggle: pošto treba biti runtime postavka (ne samo env var), izbor providera spremiti kao
+  postavku (npr. u bazi, sličan pattern kao fiskalne godine/postavke), izložiti je kroz admin ili
+  per-user UI switch u chat overlayu.
+- Fallback ponašanje ako lokalni Ollama nije dostupan (npr. jasna poruka korisniku, ne silent
+  fail).
+
+### Faza 2 — Domenski "tools" (function-calling shema)
+
+Prioritet: **Visoko**
+
+- `list_departments()`, `list_item_categories()`, `get_active_fiscal_year()` — mapiraju se na
+  postojeće `referenceRoutes.js` endpointe, tako da agent nikad ne izmišlja nazive
+  odjela/kategorija.
+- `find_similar_past_items(query)` — nova pretraga po `PurchaseRequestItem.item_name` (`LIKE`
+  ili full-text), najjači izvor točnog zaključivanja kategorije.
+- `get_user_recent_departments()` — novi upit nad `PurchaseRequest.fk_created_by_user` +
+  `fk_department`, poredan po učestalosti/nedavnosti.
+- `add_item()` / `remove_item()` / `set_justification()` / `preview_request()` — grade lokalni
+  draft state u memoriji, ništa se ne piše u bazu.
+- `create_request()` — jedini tool koji stvarno piše u bazu; smije se pozvati tek nakon
+  eksplicitne potvrde korisnika u UI-ju i mora zvati istu servisnu funkciju kao ručni unos
+  (vidi Faza 3).
+
+### Faza 3 — Izdvajanje servisne logike (preduvjet za `create_request()`)
+
+Prioritet: **Visoko**
+
+- Izvući validacijsku/kreacijsku logiku iz `POST /api/requests` (`requestRoutes.js:475-593` —
+  provjera zatvorene godine, pripadnost odjela/kategorije, generiranje `NAB-YYYY-NNNN` broja pod
+  transakcijom) u samostalnu `server/src/services/requestService.js`, po uzoru na
+  `budgetService.js`.
+- I `POST /api/requests` i `create_request()` tool zovu tu istu funkciju — nema dva izvora
+  istine, AI-kreiran zahtjev fizički ne može zaobići provjeru.
+- Čisti refactor prije nego se doda ijedan red AI koda — postojeći testovi na `POST /api/requests`
+  moraju proći nepromijenjeni.
+
+### Faza 4 — Orkestracija razgovora
+
+Prioritet: **Visoko**
+
+- Nova ruta `server/src/routes/assistantRoutes.js`, montirana na `/api/assistant`, analogna
+  `requestRoutes.js`/`referenceRoutes.js` po stilu.
+- `POST /api/assistant/chat` sa streamingom (SSE), petlja: model → eventualni tool call →
+  izvršenje alata → rezultat natrag modelu → ponovi dok ne dođe čisti tekstualni odgovor.
+- Rate limiting odmah (`express-rate-limit` je već dependency), po uzoru na login/set-password
+  rute.
+- Draft state (povijest razgovora prije potvrde) drži se u memoriji/sesiji, ne piše se u trajnu
+  bazu dok korisnik ne potvrdi.
+
+### Faza 5 — Finalna potvrda u UI-ju
+
+Prioritet: **Visoko**
+
+- Nakon `preview_request()`, frontend prikazuje jasan pregled (odjel, stavke, obrazloženje) i
+  traži eksplicitan klik "Potvrdi" prije nego se `create_request()` uopće smije pozvati.
+- Ovo je tvrdi zahtjev iz principa dizajna (korisnik ima zadnju riječ) — ne smije se preskočiti
+  radi brzine implementacije.
+
+### Faza 6 — Wiring na `IndexPage.vue`
+
+Prioritet: **Srednje**
+
+- Zamijeniti `setTimeout` mock u `submitAsk()`/`sendChatMessage()` pravim streaming pozivom na
+  `/api/assistant/chat`.
+- Loading/typing indikatori, prikaz tool-poziva korisniku (opcionalno, radi transparentnosti —
+  npr. "tražim slične artikle...").
+
+### Faza 7 — Testiranje
+
+Prioritet: **Visoko**
+
+- Unit: `LlmProvider` sučelje testirano s oba providera mockirana.
+- Integracijski (Jest + Supertest, prava MySQL baza): simulacija punog razgovora s mockiranim
+  tool-pozivima → provjera da zahtjev nastane identičan ručnom unosu, s istim provjerama
+  (zatvorena godina, kriva kategorija/odjel, prekoračen proračun).
+- Edge case-ovi: nepostojeći odjel u odgovoru modela, malformiran JSON u tool-pozivu (odbiti prije
+  izvršavanja), korisnik odustane usred razgovora.
+
+### Faza 8 — Sigurnosni pregled i evaluacija za diplomski
+
+Prioritet: **Visoko / Za diplomski**
+
+- Prompt injection otpornost — potvrditi da `create_request()` ne može zaobići provjeru
+  proračuna/poslovne godine bez obzira što model "kaže".
+- Gemini API ključ isključivo u `server/.env`, nikad izložen frontendu.
+- Evaluacija `gemma4:12b` vs. Gemini Flash: brzina, točnost, broj koraka do dovršetka — materijal
+  za diplomski rad.
 
 ## Otvorena pitanja
 

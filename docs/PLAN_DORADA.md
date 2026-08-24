@@ -1,6 +1,6 @@
 # Plan dorada
 
-Ovaj dokument opisuje preporučeni redoslijed dorada sustava `veleri.XP`.
+Ovaj dokument opisuje preporučeni redoslijed dorada sustava `nabava.XP`.
 Plan je napravljen prema trenutnom stanju implementacije, SRS zahtjevima i procjeni prioriteta.
 
 Cilj plana nije implementirati sve odjednom, nego jasno odvojiti:
@@ -30,6 +30,7 @@ Aplikacija ima implementiran kompletan MVP proces nabave:
 Preostale neimplementirane cjeline:
 
 - stvarna instalacija na produkcijski server s pravim TLS certifikatom (Docker postava, instalacijske upute u `docs/DEPLOYMENT.md` i backup skripta postoje).
+- AI agent za asistirano kreiranje zahtjeva (vidi `docs/AI.md` i Faza 11 niže) — prijedlog za diplomski rad, izvan MVP opsega.
 
 Svjesno isključeno iz opsega (odluke potvrđene 06.07.2026.): draft zahtjeva, tipovi dokumenata Narudžbenica i Ostalo, email obavijesti o statusima, centar/povijest obavijesti, analitički pregled potrošnje, audit log prijava, 2FA. Prekoračenje limita namjerno ne blokira odobrenje (upozorenje + zapis u povijest).
 
@@ -282,6 +283,37 @@ Implementirano: godišnji budžet i limiti po odjelu i po predmetu nabave s kont
 - Prekoračenje limita ne blokira zahtjev, ali je jasno označeno administratoru.
 - Limiti su vezani uz poslovnu godinu.
 
+## Faza 11: AI agent za asistirano kreiranje zahtjeva
+
+Prioritet: **Za diplomski** (izvan MVP opsega)
+
+Ova faza pokriva konverzacijski AI modul detaljno opisan u `docs/AI.md`. Agent korisniku pomaže
+kreirati zahtjev razgovorom umjesto ručnog popunjavanja `NewRequestPage.vue` wizarda, uz ključnu
+arhitekturnu odluku koja prožima sve podfaze: **AI ne smije zaobići postojeću validaciju** —
+agent završi poziv iste servisne funkcije/endpointa koju koristi ručni flow (`requestRoutes.js`),
+inače postoje dva izvora istine i AI može kreirati nalog koji ručni flow nikad ne bi propustio.
+
+### Zadaci
+
+| ID | Zadatak | Napomena |
+|---|---|---|
+| AI-01 | Scoping — koja polja agent smije popuniti, granice odgovornosti, ponašanje kod dvosmislenosti. | docs/AI.md Faza 0. |
+| AI-02 | Izdvojiti validacijsku/kreacijsku logiku iz `POST /api/requests` u `server/src/services/requestService.js`. | Preduvjet za `create_request()`, po uzoru na `budgetService.js`; čisti refactor, testovi na `POST /api/requests` moraju proći nepromijenjeni. |
+| AI-03 | `LlmProvider` sučelje + `OllamaProvider` (`gemma4:12b`) + `GeminiProvider` + runtime toggle. | Toggle kao postavka u bazi, ne `.env` — mijenja se bez restarta servera. |
+| AI-04 | Domenski tools: `list_departments`, `list_item_categories`, `get_active_fiscal_year`, `find_similar_past_items`, `get_user_recent_departments`, `add_item`/`remove_item`/`set_justification`/`preview_request`, `create_request`. | `create_request()` zove isključivo `requestService.js`; jedini tool koji piše u bazu. |
+| AI-05 | Nova ruta `server/src/routes/assistantRoutes.js` — `POST /api/assistant/chat` sa streamingom (SSE) i tool-calling petljom. | Rate limiting odmah (`express-rate-limit` već je dependency). |
+| AI-06 | Finalna potvrda u UI-ju prije `create_request()`. | Korisnik ima zadnju riječ — ne smije se preskočiti. |
+| AI-07 | Wiring na `IndexPage.vue` — zamjena `setTimeout` mocka pravim streaming pozivom. | `submitAsk()` / `sendChatMessage()`. |
+| AI-08 | Testiranje (unit s mockiranim providerima, integracijski s pravom MySQL bazom) i sigurnosni pregled (prompt injection otpornost). | Po uzoru na `server/__tests__/`. |
+| AI-09 | Evaluacija `gemma4:12b` vs. Gemini Flash za diplomski rad. | Brzina, točnost, broj koraka do dovršetka zahtjeva. |
+
+### Kriteriji dovršenosti
+
+- Zahtjev koji agent kreira prolazi identičnu validaciju kao zahtjev kreiran ručno.
+- Zahtjev se ne kreira bez eksplicitne potvrde korisnika u pregledu.
+- Provider (Ollama/Gemini) se mijenja u runtimeu, bez restarta servera.
+- Postoji evaluacijski materijal (Ollama/gemma4:12b vs. Gemini Flash) za diplomski rad.
+
 ## Predloženi redoslijed rada
 
 Preporučeni praktični redoslijed:
@@ -296,6 +328,7 @@ Preporučeni praktični redoslijed:
 9. Dodati serversku paginaciju i filtere.
 10. Doraditi notifikacije i audit.
 11. Implementirati limite i analitiku.
+12. Implementirati AI agenta za asistirano kreiranje zahtjeva (docs/AI.md, Faza 11).
 
 ## MVP opseg
 
@@ -320,7 +353,8 @@ Funkcionalnosti koje se mogu opisati kao buduće dorade:
 - PDF generiranje,
 - reset lozinke,
 - napredna revizija svih promjena,
-- produkcijski sigurnosni hardening.
+- produkcijski sigurnosni hardening,
+- AI agent za asistirano kreiranje zahtjeva (docs/AI.md).
 
 ## Rizici
 

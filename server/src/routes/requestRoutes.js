@@ -3,8 +3,7 @@ const router = express.Router();
 const db = require('../config/db');
 const authenticateToken = require('../middleware/authMiddleware');
 const { STATUS, STATUS_LABELS, LOCKED_STATUSES } = require('../constants/status');
-
-const MAX_JUSTIFICATION_LEN = 1000;
+const { createRequest, RequestValidationError, MAX_JUSTIFICATION_LEN } = require('../services/requestService');
 
 /**
  * State machine.
@@ -482,176 +481,26 @@ router.post('/', authenticateToken, async (req, res) => {
     items,
   } = req.body;
 
-  if (!fk_fiscal_year || !fk_department) {
-    return res.status(400).json({
-      message: 'Fiskalna godina i odjel su obavezni.',
-    });
-  }
-
-  if (!justification || !justification.trim()) {
-    return res.status(400).json({
-      message: 'Obrazloženje nabave je obavezno.',
-    });
-  }
-
-  if (justification.length > MAX_JUSTIFICATION_LEN) {
-    return res.status(400).json({
-      message: `Obrazloženje ne smije biti duže od ${MAX_JUSTIFICATION_LEN} znakova.`,
-    });
-  }
-
-  if (estimated_amount !== null && estimated_amount !== undefined && estimated_amount !== '') {
-    const num = Number(estimated_amount);
-    if (!Number.isFinite(num) || num < 0) {
-      return res.status(400).json({
-        message: 'Procijenjeni iznos mora biti pozitivan broj.',
-      });
-    }
-  }
-
-  if (!Array.isArray(items) || items.length === 0) {
-    return res.status(400).json({
-      message: 'Zahtjev mora sadržavati barem jednu stavku.',
-    });
-  }
-
-  for (const [idx, item] of items.entries()) {
-    if (!item.fk_item_category || !item.item_name || !item.item_name.trim()) {
-      return res.status(400).json({
-        message: `Stavka #${idx + 1}: kategorija i naziv su obavezni.`,
-      });
-    }
-    if (!Number.isInteger(item.quantity) || item.quantity < 1) {
-      return res.status(400).json({
-        message: `Stavka #${idx + 1}: količina mora biti cijeli broj veći od 0.`,
-      });
-    }
-  }
-
-  const statusId = STATUS.POSLANO;
-  const userId = req.user.id_user;
-  const connection = await db.getConnection();
-
   try {
-    await connection.beginTransaction();
-
-    const [fyRows] = await connection.query(
-      'SELECT year, is_closed FROM FiscalYear WHERE id_fiscal_year = ? LIMIT 1',
-      [fk_fiscal_year]
-    );
-
-    if (fyRows.length === 0) {
-      await connection.rollback();
-      return res.status(400).json({ message: 'Fiskalna godina ne postoji.' });
-    }
-
-    if (fyRows[0].is_closed) {
-      await connection.rollback();
-      return res.status(400).json({ message: 'Odabrana poslovna godina je zatvorena. Kreiranje zahtjeva nije moguće.' });
-    }
-
-    // odjel mora pripadati istoj poslovnoj godini
-    const [deptCheck] = await connection.query(
-      'SELECT id_department FROM Department WHERE id_department = ? AND fk_fiscal_year = ?',
-      [fk_department, fk_fiscal_year]
-    );
-    if (deptCheck.length === 0) {
-      await connection.rollback();
-      return res.status(400).json({ message: 'Odabrani odjel ne pripada odabranoj poslovnoj godini.' });
-    }
-
-    // sve kategorije moraju pripadati istoj poslovnoj godini
-    const categoryIds = [...new Set(items.map((i) => i.fk_item_category))];
-    const [catCheck] = await connection.query(
-      `SELECT id_item_category FROM ItemCategory WHERE id_item_category IN (?) AND fk_fiscal_year = ?`,
-      [categoryIds, fk_fiscal_year]
-    );
-    if (catCheck.length !== categoryIds.length) {
-      await connection.rollback();
-      return res.status(400).json({ message: 'Jedna ili više kategorija artikala ne pripada odabranoj poslovnoj godini.' });
-    }
-
-    const year = fyRows[0].year;
-    const prefix = `NAB-${year}-`;
-
-    const [maxRows] = await connection.query(
-      `
-      SELECT request_number
-      FROM PurchaseRequest
-      WHERE request_number LIKE ?
-      ORDER BY id_purchase_request DESC
-      LIMIT 1
-      FOR UPDATE
-      `,
-      [`${prefix}%`]
-    );
-
-    let nextSeq = 1;
-    if (maxRows.length > 0) {
-      const lastSeq = parseInt(maxRows[0].request_number.split('-')[2], 10);
-      if (!Number.isNaN(lastSeq)) nextSeq = lastSeq + 1;
-    }
-
-    const requestNumber = `${prefix}${String(nextSeq).padStart(4, '0')}`;
-
-    const commentValue = comment && comment.trim() ? comment.trim() : null;
-
-    const [insertResult] = await connection.query(
-      `
-      INSERT INTO PurchaseRequest
-        (request_number, fk_fiscal_year, fk_department, fk_request_status,
-         fk_created_by_user, total_amount, justification, comment)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-      `,
-      [
-        requestNumber,
-        fk_fiscal_year,
-        fk_department,
-        statusId,
-        userId,
-        estimated_amount === '' || estimated_amount === undefined ? null : estimated_amount,
-        justification.trim(),
-        commentValue,
-      ]
-    );
-
-    const newRequestId = insertResult.insertId;
-
-    const itemValues = items.map((it) => [
-      newRequestId,
-      it.fk_item_category,
-      it.item_name.trim(),
-      it.quantity,
-    ]);
-
-    await connection.query(
-      `
-      INSERT INTO PurchaseRequestItem
-        (fk_purchase_request, fk_item_category, item_name, quantity)
-      VALUES ?
-      `,
-      [itemValues]
-    );
-
-    await connection.query(
-      `
-      INSERT INTO RequestStatusHistory
-        (fk_purchase_request, fk_request_status, fk_changed_by_user, comment)
-      VALUES (?, ?, ?, ?)
-      `,
-      [newRequestId, statusId, userId, 'Zahtjev kreiran i poslan.']
-    );
-
-    await connection.commit();
+    const result = await createRequest({
+      fk_fiscal_year,
+      fk_department,
+      justification,
+      estimated_amount,
+      comment,
+      items,
+      userId: req.user.id_user,
+    });
 
     return res.status(201).json({
       message: 'Zahtjev je uspješno kreiran.',
-      id_purchase_request: newRequestId,
-      request_number: requestNumber,
-      fk_request_status: statusId,
+      ...result,
     });
   } catch (error) {
-    await connection.rollback();
+    if (error instanceof RequestValidationError) {
+      return res.status(error.status).json({ message: error.message });
+    }
+
     console.error('POST /api/requests error:', error);
 
     if (error.code === 'ER_DUP_ENTRY') {
@@ -663,8 +512,6 @@ router.post('/', authenticateToken, async (req, res) => {
     return res.status(500).json({
       message: 'Greška pri kreiranju zahtjeva.',
     });
-  } finally {
-    connection.release();
   }
 });
 

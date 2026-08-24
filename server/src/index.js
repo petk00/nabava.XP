@@ -14,6 +14,7 @@ const attachmentRoutes = require('./routes/attachmentRoutes');
 const referenceRoutes = require('./routes/referenceRoutes');
 const userRoutes = require('./routes/userRoutes');
 const fiscalYearRoutes = require('./routes/fiscalYearRoutes');
+const assistantRoutes = require('./routes/assistantRoutes');
 
 const REQUIRED_ENV = ['JWT_SECRET', 'DB_HOST', 'DB_USER', 'DB_NAME'];
 for (const key of REQUIRED_ENV) {
@@ -74,6 +75,14 @@ const checkEmailLimiter = rateLimit({
   message: { message: 'Previše pokušaja. Pokušajte ponovo za 15 minuta.' },
 });
 
+const assistantChatLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: Number(process.env.ASSISTANT_CHAT_RATE_LIMIT_MAX) || 30,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { message: 'Previše zahtjeva AI asistentu. Pokušajte ponovo za 15 minuta.' },
+});
+
 const allowedOrigins = process.env.CLIENT_URL
   ? process.env.CLIENT_URL.split(',').map((o) => o.trim())
   : ['http://localhost:9000', 'http://localhost:8080'];
@@ -101,6 +110,8 @@ app.use('/api/requests', requestRoutes);
 app.use('/api/reference', referenceRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/fiscal-years', fiscalYearRoutes);
+app.use('/api/assistant/chat', assistantChatLimiter);
+app.use('/api/assistant', assistantRoutes);
 
 app.get('/health', async (req, res) => {
   try {

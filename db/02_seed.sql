@@ -39,6 +39,15 @@ INSERT INTO `AppUser` (`id_user`, `fk_role`, `first_name`, `last_name`, `email`,
 (1, 1, 'Admin', 'Korisnik', 'admin@veleri.hr', '$2b$10$LwdoCm.pIlh1/hz5xH.NluYORW0qKrb7UC7ULHZFrRz2Yv4JIMDGC', 1, NULL, NULL),
 (2, 2, 'Zaposlenik', 'Korisnik', 'zaposlenik@veleri.hr', '$2b$10$c1sci8OhP4.UnhmuY/1nh.ri3NWIEKsHrfzsZzuAQcTDY76KfJLZS', 1, NULL, NULL);
 
+-- ------------------------------------------------------------
+-- AppSetting — zadane runtime postavke AI asistenta (docs/AI.md).
+-- Aktivni provider i Gemini model se mijenjaju kroz admin API,
+-- ovo su samo početne vrijednosti.
+-- ------------------------------------------------------------
+INSERT INTO `AppSetting` (`setting_key`, `setting_value`) VALUES
+('ai_provider', 'ollama'),
+('gemini_model', 'gemini-2.5-flash');
+
 -- ============================================================
 -- Kraj seed.sql
 -- ============================================================

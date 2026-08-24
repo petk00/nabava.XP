@@ -1,6 +1,6 @@
 # Dokumentacija baze podataka
 
-Ovaj dokument opisuje bazu podataka aplikacije `veleri.XP`.
+Ovaj dokument opisuje bazu podataka aplikacije `nabava.XP`.
 Baza je relacijska i koristi MySQL 8.0. Struktura i inicijalni podaci nalaze se u:
 
 ```text
@@ -44,6 +44,7 @@ Model baze prati osnovni proces zahtjeva za nabavu:
 | `PurchaseRequestItem` | Stavke zahtjeva. |
 | `Attachment` | Dokumenti vezani uz zahtjev. |
 | `RequestStatusHistory` | Povijest statusa i aktivnosti nad zahtjevom. |
+| `AppSetting` | Runtime postavke (npr. AI provider, Gemini model). |
 
 ## Logički model
 
@@ -399,6 +400,40 @@ Tipični zapisi:
 Brisanje:
 
 - ako se obriše `PurchaseRequest`, povijest se briše automatski zbog `ON DELETE CASCADE`.
+
+## Tablica `AppSetting`
+
+Generička key/value tablica za runtime postavke — trenutno koristi je AI asistent (docs/AI.md)
+za izbor aktivnog LLM providera i Gemini modela, bez potrebe za restartom servera.
+
+| Stupac | Tip | Ograničenje | Opis |
+|---|---|---|---|
+| `setting_key` | `varchar(100)` | PK | Naziv postavke, npr. `ai_provider`. |
+| `setting_value` | `varchar(500)` | NOT NULL | Vrijednost postavke (uvijek string). |
+| `updated_at` | `timestamp` | NOT NULL, default/ON UPDATE CURRENT_TIMESTAMP | Zadnja izmjena. |
+
+> **Migracija za postojeće baze:**
+> ```sql
+> CREATE TABLE `AppSetting` (
+>   `setting_key` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,
+>   `setting_value` varchar(500) COLLATE utf8mb4_unicode_ci NOT NULL,
+>   `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+>   PRIMARY KEY (`setting_key`)
+> ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+>
+> INSERT INTO `AppSetting` (`setting_key`, `setting_value`) VALUES
+>   ('ai_provider', 'ollama'),
+>   ('gemini_model', 'gemini-2.5-flash');
+> ```
+
+Poznati ključevi:
+
+- `ai_provider` — `'ollama'` ili `'gemini'`, bira koji `LlmProvider` `assistantRoutes.js` koristi.
+- `gemini_model` — naziv Gemini modela (npr. `gemini-2.5-flash`); nije hardkodiran jer točna verzija
+  Gemini Flasha nije bila fiksirana u trenutku implementacije.
+
+Bez FK ovisnosti — tablica je namjerno neovisna o ostatku sheme. Ako ključ ne postoji u bazi,
+`server/src/config/appSettings.js` vraća ugrađenu zadanu vrijednost umjesto greške.
 
 ## Relacijski integritet
 
