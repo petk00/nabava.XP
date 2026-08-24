@@ -1,6 +1,6 @@
 # Korisničke upute
 
-Ovaj dokument opisuje korištenje aplikacije `veleri.XP` iz perspektive krajnjeg korisnika.
+Ovaj dokument opisuje korištenje aplikacije `nabava.XP` iz perspektive krajnjeg korisnika.
 Aplikacija služi za kreiranje, pregled i obradu zahtjeva za nabavu.
 
 Upute opisuju trenutno implementirano stanje aplikacije.

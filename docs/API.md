@@ -1,6 +1,6 @@
 # API dokumentacija
 
-Ovaj dokument opisuje REST API aplikacije `veleri.XP`.
+Ovaj dokument opisuje REST API aplikacije `nabava.XP`.
 API koristi JSON format za većinu zahtjeva i odgovora, osim kod uploada i downloada dokumenata.
 
 ## Osnovni podaci

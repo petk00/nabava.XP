@@ -2,11 +2,11 @@
 
 > Aplikacija za upravljanje zahtjevima za nabavu na Veleučilištu u Rijeci.
 
-veleri.XP je full-stack web aplikacija za digitalizaciju procesa nabave: zaposlenik kreira zahtjev, administrator ga preuzima, odobrava ili vraća na izmjenu, a zahtjev se zatvara nakon dostave potrebne dokumentacije.
+nabava.XP je full-stack web aplikacija za digitalizaciju procesa nabave: zaposlenik kreira zahtjev, administrator ga preuzima, odobrava ili vraća na izmjenu, a zahtjev se zatvara nakon dostave potrebne dokumentacije.
 
 ## Status projekta
 
-![CI](https://github.com/petk00/veleri.XP/actions/workflows/ci.yml/badge.svg)
+![CI](https://github.com/petk00/nabava.XP/actions/workflows/ci.yml/badge.svg)
 
 **Verzija:** 1.1  
 **Faza:** funkcionalno zaokružen sustav — kompletan tijek nabave s financijskim praćenjem
@@ -73,7 +73,7 @@ veleri.XP je full-stack web aplikacija za digitalizaciju procesa nabave: zaposle
 ## Struktura projekta
 
 ```text
-veleri.XP/
+nabava.XP/
 ├── client/              # Vue 3 + Quasar frontend
 │   ├── src/
 │   │   ├── pages/       # Stranice aplikacije
@@ -162,14 +162,14 @@ Admin može stornirati zahtjev iz bilo kojeg aktivnog statusa → [Odbijeno].
 2. Klonirati repozitorij aplikacije na lokalno računalo ili server:
 
 ```bash
-git clone https://github.com/petk00/veleri.XP
-cd veleri.XP
+git clone https://github.com/petk00/nabava.XP
+cd nabava.XP
 ```
 
 3. Kreirati `.env` datoteku u korijenu projekta s JWT tajnim ključem i MySQL lozinkama.
 
    **Najlakše (bilo koji OS) — ručno u Notepadu ili VS Code:**  
-   Kreirati datoteku `.env` u korijenu projekta (`veleri.XP/.env`) s ovim sadržajem:
+   Kreirati datoteku `.env` u korijenu projekta (`nabava.XP/.env`) s ovim sadržajem:
    ```
    JWT_SECRET=PROMIJENI_OVO_minimum_32_znaka_dugacak_kljuc_ovdje
    DB_ROOT_PASSWORD=PROMIJENI_OVO_root_lozinka

@@ -109,11 +109,48 @@
 
     </div>
 
+    <!-- Assistant overlay (placeholder) -->
+    <div v-if="askOpen" class="assistant-overlay">
+      <div class="assistant-overlay__header">
+        <span class="assistant-overlay__title">
+          <q-icon name="auto_awesome" size="18px" />
+          Asistent
+        </span>
+        <button type="button" class="assistant-overlay__close" aria-label="Zatvori" @click="closeAssistant">
+          <q-icon name="close" size="20px" />
+        </button>
+      </div>
+
+      <div ref="assistantBodyEl" class="assistant-overlay__body">
+        <div
+          v-for="(msg, idx) in chatMessages"
+          :key="idx"
+          class="assistant-msg"
+          :class="msg.from"
+        >
+          {{ msg.text }}
+        </div>
+      </div>
+
+      <form class="assistant-overlay__form" @submit.prevent="sendChatMessage">
+        <input
+          v-model="chatInput"
+          type="text"
+          class="assistant-overlay__input"
+          placeholder="Pitajte nabava.XP asistenta..."
+          autofocus
+        />
+        <button type="submit" class="assistant-overlay__send" aria-label="Pošalji">
+          <q-icon name="send" size="18px" />
+        </button>
+      </form>
+    </div>
+
   </q-page>
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, nextTick } from 'vue';
 import { api } from 'boot/axios';
 import { getStoredUser } from 'src/utils/authStorage';
 
@@ -121,9 +158,45 @@ const user = getStoredUser();
 
 // Placeholder — treba spojiti na pravi backend/AI servis
 const askInput = ref('');
+const askOpen = ref(false);
+const chatInput = ref('');
+const chatMessages = ref([]);
+const assistantBodyEl = ref(null);
+
+async function scrollAssistantToBottom() {
+  await nextTick();
+  if (assistantBodyEl.value) {
+    assistantBodyEl.value.scrollTop = assistantBodyEl.value.scrollHeight;
+  }
+}
+
 function submitAsk() {
-  if (!askInput.value.trim()) return;
+  const text = askInput.value.trim();
+  if (!text) return;
   askInput.value = '';
+  chatMessages.value = [{ from: 'user', text }];
+  askOpen.value = true;
+  scrollAssistantToBottom();
+  setTimeout(() => {
+    chatMessages.value.push({ from: 'bot', text: 'Hvala na pitanju! Ovo je demo asistent — prava logika dolazi uskoro.' });
+    scrollAssistantToBottom();
+  }, 600);
+}
+
+function sendChatMessage() {
+  const text = chatInput.value.trim();
+  if (!text) return;
+  chatMessages.value.push({ from: 'user', text });
+  chatInput.value = '';
+  scrollAssistantToBottom();
+  setTimeout(() => {
+    chatMessages.value.push({ from: 'bot', text: 'Zabilježeno! (demo odgovor)' });
+    scrollAssistantToBottom();
+  }, 600);
+}
+
+function closeAssistant() {
+  askOpen.value = false;
 }
 
 const loading = ref(true);
@@ -576,6 +649,136 @@ onMounted(async () => {
   .page { padding: 20px 16px; }
   .page-header__title { font-size: 1.75rem; }
   .status-badge { min-width: unset; }
+}
+
+/* ── Assistant overlay (placeholder) ── */
+.assistant-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: flex;
+  flex-direction: column;
+  background: #f9fafb;
+}
+
+.assistant-overlay__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+  padding: 16px 24px;
+  border-bottom: 1px solid #e5e7eb;
+  background: #ffffff;
+}
+
+.assistant-overlay__title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #16294e;
+  font-weight: 700;
+  font-size: 0.9375rem;
+}
+
+.assistant-overlay__close {
+  all: unset;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  color: #6b7280;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.assistant-overlay__close:hover {
+  background: #f3f4f6;
+  color: #111827;
+}
+
+.assistant-overlay__body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-width: 720px;
+  width: 100%;
+  margin: 0 auto;
+  box-sizing: border-box;
+}
+
+.assistant-msg {
+  padding: 12px 16px;
+  border-radius: 16px;
+  max-width: 75%;
+  font-size: 0.9375rem;
+  line-height: 1.45;
+}
+
+.assistant-msg.user {
+  align-self: flex-end;
+  background: #00afdb;
+  color: white;
+  border-bottom-right-radius: 4px;
+}
+
+.assistant-msg.bot {
+  align-self: flex-start;
+  background: #ffffff;
+  color: #111827;
+  border: 1px solid #e5e7eb;
+  border-bottom-left-radius: 4px;
+}
+
+.assistant-overlay__form {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+  max-width: 720px;
+  width: 100%;
+  margin: 0 auto;
+  box-sizing: border-box;
+  padding: 16px 24px 24px;
+}
+
+.assistant-overlay__input {
+  flex: 1;
+  padding: 14px 18px;
+  border: 1.5px solid rgba(0, 175, 219, 0.18);
+  border-radius: 999px;
+  outline: none;
+  background: #ffffff;
+  color: #111827;
+  font-size: 0.9375rem;
+  font-family: inherit;
+}
+
+.assistant-overlay__input:focus {
+  border-color: #00afdb;
+}
+
+.assistant-overlay__send {
+  all: unset;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: #00afdb;
+  color: white;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.15s;
+}
+
+.assistant-overlay__send:hover {
+  background: #14bae4;
 }
 
 </style>

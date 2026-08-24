@@ -1,6 +1,6 @@
 # Deployment na produkcijski server
 
-Upute za instalaciju aplikacije `veleri.XP` na stvarni server pomoću Dockera.
+Upute za instalaciju aplikacije `nabava.XP` na stvarni server pomoću Dockera.
 Postava je verificirana lokalno; koraci ispod opisuju instalaciju na Linux server.
 
 ## Arhitektura
@@ -26,8 +26,8 @@ Postava je verificirana lokalno; koraci ispod opisuju instalaciju na Linux serve
 ## 2. Instalacija
 
 ```bash
-git clone <repo-url> veleri.XP
-cd veleri.XP
+git clone <repo-url> nabava.XP
+cd nabava.XP
 
 # Konfiguracija — obavezne tajne
 cp .env.example .env
@@ -107,7 +107,7 @@ BACKUP_DIR=/mnt/backup ./scripts/backup.sh
 Preporučeni cron (svaku noć u 02:30):
 
 ```cron
-30 2 * * * cd /putanja/do/veleri.XP && ./scripts/backup.sh >> /var/log/veleri-backup.log 2>&1
+30 2 * * * cd /putanja/do/nabava.XP && ./scripts/backup.sh >> /var/log/veleri-backup.log 2>&1
 ```
 
 ### Restore

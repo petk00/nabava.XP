@@ -25,10 +25,23 @@ jest.mock('../../src/services/fileTypeService', () => ({
   detectMimeType: jest.fn().mockResolvedValue('application/pdf'),
 }));
 
+// AI provideri rade prave mrežne pozive (Ollama/Gemini) — mockani su i ovdje
+// jer integracijski test gađa pravu bazu/rutu preko cijelog Express stacka,
+// pa se sve osim samog LLM poziva testira end-to-end (auth, rate limiter,
+// admin zaštita, DB-backed toggle).
+jest.mock('../../src/services/llm/ollamaProvider', () => ({
+  chat: jest.fn().mockResolvedValue({ text: '[fake ollama] odgovor' }),
+}));
+jest.mock('../../src/services/llm/geminiProvider', () => ({
+  chat: jest.fn().mockResolvedValue({ text: '[fake gemini] odgovor' }),
+}));
+
 const fs = require('fs');
 const path = require('path');
 const mysql = require('mysql2/promise');
 const request = require('supertest');
+const ollamaProvider = require('../../src/services/llm/ollamaProvider');
+const geminiProvider = require('../../src/services/llm/geminiProvider');
 
 const REPO_ROOT = path.join(__dirname, '..', '..', '..');
 
@@ -372,5 +385,86 @@ describe('Zaštite sesija i upravljanja korisnicima (integracija)', () => {
     // Zaposlenik (id 2) kreirao je zahtjev u workflow testovima
     const res = await agent.delete('/api/users/2');
     expect(res.status).toBe(409);
+  });
+});
+
+describe('AI asistent (integracija) — docs/AI.md', () => {
+  itDb('bez prijave POST /api/assistant/chat vraća 401', async () => {
+    const res = await request(app)
+      .post('/api/assistant/chat')
+      .send({ messages: [{ role: 'user', content: 'Bok' }] });
+    expect(res.status).toBe(401);
+  });
+
+  itDb('prijavljeni korisnik dobiva odgovor od aktivnog (default) providera — Ollama', async () => {
+    const agent = await loginAgent(EMPLOYEE);
+    const res = await agent
+      .post('/api/assistant/chat')
+      .send({ messages: [{ role: 'user', content: 'Trebam 5 tonera.' }] });
+
+    expect(res.status).toBe(200);
+    expect(res.body.text).toBe('[fake ollama] odgovor');
+    expect(ollamaProvider.chat).toHaveBeenCalled();
+    expect(geminiProvider.chat).not.toHaveBeenCalled();
+  });
+
+  itDb('rate limiter je montiran na /api/assistant/chat (standardHeaders)', async () => {
+    const agent = await loginAgent(EMPLOYEE);
+    const res = await agent
+      .post('/api/assistant/chat')
+      .send({ messages: [{ role: 'user', content: 'test' }] });
+
+    expect(res.status).toBe(200);
+    expect(res.headers).toHaveProperty('ratelimit-limit');
+  });
+
+  itDb('zaposlenik ne može čitati ni mijenjati AI postavke (403)', async () => {
+    const agent = await loginAgent(EMPLOYEE);
+    const get = await agent.get('/api/assistant/settings');
+    expect(get.status).toBe(403);
+
+    const put = await agent.put('/api/assistant/settings').send({ provider: 'gemini' });
+    expect(put.status).toBe(403);
+  });
+
+  itDb('admin čita zadani toggle iz seeda (ollama / gemini-2.5-flash)', async () => {
+    const agent = await loginAgent(ADMIN);
+    const res = await agent.get('/api/assistant/settings');
+
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({ provider: 'ollama', gemini_model: 'gemini-2.5-flash' });
+  });
+
+  itDb('admin mijenja toggle na gemini — bez restarta idući chat poziv dispatch-a na GeminiProvider', async () => {
+    const adminAgent = await loginAgent(ADMIN);
+    const employeeAgent = await loginAgent(EMPLOYEE);
+    ollamaProvider.chat.mockClear();
+    geminiProvider.chat.mockClear();
+
+    const put = await adminAgent.put('/api/assistant/settings').send({ provider: 'gemini' });
+    expect(put.status).toBe(200);
+    expect(put.body.provider).toBe('gemini');
+
+    const chatRes = await employeeAgent
+      .post('/api/assistant/chat')
+      .send({ messages: [{ role: 'user', content: 'test' }] });
+
+    expect(chatRes.status).toBe(200);
+    expect(chatRes.body.text).toBe('[fake gemini] odgovor');
+    expect(geminiProvider.chat).toHaveBeenCalled();
+    expect(ollamaProvider.chat).not.toHaveBeenCalled();
+
+    // vrati na default da ostali testovi (i CI) ne ovise o ovome
+    const restore = await adminAgent.put('/api/assistant/settings').send({ provider: 'ollama' });
+    expect(restore.status).toBe(200);
+  });
+
+  itDb('admin šalje nepoznat provider — 400, toggle ostaje netaknut', async () => {
+    const agent = await loginAgent(ADMIN);
+    const res = await agent.put('/api/assistant/settings').send({ provider: 'chatgpt' });
+    expect(res.status).toBe(400);
+
+    const check = await agent.get('/api/assistant/settings');
+    expect(check.body.provider).toBe('ollama');
   });
 });

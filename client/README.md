@@ -1,4 +1,4 @@
-# veleri.XP — Frontend
+# nabava.XP — Frontend
 
 Vue 3 + Quasar Framework (SPA, Composition API, `<script setup>`)
 

@@ -1,6 +1,6 @@
 # Arhitektura sustava
 
-Ovaj dokument opisuje arhitekturu aplikacije `veleri.XP`, odnosno način na koji su povezani frontend, backend i baza podataka.
+Ovaj dokument opisuje arhitekturu aplikacije `nabava.XP`, odnosno način na koji su povezani frontend, backend i baza podataka.
 Aplikacija je organizirana kao full-stack web aplikacija za upravljanje zahtjevima za nabavu.
 
 ## Pregled sustava
@@ -42,7 +42,7 @@ Komunikacija između klijenta i poslužitelja odvija se preko REST API-ja. Front
 ## Struktura projekta
 
 ```text
-veleri.XP/
+nabava.XP/
 ├── client/                 # Frontend aplikacija
 │   └── src/
 │       ├── boot/           # Axios konfiguracija

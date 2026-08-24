@@ -8,6 +8,7 @@ SET FOREIGN_KEY_CHECKS = 0;
 SET NAMES utf8mb4;
 
 DROP TABLE IF EXISTS `RequestStatusHistory`;
+DROP TABLE IF EXISTS `AppSetting`;
 DROP TABLE IF EXISTS `Attachment`;
 DROP TABLE IF EXISTS `PurchaseRequestItem`;
 DROP TABLE IF EXISTS `PurchaseRequest`;
@@ -193,6 +194,17 @@ CREATE TABLE `RequestStatusHistory` (
     ON DELETE RESTRICT ON UPDATE CASCADE,
   CONSTRAINT `fk_statushistory_user` FOREIGN KEY (`fk_changed_by_user`) REFERENCES `AppUser` (`id_user`)
     ON DELETE RESTRICT ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ------------------------------------------------------------
+-- AppSetting — runtime postavke (npr. AI provider, Gemini model),
+-- mijenjaju se kroz admin API bez restarta servera. Bez FK ovisnosti.
+-- ------------------------------------------------------------
+CREATE TABLE `AppSetting` (
+  `setting_key` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `setting_value` varchar(500) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`setting_key`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 SET FOREIGN_KEY_CHECKS = 1;
