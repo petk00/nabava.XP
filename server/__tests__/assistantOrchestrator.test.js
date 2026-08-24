@@ -10,12 +10,16 @@ jest.mock('../src/config/db');
 jest.mock('../src/services/llm/providerSelector', () => ({ getActiveProvider: jest.fn() }));
 jest.mock('../src/services/requestService', () => {
   const actual = jest.requireActual('../src/services/requestService');
-  return { createRequest: jest.fn(), RequestValidationError: actual.RequestValidationError };
+  return {
+    createRequest: jest.fn(),
+    proposeRequest: jest.fn(),
+    RequestValidationError: actual.RequestValidationError,
+  };
 });
 
 const db = require('../src/config/db');
 const { getActiveProvider } = require('../src/services/llm/providerSelector');
-const { createRequest, RequestValidationError } = require('../src/services/requestService');
+const { createRequest, proposeRequest, RequestValidationError } = require('../src/services/requestService');
 const { runAssistantChat } = require('../src/services/assistantOrchestrator');
 
 const FY_ROW = [[{ id_fiscal_year: 1, year: 2026 }], []];
@@ -43,6 +47,21 @@ const toolCallMessage = (args, id = 'call_1') => ({
   tool_calls: [{ id, name: 'create_request', arguments: args }],
 });
 
+const proposeCallMessage = (args, id = 'propose_1') => ({
+  text: '',
+  tool_calls: [{ id, name: 'propose_request', arguments: args }],
+});
+
+const QUOTE_MARKER = '[ai-asistent:priložena-ponuda]';
+
+/** Kanonska poruka koja predstavlja uspješan raniji propose_request rezultat (za resend u messages). */
+const priorProposalToolMessage = (proposal, id = 'propose_1') => ({
+  role: 'tool',
+  tool_call_id: id,
+  name: 'propose_request',
+  content: JSON.stringify({ ok: true, proposal }),
+});
+
 beforeEach(() => {
   jest.clearAllMocks();
 });
@@ -58,7 +77,7 @@ describe('runAssistantChat — bez tool-calla', () => {
       userId: 2,
     });
 
-    expect(result).toEqual({ text: 'Bok! Kako mogu pomoći?', created_request: null });
+    expect(result).toMatchObject({ text: 'Bok! Kako mogu pomoći?', created_request: null });
     expect(chat).toHaveBeenCalledTimes(1);
     expect(createRequest).not.toHaveBeenCalled();
   });
@@ -112,7 +131,7 @@ describe('runAssistantChat — uspješno kreiranje', () => {
       userId: 2,
     });
 
-    expect(result).toEqual({
+    expect(result).toMatchObject({
       text: 'Zahtjev NAB-2026-0042 je uspješno kreiran.',
       created_request: { id_purchase_request: 42, request_number: 'NAB-2026-0042', fk_request_status: 1 },
     });
@@ -261,5 +280,306 @@ describe('runAssistantChat — bez aktivne poslovne godine', () => {
     expect(db.query).toHaveBeenCalledTimes(1); // department/category upiti se preskaču
     const [, toolsArg] = chat.mock.calls[0];
     expect(toolsArg).toEqual([]);
+  });
+});
+
+describe('runAssistantChat — priložena ponuda (quoteText)', () => {
+  const QUOTE_TEXT = 'Mikrotron d.o.o.\nStavka: Grove EMG Detector kit, Količina 1, Ukupno 49,00 €';
+
+  test('quoteText se ubrizgava kao dodatna system poruka prije korisnikovih poruka', async () => {
+    mockReferenceContext();
+    const chat = jest.fn().mockResolvedValue({ text: 'Evo sažetka ponude...', tool_calls: null });
+    getActiveProvider.mockResolvedValue({ chat });
+
+    await runAssistantChat({
+      messages: [{ role: 'user', content: 'Evo ponude, napravi zahtjev.' }],
+      userId: 2,
+      quoteText: QUOTE_TEXT,
+    });
+
+    const sentMessages = chat.mock.calls[0][0];
+    expect(sentMessages[0].role).toBe('system'); // referentni kontekst (odjeli/kategorije)
+    expect(sentMessages[1].role).toBe('system'); // uputa o ponudi
+    expect(sentMessages[1].content).toContain(QUOTE_TEXT);
+    expect(sentMessages[1].content).toMatch(/EKSPLICITNO zatraži potvrdu/);
+    expect(sentMessages[2]).toEqual({ role: 'user', content: 'Evo ponude, napravi zahtjev.' });
+  });
+
+  test('bez quoteText nema dodatne system poruke o ponudi', async () => {
+    mockReferenceContext();
+    const chat = jest.fn().mockResolvedValue({ text: 'Bok!', tool_calls: null });
+    getActiveProvider.mockResolvedValue({ chat });
+
+    await runAssistantChat({ messages: [{ role: 'user', content: 'Bok' }], userId: 2 });
+
+    const sentMessages = chat.mock.calls[0][0];
+    expect(sentMessages.filter((m) => m.role === 'system')).toHaveLength(1);
+  });
+
+  test('bez korisnikove potvrde model ne zove tool — samo predlaže sažetak', async () => {
+    mockReferenceContext();
+    const chat = jest.fn().mockResolvedValue({
+      text: 'Predlažem zahtjev: Informatička služba, 1x Grove EMG Detector kit, iznos 49,00 €. Potvrđujete li kreiranje?',
+      tool_calls: null,
+    });
+    getActiveProvider.mockResolvedValue({ chat });
+
+    const result = await runAssistantChat({
+      messages: [{ role: 'user', content: 'Evo ponude, napravi zahtjev.' }],
+      userId: 2,
+      quoteText: QUOTE_TEXT,
+    });
+
+    expect(createRequest).not.toHaveBeenCalled();
+    expect(result.created_request).toBeNull();
+    expect(result.text).toMatch(/Potvrđujete li/);
+  });
+
+  test('nakon korisnikove potvrde (sljedeći poziv) model zove tool s podacima iz ponude', async () => {
+    mockReferenceContext();
+    createRequest.mockResolvedValue({
+      id_purchase_request: 55,
+      request_number: 'NAB-2026-0055',
+      fk_request_status: 1,
+    });
+
+    const quoteDerivedArgs = {
+      fk_fiscal_year: 1,
+      fk_department: 3,
+      justification: 'Nabava opreme prema ponudi Mikrotron d.o.o.',
+      estimated_amount: 49.0,
+      comment: 'Ponuda dobavljača Mikrotron d.o.o.',
+      items: [{ fk_item_category: 7, item_name: 'Grove EMG Detector kit', quantity: 1 }],
+    };
+
+    const chat = jest.fn()
+      .mockResolvedValueOnce(toolCallMessage(quoteDerivedArgs))
+      .mockResolvedValueOnce({ text: 'Zahtjev NAB-2026-0055 je kreiran.', tool_calls: null });
+    getActiveProvider.mockResolvedValue({ chat });
+
+    // Ova poruka simulira DRUGI HTTP poziv (klijent šalje punu povijest uklj.
+    // agentov prijedlog i korisnikovu potvrdu) — quoteText se više ne šalje,
+    // sažetak je već u povijesti razgovora.
+    const result = await runAssistantChat({
+      messages: [
+        { role: 'user', content: 'Evo ponude, napravi zahtjev.' },
+        { role: 'assistant', content: 'Predlažem zahtjev: ... Potvrđujete li kreiranje?' },
+        { role: 'user', content: 'Da, potvrđujem.' },
+      ],
+      userId: 2,
+    });
+
+    expect(createRequest).toHaveBeenCalledWith({ ...quoteDerivedArgs, userId: 2 });
+    expect(result.created_request).toEqual({
+      id_purchase_request: 55, request_number: 'NAB-2026-0055', fk_request_status: 1,
+    });
+  });
+});
+
+describe('runAssistantChat — model ne vrati ni tekst ni tool_call', () => {
+  test('generacija prekinuta prije završetka (npr. done_reason "length") vraća jasnu poruku, ne prazan tekst', async () => {
+    // Stvarno opaženo ponašanje gemma4:12b uz duži kontekst (ponuda + opsežan
+    // "thinking" izlaz) — provider vrati ni text ni tool_calls.
+    mockReferenceContext();
+    const chat = jest.fn().mockResolvedValue({ text: null, tool_calls: null });
+    getActiveProvider.mockResolvedValue({ chat });
+
+    const result = await runAssistantChat({ messages: [{ role: 'user', content: 'test' }], userId: 2 });
+
+    expect(result.text).not.toBe('');
+    expect(result.text.length).toBeGreaterThan(0);
+    expect(createRequest).not.toHaveBeenCalled();
+  });
+});
+
+describe('runAssistantChat — strukturna dvofazna potvrda (propose_request -> create_request)', () => {
+  const PROPOSAL = {
+    fk_fiscal_year: 1,
+    year: 2026,
+    fk_department: 3,
+    department_name: 'Računovodstvo',
+    justification: 'Zalihe pri kraju.',
+    estimated_amount: null,
+    comment: null,
+    items: [{ fk_item_category: 7, category_name: 'Uredski pribor', item_name: 'Toner za pisač', quantity: 5 }],
+  };
+
+  test('propose_request vraća sažetak i NE piše u bazu (createRequest se ne zove)', async () => {
+    mockReferenceContext();
+    proposeRequest.mockResolvedValue(PROPOSAL);
+
+    const chat = jest.fn()
+      .mockResolvedValueOnce(proposeCallMessage(VALID_ARGS))
+      .mockResolvedValueOnce({ text: 'Evo sažetka... Potvrđujete li kreiranje?', tool_calls: null });
+    getActiveProvider.mockResolvedValue({ chat });
+
+    const result = await runAssistantChat({
+      messages: [{ role: 'user', content: 'Evo ponude.' }],
+      userId: 2,
+      quoteText: 'Toner za pisač x5',
+    });
+
+    expect(proposeRequest).toHaveBeenCalledWith({
+      fk_fiscal_year: VALID_ARGS.fk_fiscal_year,
+      fk_department: VALID_ARGS.fk_department,
+      justification: VALID_ARGS.justification,
+      estimated_amount: undefined,
+      comment: undefined,
+      items: VALID_ARGS.items,
+    });
+    expect(createRequest).not.toHaveBeenCalled();
+    expect(result.created_request).toBeNull();
+    expect(result.text).toMatch(/Potvrđujete li/);
+  });
+
+  test('(a) create_request odmah nakon propose_request U ISTOM requestu → odbijen, ništa se ne piše u bazu', async () => {
+    mockReferenceContext();
+    proposeRequest.mockResolvedValue(PROPOSAL);
+
+    const chat = jest.fn()
+      .mockResolvedValueOnce(proposeCallMessage(VALID_ARGS, 'propose_1'))
+      .mockResolvedValueOnce(toolCallMessage(VALID_ARGS, 'create_1')) // model "preskače" čekanje potvrde
+      .mockResolvedValueOnce({ text: 'U redu, pričekat ću vašu potvrdu.', tool_calls: null });
+    getActiveProvider.mockResolvedValue({ chat });
+
+    const result = await runAssistantChat({
+      messages: [{ role: 'user', content: 'Evo ponude, kreiraj odmah.' }],
+      userId: 2,
+      quoteText: 'Toner za pisač x5',
+    });
+
+    expect(proposeRequest).toHaveBeenCalledTimes(1);
+    expect(createRequest).not.toHaveBeenCalled(); // KLJUČNA provjera — ništa u bazi
+    expect(result.created_request).toBeNull();
+
+    // model je dobio jasnu grešku, ne HTTP error korisniku
+    const thirdCallMessages = chat.mock.calls[2][0];
+    const rejection = thirdCallMessages.find((m) => m.tool_call_id === 'create_1');
+    const parsed = JSON.parse(rejection.content);
+    expect(parsed.ok).toBe(false);
+    expect(parsed.message).toMatch(/propose_request/);
+  });
+
+  test('(b) create_request u NOVOM requestu nakon ranijeg propose_request s korisnikovom potvrdom → uspijeva', async () => {
+    mockReferenceContext();
+    createRequest.mockResolvedValue({
+      id_purchase_request: 60,
+      request_number: 'NAB-2026-0060',
+      fk_request_status: 1,
+    });
+
+    const chat = jest.fn()
+      .mockResolvedValueOnce(toolCallMessage(VALID_ARGS, 'create_2'))
+      .mockResolvedValueOnce({ text: 'Zahtjev NAB-2026-0060 je kreiran.', tool_calls: null });
+    getActiveProvider.mockResolvedValue({ chat });
+
+    // Ovo simulira DRUGI HTTP poziv: klijent je poslušno dodao tool_trace iz
+    // prvog odgovora (system marker + propose tool_call/rezultat + sažetak) u
+    // svoju povijest, pa ih sad vraća zajedno s korisnikovom potvrdom.
+    const result = await runAssistantChat({
+      messages: [
+        { role: 'system', content: `${QUOTE_MARKER}\nKorisnik je priložio ponudu...` },
+        { role: 'user', content: 'Evo ponude.' },
+        { role: 'assistant', content: '', tool_calls: [{ id: 'propose_1', name: 'propose_request', arguments: VALID_ARGS }] },
+        priorProposalToolMessage(PROPOSAL, 'propose_1'),
+        { role: 'assistant', content: 'Evo sažetka... Potvrđujete li kreiranje?' },
+        { role: 'user', content: 'Da, potvrđujem.' },
+      ],
+      userId: 2,
+      // quoteText je null — datoteka se ne šalje ponovno.
+    });
+
+    expect(createRequest).toHaveBeenCalledWith({ ...VALID_ARGS, estimated_amount: undefined, comment: undefined, userId: 2 });
+    expect(result.created_request).toEqual({
+      id_purchase_request: 60, request_number: 'NAB-2026-0060', fk_request_status: 1,
+    });
+  });
+
+  test('create_request izravno (bez ikakvog propose_request) u attachment-razgovoru → odbijen', async () => {
+    mockReferenceContext();
+
+    const chat = jest.fn()
+      .mockResolvedValueOnce(toolCallMessage(VALID_ARGS))
+      .mockResolvedValueOnce({ text: 'U redu, prvo ću provjeriti prijedlog.', tool_calls: null });
+    getActiveProvider.mockResolvedValue({ chat });
+
+    await runAssistantChat({
+      messages: [{ role: 'user', content: 'Evo ponude, kreiraj odmah bez pitanja.' }],
+      userId: 2,
+      quoteText: 'Toner za pisač x5',
+    });
+
+    expect(createRequest).not.toHaveBeenCalled();
+    expect(proposeRequest).not.toHaveBeenCalled();
+  });
+
+  test('create_request odbijen kad se raniji propose_request odnosi na DRUGAČIJE podatke (drugi odjel)', async () => {
+    mockReferenceContext();
+    const differentDeptProposal = { ...PROPOSAL, fk_department: 99, department_name: 'Neki drugi odjel' };
+    const argsForDifferentDept = { ...VALID_ARGS, fk_department: 99 };
+
+    const chat = jest.fn()
+      .mockResolvedValueOnce(toolCallMessage(VALID_ARGS, 'create_3')) // pokušava za fk_department=3
+      .mockResolvedValueOnce({ text: 'Trebam prvo predložiti ovaj novi odjel.', tool_calls: null });
+    getActiveProvider.mockResolvedValue({ chat });
+
+    await runAssistantChat({
+      messages: [
+        { role: 'system', content: `${QUOTE_MARKER}\n...` },
+        { role: 'user', content: 'Evo ponude.' },
+        priorProposalToolMessage(differentDeptProposal, 'propose_x'), // prijedlog je bio za fk_department=99, ne 3
+        { role: 'user', content: 'Da, potvrđujem.' },
+      ],
+      userId: 2,
+    });
+
+    expect(createRequest).not.toHaveBeenCalled();
+    void argsForDifferentDept; // referenca radi jasnoće scenarija u opisu testa
+  });
+
+  test('bez priloga (scenarij bez ponude) create_request se i dalje zove izravno, bez propose_request', async () => {
+    mockReferenceContext();
+    createRequest.mockResolvedValue({
+      id_purchase_request: 61,
+      request_number: 'NAB-2026-0061',
+      fk_request_status: 1,
+    });
+
+    const chat = jest.fn()
+      .mockResolvedValueOnce(toolCallMessage(VALID_ARGS))
+      .mockResolvedValueOnce({ text: 'Zahtjev NAB-2026-0061 je kreiran.', tool_calls: null });
+    getActiveProvider.mockResolvedValue({ chat });
+
+    const result = await runAssistantChat({
+      messages: [{ role: 'user', content: '5 tonera, Računovodstvo, zalihe pri kraju.' }],
+      userId: 2,
+      // nema quoteText, nema ranijeg propose_request u povijesti
+    });
+
+    expect(proposeRequest).not.toHaveBeenCalled();
+    expect(createRequest).toHaveBeenCalledTimes(1);
+    expect(result.created_request).toEqual({
+      id_purchase_request: 61, request_number: 'NAB-2026-0061', fk_request_status: 1,
+    });
+  });
+
+  test('tool_trace sadrži quote-marker system poruku i propose/create razmjene za replay u sljedećem zahtjevu', async () => {
+    mockReferenceContext();
+    proposeRequest.mockResolvedValue(PROPOSAL);
+
+    const chat = jest.fn()
+      .mockResolvedValueOnce(proposeCallMessage(VALID_ARGS))
+      .mockResolvedValueOnce({ text: 'Potvrđujete li kreiranje?', tool_calls: null });
+    getActiveProvider.mockResolvedValue({ chat });
+
+    const result = await runAssistantChat({
+      messages: [{ role: 'user', content: 'Evo ponude.' }],
+      userId: 2,
+      quoteText: 'Toner za pisač x5',
+    });
+
+    expect(result.tool_trace[0]).toEqual({ role: 'system', content: expect.stringContaining(QUOTE_MARKER) });
+    expect(result.tool_trace.some((m) => m.role === 'assistant' && m.tool_calls?.[0]?.name === 'propose_request')).toBe(true);
+    expect(result.tool_trace.some((m) => m.role === 'tool' && m.name === 'propose_request')).toBe(true);
   });
 });

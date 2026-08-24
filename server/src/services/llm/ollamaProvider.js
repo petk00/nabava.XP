@@ -9,6 +9,13 @@
 
 const OLLAMA_MODEL = 'gemma4:12b';
 
+// Ollamin runtime default num_ctx (obično 2048-4096) je premalen za ovaj
+// slučaj — referentni kontekst (odjeli/kategorije) + tekst priložene ponude
+// + gemma4:12b-ov opširan "thinking" izlaz znaju zajedno prijeći default,
+// pa generacija zna stati usred rečenice (done_reason: "length") bez ijednog
+// znaka konačnog odgovora. Potvrđeno stvarnim testom s mikrotron_M.pdf.
+const OLLAMA_NUM_CTX = 8192;
+
 /** Kanonski tools (docs/AI.md) -> Ollamin OpenAI-kompatibilni format. */
 function toOllamaTools(tools) {
   return tools.map((t) => ({
@@ -72,6 +79,7 @@ async function chat(messages, tools = []) {
     model: OLLAMA_MODEL,
     messages: toOllamaMessages(messages),
     stream: false,
+    options: { num_ctx: OLLAMA_NUM_CTX },
   };
   if (tools.length > 0) {
     body.tools = toOllamaTools(tools);
