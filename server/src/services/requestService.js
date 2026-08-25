@@ -52,6 +52,51 @@ function validateCreateInput({ fk_fiscal_year, fk_department, justification, est
 }
 
 /**
+ * Provjerava da fiskalna godina postoji i nije zatvorena, da odjel pripada
+ * toj godini, i da sve kategorije stavki pripadaju toj godini. Radi i nad
+ * transakcijskom konekcijom (createRequest) i nad običnim poolom
+ * (proposeRequest, budući da tamo nema ništa za zaključati/upisati).
+ * @param {import('mysql2/promise').Pool|import('mysql2/promise').PoolConnection} queryable
+ * @returns {Promise<{ year: number }>}
+ * @throws {RequestValidationError}
+ */
+async function validateBusinessRules(queryable, { fk_fiscal_year, fk_department, items }) {
+  const [fyRows] = await queryable.query(
+    'SELECT year, is_closed FROM FiscalYear WHERE id_fiscal_year = ? LIMIT 1',
+    [fk_fiscal_year]
+  );
+
+  if (fyRows.length === 0) {
+    throw new RequestValidationError(400, 'Fiskalna godina ne postoji.');
+  }
+
+  if (fyRows[0].is_closed) {
+    throw new RequestValidationError(400, 'Odabrana poslovna godina je zatvorena. Kreiranje zahtjeva nije moguće.');
+  }
+
+  // odjel mora pripadati istoj poslovnoj godini
+  const [deptCheck] = await queryable.query(
+    'SELECT id_department FROM Department WHERE id_department = ? AND fk_fiscal_year = ?',
+    [fk_department, fk_fiscal_year]
+  );
+  if (deptCheck.length === 0) {
+    throw new RequestValidationError(400, 'Odabrani odjel ne pripada odabranoj poslovnoj godini.');
+  }
+
+  // sve kategorije moraju pripadati istoj poslovnoj godini
+  const categoryIds = [...new Set(items.map((i) => i.fk_item_category))];
+  const [catCheck] = await queryable.query(
+    `SELECT id_item_category FROM ItemCategory WHERE id_item_category IN (?) AND fk_fiscal_year = ?`,
+    [categoryIds, fk_fiscal_year]
+  );
+  if (catCheck.length !== categoryIds.length) {
+    throw new RequestValidationError(400, 'Jedna ili više kategorija artikala ne pripada odabranoj poslovnoj godini.');
+  }
+
+  return { year: fyRows[0].year };
+}
+
+/**
  * Kreira zahtjev za nabavu (status Poslano) i njegove stavke pod transakcijom.
  * @returns {Promise<{ id_purchase_request: number, request_number: string, fk_request_status: number }>}
  * @throws {RequestValidationError} kod neispravnog ulaza ili poslovnog pravila (400)
@@ -66,43 +111,14 @@ async function createRequest({ fk_fiscal_year, fk_department, justification, est
   try {
     await connection.beginTransaction();
 
-    const [fyRows] = await connection.query(
-      'SELECT year, is_closed FROM FiscalYear WHERE id_fiscal_year = ? LIMIT 1',
-      [fk_fiscal_year]
-    );
-
-    if (fyRows.length === 0) {
+    let year;
+    try {
+      ({ year } = await validateBusinessRules(connection, { fk_fiscal_year, fk_department, items }));
+    } catch (error) {
       await connection.rollback();
-      throw new RequestValidationError(400, 'Fiskalna godina ne postoji.');
+      throw error;
     }
 
-    if (fyRows[0].is_closed) {
-      await connection.rollback();
-      throw new RequestValidationError(400, 'Odabrana poslovna godina je zatvorena. Kreiranje zahtjeva nije moguće.');
-    }
-
-    // odjel mora pripadati istoj poslovnoj godini
-    const [deptCheck] = await connection.query(
-      'SELECT id_department FROM Department WHERE id_department = ? AND fk_fiscal_year = ?',
-      [fk_department, fk_fiscal_year]
-    );
-    if (deptCheck.length === 0) {
-      await connection.rollback();
-      throw new RequestValidationError(400, 'Odabrani odjel ne pripada odabranoj poslovnoj godini.');
-    }
-
-    // sve kategorije moraju pripadati istoj poslovnoj godini
-    const categoryIds = [...new Set(items.map((i) => i.fk_item_category))];
-    const [catCheck] = await connection.query(
-      `SELECT id_item_category FROM ItemCategory WHERE id_item_category IN (?) AND fk_fiscal_year = ?`,
-      [categoryIds, fk_fiscal_year]
-    );
-    if (catCheck.length !== categoryIds.length) {
-      await connection.rollback();
-      throw new RequestValidationError(400, 'Jedna ili više kategorija artikala ne pripada odabranoj poslovnoj godini.');
-    }
-
-    const year = fyRows[0].year;
     const prefix = `NAB-${year}-`;
 
     const [maxRows] = await connection.query(
@@ -190,4 +206,55 @@ async function createRequest({ fk_fiscal_year, fk_department, justification, est
   }
 }
 
-module.exports = { createRequest, RequestValidationError, MAX_JUSTIFICATION_LEN };
+/**
+ * Validira potencijalni zahtjev za nabavu i vraća čitljiv sažetak (naziv
+ * odjela, naziv kategorije po stavci, godina) — NE piše ništa u bazu, nema
+ * transakcije. Koristi ista pravila kao createRequest (validateCreateInput +
+ * validateBusinessRules), pa je sažetak jamstveno "kreativ" — ako
+ * proposeRequest uspije, createRequest s istim podacima mora uspjeti
+ * (osim race condition na broju zahtjeva, koji ovdje nije ni relevantan).
+ *
+ * Namijenjeno AI asistentu (docs/AI.md, propose_request tool) — model prvo
+ * predlaže i dobiva sažetak za prikaz korisniku, korisnik potvrđuje, tek
+ * onda se zove createRequest.
+ *
+ * @returns {Promise<{ fk_fiscal_year: number, year: number, fk_department: number,
+ *   department_name: string, justification: string, estimated_amount: number|null,
+ *   comment: string|null, items: Array<{ fk_item_category: number, category_name: string,
+ *   item_name: string, quantity: number }> }>}
+ * @throws {RequestValidationError}
+ */
+async function proposeRequest({ fk_fiscal_year, fk_department, justification, estimated_amount, comment, items }) {
+  validateCreateInput({ fk_fiscal_year, fk_department, justification, estimated_amount, items });
+  const { year } = await validateBusinessRules(db, { fk_fiscal_year, fk_department, items });
+
+  const [deptRows] = await db.query(
+    'SELECT name FROM Department WHERE id_department = ? LIMIT 1',
+    [fk_department]
+  );
+
+  const categoryIds = [...new Set(items.map((i) => i.fk_item_category))];
+  const [catRows] = await db.query(
+    `SELECT id_item_category, name FROM ItemCategory WHERE id_item_category IN (?)`,
+    [categoryIds]
+  );
+  const categoryNameById = Object.fromEntries(catRows.map((c) => [c.id_item_category, c.name]));
+
+  return {
+    fk_fiscal_year,
+    year,
+    fk_department,
+    department_name: deptRows[0]?.name ?? null,
+    justification: justification.trim(),
+    estimated_amount: estimated_amount === '' || estimated_amount === undefined ? null : Number(estimated_amount),
+    comment: comment && comment.trim() ? comment.trim() : null,
+    items: items.map((it) => ({
+      fk_item_category: it.fk_item_category,
+      category_name: categoryNameById[it.fk_item_category] ?? null,
+      item_name: it.item_name.trim(),
+      quantity: it.quantity,
+    })),
+  };
+}
+
+module.exports = { createRequest, proposeRequest, RequestValidationError, MAX_JUSTIFICATION_LEN };

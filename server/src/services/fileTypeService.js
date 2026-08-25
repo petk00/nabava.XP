@@ -8,4 +8,10 @@ const detectMimeType = async (filePath) => {
   return detected ? detected.mime : null;
 };
 
-module.exports = { detectMimeType };
+const detectMimeTypeFromBuffer = async (buffer) => {
+  const { fileTypeFromBuffer } = await import('file-type');
+  const detected = await fileTypeFromBuffer(buffer);
+  return detected ? detected.mime : null;
+};
+
+module.exports = { detectMimeType, detectMimeTypeFromBuffer };

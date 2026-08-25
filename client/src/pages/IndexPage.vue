@@ -11,11 +11,17 @@
         </div>
       </header>
 
-      <!-- Ask bar (placeholder) -->
+      <!-- Ask bar -->
       <div class="ask-bar">
-        <button type="button" class="ask-bar__icon-btn" aria-label="Dodaj prilog">
+        <label class="ask-bar__icon-btn" aria-label="Dodaj prilog">
           <q-icon name="add" size="20px" />
-        </button>
+          <q-file
+            v-model="fileInputModel"
+            accept=".pdf,image/*"
+            style="display:none"
+            @update:model-value="onFilePicked"
+          />
+        </label>
         <input
           v-model="askInput"
           type="text"
@@ -24,14 +30,38 @@
           @keyup.enter="submitAsk"
         />
         <div class="ask-bar__right">
-          <button type="button" class="ask-bar__model">
-            Asistent
+          <button v-if="isAssistantAdmin" type="button" class="ask-bar__model">
+            {{ providerLabel }}
             <q-icon name="expand_more" size="16px" />
+            <q-menu>
+              <q-list style="min-width: 180px">
+                <q-item
+                  v-for="opt in providerOptions"
+                  :key="opt.value"
+                  clickable
+                  v-close-popup
+                  @click="changeProvider(opt.value)"
+                >
+                  <q-item-section>{{ opt.label }}</q-item-section>
+                  <q-item-section v-if="opt.value === currentProvider" side>
+                    <q-icon name="check" color="primary" size="16px" />
+                  </q-item-section>
+                </q-item>
+              </q-list>
+            </q-menu>
           </button>
           <button type="button" class="ask-bar__icon-btn" aria-label="Govorna naredba">
             <q-icon name="mic" size="18px" />
           </button>
         </div>
+      </div>
+
+      <div v-if="pendingFile && !askOpen" class="pending-file-chip">
+        <q-icon name="attach_file" size="14px" />
+        <span class="pending-file-chip__name">{{ pendingFile.name }}</span>
+        <button type="button" aria-label="Ukloni prilog" @click="removeAttachedFile">
+          <q-icon name="close" size="14px" />
+        </button>
       </div>
 
       <div v-if="loading" class="loading-block">
@@ -109,8 +139,8 @@
 
     </div>
 
-    <!-- Assistant overlay (placeholder) -->
-    <div v-if="askOpen" class="assistant-overlay">
+    <!-- Assistant overlay -->
+    <div v-if="askOpen" class="assistant-overlay" @dragover.prevent @drop.prevent="handleDrop">
       <div class="assistant-overlay__header">
         <span class="assistant-overlay__title">
           <q-icon name="auto_awesome" size="18px" />
@@ -130,6 +160,17 @@
         >
           {{ msg.text }}
         </div>
+        <div v-if="chatLoading" class="assistant-msg bot">
+          <q-spinner size="16px" />
+        </div>
+      </div>
+
+      <div v-if="pendingFile" class="pending-file-chip pending-file-chip--overlay">
+        <q-icon name="attach_file" size="14px" />
+        <span class="pending-file-chip__name">{{ pendingFile.name }}</span>
+        <button type="button" aria-label="Ukloni prilog" @click="removeAttachedFile">
+          <q-icon name="close" size="14px" />
+        </button>
       </div>
 
       <form class="assistant-overlay__form" @submit.prevent="sendChatMessage">
@@ -140,7 +181,7 @@
           placeholder="Pitajte nabava.XP asistenta..."
           autofocus
         />
-        <button type="submit" class="assistant-overlay__send" aria-label="Pošalji">
+        <button type="submit" class="assistant-overlay__send" aria-label="Pošalji" :disabled="chatLoading">
           <q-icon name="send" size="18px" />
         </button>
       </form>
@@ -150,54 +191,35 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, nextTick } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { api } from 'boot/axios';
 import { getStoredUser } from 'src/utils/authStorage';
+import { useAssistantChat } from 'src/composables/useAssistantChat';
 
 const user = getStoredUser();
 
-// Placeholder — treba spojiti na pravi backend/AI servis
-const askInput = ref('');
-const askOpen = ref(false);
-const chatInput = ref('');
-const chatMessages = ref([]);
-const assistantBodyEl = ref(null);
-
-async function scrollAssistantToBottom() {
-  await nextTick();
-  if (assistantBodyEl.value) {
-    assistantBodyEl.value.scrollTop = assistantBodyEl.value.scrollHeight;
-  }
-}
-
-function submitAsk() {
-  const text = askInput.value.trim();
-  if (!text) return;
-  askInput.value = '';
-  chatMessages.value = [{ from: 'user', text }];
-  askOpen.value = true;
-  scrollAssistantToBottom();
-  setTimeout(() => {
-    chatMessages.value.push({ from: 'bot', text: 'Hvala na pitanju! Ovo je demo asistent — prava logika dolazi uskoro.' });
-    scrollAssistantToBottom();
-  }, 600);
-}
-
-function sendChatMessage() {
-  const text = chatInput.value.trim();
-  if (!text) return;
-  chatMessages.value.push({ from: 'user', text });
-  chatInput.value = '';
-  scrollAssistantToBottom();
-  setTimeout(() => {
-    chatMessages.value.push({ from: 'bot', text: 'Zabilježeno! (demo odgovor)' });
-    scrollAssistantToBottom();
-  }, 600);
-}
-
-function closeAssistant() {
-  askOpen.value = false;
-}
+const {
+  askInput,
+  askOpen,
+  chatInput,
+  chatMessages,
+  assistantBodyEl,
+  chatLoading,
+  pendingFile,
+  fileInputModel,
+  removeAttachedFile,
+  onFilePicked,
+  handleDrop,
+  isAdmin: isAssistantAdmin,
+  currentProvider,
+  providerLabel,
+  providerOptions,
+  loadProviderSettings,
+  changeProvider,
+  submitAsk,
+  sendChatMessage,
+  closeAssistant,
+} = useAssistantChat();
 
 const loading = ref(true);
 const allRequests = ref([]);
@@ -251,6 +273,7 @@ function buildRequestStyle(row) {
 }
 
 onMounted(async () => {
+  loadProviderSettings();
   try {
     const currentYear = new Date().getFullYear();
     const { data } = await api.get('/requests', { params: { limit: 500, fiscalYear: currentYear, onlyMine: 1 } });
@@ -388,6 +411,41 @@ onMounted(async () => {
 
 .ask-bar__model:hover {
   background: #f0fbfe;
+}
+
+/* ── Prilog uz poruku (nov element, ne mijenja postojeći ask-bar/overlay stil) ── */
+.pending-file-chip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: fit-content;
+  margin: -14px auto 20px;
+  padding: 4px 10px;
+  background: #f0fbfe;
+  border-radius: 999px;
+  color: #16294e;
+  font-size: 0.8125rem;
+}
+
+.pending-file-chip button {
+  all: unset;
+  display: flex;
+  cursor: pointer;
+  color: #6b7280;
+}
+
+.pending-file-chip__name {
+  max-width: 260px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pending-file-chip--overlay {
+  margin: 0 auto 8px;
+  max-width: 720px;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 /* ── Card grid ── */

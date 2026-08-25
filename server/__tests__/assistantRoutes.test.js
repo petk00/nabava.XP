@@ -14,11 +14,16 @@ jest.mock('../src/middleware/authMiddleware', () => (req, res, next) => {
   next();
 });
 jest.mock('../src/services/assistantOrchestrator', () => ({ runAssistantChat: jest.fn() }));
+jest.mock('../src/services/quoteExtractionService', () => {
+  const actual = jest.requireActual('../src/services/quoteExtractionService');
+  return { extractQuoteText: jest.fn(), QuoteExtractionError: actual.QuoteExtractionError };
+});
 
 const supertest = require('supertest');
 const express  = require('express');
 const db       = require('../src/config/db');
 const { runAssistantChat } = require('../src/services/assistantOrchestrator');
+const { extractQuoteText, QuoteExtractionError } = require('../src/services/quoteExtractionService');
 
 const app = express();
 app.use(express.json());
@@ -72,6 +77,7 @@ describe('POST /api/assistant/chat — poziva orkestrator u auth kontekstu koris
     expect(runAssistantChat).toHaveBeenCalledWith({
       messages: [{ role: 'user', content: 'Bok' }],
       userId: 2,
+      quoteText: null,
     });
   });
 
@@ -91,6 +97,40 @@ describe('POST /api/assistant/chat — poziva orkestrator u auth kontekstu koris
     });
   });
 
+  test('prosljeđuje tool_trace iz orkestratora — klijent ga mora dodati u povijest za idući zahtjev', async () => {
+    const trace = [
+      { role: 'system', content: '[ai-asistent:priložena-ponuda]\n...' },
+      { role: 'assistant', content: '', tool_calls: [{ id: 'p1', name: 'propose_request', arguments: {} }] },
+      { role: 'tool', tool_call_id: 'p1', name: 'propose_request', content: '{"ok":true}' },
+    ];
+    runAssistantChat.mockResolvedValue({ text: 'Sažetak...', created_request: null, tool_trace: trace });
+
+    const res = await supertest(app)
+      .post('/api/assistant/chat')
+      .send({ messages: [{ role: 'user', content: 'Evo ponude.' }] });
+
+    expect(res.status).toBe(200);
+    expect(res.body.tool_trace).toEqual(trace);
+  });
+
+  test('prihvaća role:"tool" i assistant-s-tool_calls poruke u messages (echo tool_trace iz prijašnjeg odgovora)', async () => {
+    runAssistantChat.mockResolvedValue({ text: 'Odgovor.', created_request: null, tool_trace: [] });
+
+    const res = await supertest(app)
+      .post('/api/assistant/chat')
+      .send({
+        messages: [
+          { role: 'user', content: 'Evo ponude.' },
+          { role: 'assistant', content: '', tool_calls: [{ id: 'p1', name: 'propose_request', arguments: {} }] },
+          { role: 'tool', tool_call_id: 'p1', name: 'propose_request', content: '{"ok":true}' },
+          { role: 'user', content: 'Da, potvrđujem.' },
+        ],
+      });
+
+    expect(res.status).toBe(200);
+    expect(runAssistantChat).toHaveBeenCalled();
+  });
+
   test('greška orkestratora (npr. provider nedostupan) vraća 502 s generičkom porukom', async () => {
     runAssistantChat.mockRejectedValue(new Error('connect ECONNREFUSED 127.0.0.1:11434'));
 
@@ -100,6 +140,85 @@ describe('POST /api/assistant/chat — poziva orkestrator u auth kontekstu koris
 
     expect(res.status).toBe(502);
     expect(res.body.message).not.toMatch(/ECONNREFUSED/);
+  });
+});
+
+describe('POST /api/assistant/chat — multipart s priloženim PDF-om', () => {
+  test('izvučeni tekst prosljeđuje se orkestratoru kao quoteText', async () => {
+    extractQuoteText.mockResolvedValue('Ponuda: 5x Toner za pisač, Ukupno 93,75 EUR');
+    runAssistantChat.mockResolvedValue({ text: 'Evo sažetka ponude...', created_request: null });
+
+    const res = await supertest(app)
+      .post('/api/assistant/chat')
+      .field('messages', JSON.stringify([{ role: 'user', content: 'Evo ponude.' }]))
+      .attach('file', Buffer.from('%PDF-1.4 fake'), { filename: 'ponuda.pdf', contentType: 'application/pdf' });
+
+    expect(res.status).toBe(200);
+    expect(extractQuoteText).toHaveBeenCalledWith(expect.any(Buffer));
+    expect(runAssistantChat).toHaveBeenCalledWith({
+      messages: [{ role: 'user', content: 'Evo ponude.' }],
+      userId: 2,
+      quoteText: 'Ponuda: 5x Toner za pisač, Ukupno 93,75 EUR',
+    });
+  });
+
+  test('nepoznat JSON u "messages" polju vraća 400', async () => {
+    const res = await supertest(app)
+      .post('/api/assistant/chat')
+      .field('messages', '{ovo nije validan JSON')
+      .attach('file', Buffer.from('%PDF-1.4 fake'), { filename: 'ponuda.pdf', contentType: 'application/pdf' });
+
+    expect(res.status).toBe(400);
+    expect(extractQuoteText).not.toHaveBeenCalled();
+  });
+
+  test('deklarirani mimetype koji nije application/pdf vraća 400 bez pokušaja ekstrakcije', async () => {
+    const res = await supertest(app)
+      .post('/api/assistant/chat')
+      .field('messages', JSON.stringify([{ role: 'user', content: 'test' }]))
+      .attach('file', Buffer.from('not a pdf'), { filename: 'ponuda.txt', contentType: 'text/plain' });
+
+    expect(res.status).toBe(400);
+    expect(res.body.message).toMatch(/PDF/);
+    expect(extractQuoteText).not.toHaveBeenCalled();
+    expect(runAssistantChat).not.toHaveBeenCalled();
+  });
+
+  test('QuoteExtractionError (npr. skenirana slika bez teksta) vraća 400 s porukom servisa', async () => {
+    extractQuoteText.mockRejectedValue(new QuoteExtractionError('PDF ne sadrži čitljiv tekst.'));
+
+    const res = await supertest(app)
+      .post('/api/assistant/chat')
+      .field('messages', JSON.stringify([{ role: 'user', content: 'test' }]))
+      .attach('file', Buffer.from('%PDF-1.4 fake'), { filename: 'ponuda.pdf', contentType: 'application/pdf' });
+
+    expect(res.status).toBe(400);
+    expect(res.body.message).toBe('PDF ne sadrži čitljiv tekst.');
+    expect(runAssistantChat).not.toHaveBeenCalled();
+  });
+
+  test('neočekivana greška pri ekstrakciji vraća 500 s generičkom porukom', async () => {
+    extractQuoteText.mockRejectedValue(new Error('nešto se pokvarilo interno'));
+
+    const res = await supertest(app)
+      .post('/api/assistant/chat')
+      .field('messages', JSON.stringify([{ role: 'user', content: 'test' }]))
+      .attach('file', Buffer.from('%PDF-1.4 fake'), { filename: 'ponuda.pdf', contentType: 'application/pdf' });
+
+    expect(res.status).toBe(500);
+    expect(res.body.message).not.toMatch(/pokvarilo/);
+  });
+
+  test('prevelika datoteka vraća 413 s jasnom porukom', async () => {
+    const oversized = Buffer.alloc(5 * 1024 * 1024 + 1);
+    const res = await supertest(app)
+      .post('/api/assistant/chat')
+      .field('messages', JSON.stringify([{ role: 'user', content: 'test' }]))
+      .attach('file', oversized, { filename: 'veliko.pdf', contentType: 'application/pdf' });
+
+    expect(res.status).toBe(413);
+    expect(res.body.message).toMatch(/prevelika/i);
+    expect(extractQuoteText).not.toHaveBeenCalled();
   });
 });
 
