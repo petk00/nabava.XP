@@ -32,5 +32,8 @@ dist/
 coverage/
 e2e/test-results/
 e2e/playwright-report/
+
+# AI asistent eval harness — sirovi rezultati (generirano, ne commitati)
+server/eval-results/
 db/backup/
 backups/

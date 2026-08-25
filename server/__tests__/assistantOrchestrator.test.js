@@ -101,6 +101,53 @@ describe('runAssistantChat — bez tool-calla', () => {
   });
 });
 
+describe('runAssistantChat — usage (token brojanje za RQ1/RQ2 eval harness)', () => {
+  test('jedan poziv modelu — usage se izravno vraća', async () => {
+    mockReferenceContext();
+    const chat = jest.fn().mockResolvedValue({
+      text: 'Bok!',
+      tool_calls: null,
+      usage: { promptTokens: 100, completionTokens: 20 },
+    });
+    getActiveProvider.mockResolvedValue({ chat });
+
+    const result = await runAssistantChat({ messages: [{ role: 'user', content: 'Bok' }], userId: 2 });
+
+    expect(result.usage).toEqual({ promptTokens: 100, completionTokens: 20 });
+  });
+
+  test('VIŠE poziva modelu u istom potezu (propose_request pa nastavak) — usage se ZBRAJA, ne prepisuje', async () => {
+    mockReferenceContext();
+    proposeRequest.mockResolvedValue({
+      fk_fiscal_year: 1, fk_department: 3, items: VALID_ARGS.items,
+    });
+
+    const chat = jest.fn()
+      .mockResolvedValueOnce({ ...proposeCallMessage(VALID_ARGS), usage: { promptTokens: 200, completionTokens: 30 } })
+      .mockResolvedValueOnce({ text: 'Potvrđujete li?', tool_calls: null, usage: { promptTokens: 250, completionTokens: 15 } });
+    getActiveProvider.mockResolvedValue({ chat });
+
+    const result = await runAssistantChat({
+      messages: [{ role: 'user', content: 'Evo ponude.' }],
+      userId: 2,
+      attachments: [{ filename: 'ponuda.pdf', kind: 'pdf', text: 'Toner x5' }],
+    });
+
+    expect(chat).toHaveBeenCalledTimes(2);
+    expect(result.usage).toEqual({ promptTokens: 450, completionTokens: 45 });
+  });
+
+  test('provider ne vrati usage (npr. star mock/greška providera) — tretira se kao 0, ne baca grešku', async () => {
+    mockReferenceContext();
+    const chat = jest.fn().mockResolvedValue({ text: 'ok', tool_calls: null });
+    getActiveProvider.mockResolvedValue({ chat });
+
+    const result = await runAssistantChat({ messages: [{ role: 'user', content: 'Bok' }], userId: 2 });
+
+    expect(result.usage).toEqual({ promptTokens: 0, completionTokens: 0 });
+  });
+});
+
 describe('runAssistantChat — uspješno kreiranje', () => {
   test('poziva requestService.createRequest s auth userId, ne s onim što model pošalje', async () => {
     mockReferenceContext();
