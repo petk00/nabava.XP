@@ -583,3 +583,92 @@ describe('runAssistantChat — strukturna dvofazna potvrda (propose_request -> c
     expect(result.tool_trace.some((m) => m.role === 'tool' && m.name === 'propose_request')).toBe(true);
   });
 });
+
+describe('runAssistantChat — slika ponude (vision, bez server-side OCR-a)', () => {
+  const QUOTE_IMAGE = { mimeType: 'image/png', base64: 'ZmFrZS1wbmctYnl0ZXM=' };
+  const PROPOSAL_FOR_MATCH = {
+    fk_fiscal_year: VALID_ARGS.fk_fiscal_year,
+    fk_department: VALID_ARGS.fk_department,
+    items: VALID_ARGS.items,
+  };
+
+  test('slika se šalje providerovom chat() na POSLJEDNJOJ user poruci, ne kao zaseban tekst', async () => {
+    mockReferenceContext();
+    const chat = jest.fn().mockResolvedValue({ text: 'Vidim ponudu na slici...', tool_calls: null });
+    getActiveProvider.mockResolvedValue({ chat });
+
+    await runAssistantChat({
+      messages: [{ role: 'user', content: 'Evo slike ponude, molim predloži zahtjev.' }],
+      userId: 2,
+      quoteImage: QUOTE_IMAGE,
+    });
+
+    const sentMessages = chat.mock.calls[0][0];
+    const userMsg = sentMessages.find((m) => m.role === 'user');
+    expect(userMsg).toEqual({
+      role: 'user',
+      content: 'Evo slike ponude, molim predloži zahtjev.',
+      images: [QUOTE_IMAGE.base64],
+      imageMimeType: QUOTE_IMAGE.mimeType,
+    });
+    // quoteText NIJE poslan — nema ekstrahiranog teksta za sliku, samo marker+upute
+    const quoteSystemMsg = sentMessages.find((m) => m.role === 'system' && m.content.includes(QUOTE_MARKER));
+    expect(quoteSystemMsg.content).not.toContain('"""'); // PDF-varijanta uvijek embeda tekst unutar """ bloka
+  });
+
+  test('ne mutira ulazni messages niz koji poziva runAssistantChat (kloniranje, ne mutacija)', async () => {
+    mockReferenceContext();
+    const chat = jest.fn().mockResolvedValue({ text: 'ok', tool_calls: null });
+    getActiveProvider.mockResolvedValue({ chat });
+
+    const originalMessages = [{ role: 'user', content: 'Evo slike ponude.' }];
+    await runAssistantChat({ messages: originalMessages, userId: 2, quoteImage: QUOTE_IMAGE });
+
+    expect(originalMessages[0]).toEqual({ role: 'user', content: 'Evo slike ponude.' });
+    expect(originalMessages[0].images).toBeUndefined();
+  });
+
+  test('slika broji kao attachment za strukturnu bravu — propose_request obavezan prije create_request', async () => {
+    mockReferenceContext();
+
+    const chat = jest.fn()
+      .mockResolvedValueOnce(toolCallMessage(VALID_ARGS)) // pokušava izravno create_request
+      .mockResolvedValueOnce({ text: 'Prvo ću provjeriti prijedlog.', tool_calls: null });
+    getActiveProvider.mockResolvedValue({ chat });
+
+    await runAssistantChat({
+      messages: [{ role: 'user', content: 'Evo slike, kreiraj odmah.' }],
+      userId: 2,
+      quoteImage: QUOTE_IMAGE,
+    });
+
+    expect(createRequest).not.toHaveBeenCalled();
+  });
+
+  test('QUOTE_MARKER iz slike-prilog poruke prepoznat u idućem zahtjevu (bez ponovnog slanja slike)', async () => {
+    mockReferenceContext();
+    createRequest.mockResolvedValue({ id_purchase_request: 70, request_number: 'NAB-2026-0070', fk_request_status: 1 });
+
+    const chat = jest.fn()
+      .mockResolvedValueOnce(toolCallMessage(VALID_ARGS, 'create_img'))
+      .mockResolvedValueOnce({ text: 'Zahtjev NAB-2026-0070 je kreiran.', tool_calls: null });
+    getActiveProvider.mockResolvedValue({ chat });
+
+    // Drugi HTTP poziv: klijent je vratio quote-marker system poruku (iz
+    // tool_trace prvog odgovora) i raniji propose_request rezultat, ali BEZ
+    // quoteImage — slika se ne šalje ponovno.
+    const result = await runAssistantChat({
+      messages: [
+        { role: 'system', content: `${QUOTE_MARKER}\nKorisnik je priložio SLIKU ponude...` },
+        { role: 'user', content: 'Evo slike ponude.' },
+        priorProposalToolMessage(PROPOSAL_FOR_MATCH, 'propose_img'),
+        { role: 'user', content: 'Da, potvrđujem.' },
+      ],
+      userId: 2,
+      // quoteImage: null (default) — nije ponovno priložena
+    });
+
+    expect(createRequest).toHaveBeenCalledWith({ ...VALID_ARGS, estimated_amount: undefined, comment: undefined, userId: 2 });
+    expect(result.created_request).toEqual({ id_purchase_request: 70, request_number: 'NAB-2026-0070', fk_request_status: 1 });
+  });
+});

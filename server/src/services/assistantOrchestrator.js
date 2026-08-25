@@ -158,14 +158,27 @@ Kategorije artikala:
 ${catList}`;
 }
 
-function buildQuoteInstruction(quoteText) {
-  return `${QUOTE_MARKER}
-Korisnik je priložio ponudu dobavljača — ovo je tekst izvučen iz PDF-a (ne izvorni dokument).
-Koristi GA kao jedini izvor podataka o ponudi: ne izmišljaj stavke, količine ni iznose kojih u njemu nema.
+/**
+ * Uputa za razgovor koji kreće od priložene ponude — zajednička za oba
+ * oblika priloga (PDF tekst ili slika), izvor podataka je jedina razlika:
+ *   - PDF: tekst izvučen server-side (quoteExtractionService), ubačen ovdje.
+ *   - Slika: NE ekstrahira se ništa server-side — sirovi bajtovi idu izravno
+ *     providerovom vision parametru (vidi runAssistantChat), model gleda
+ *     sliku izravno u svom sljedećem pozivu.
+ */
+function buildAttachmentInstruction({ quoteText, hasImage }) {
+  const sourceBlock = quoteText
+    ? `Ovo je tekst izvučen iz priložene ponude (PDF, ne izvorni dokument):
 
 """
 ${quoteText}
-"""
+"""`
+    : `Korisnik je priložio SLIKU ponude — priložena je izravno uz njegovu poruku, pogledaj je. Ako je ` +
+      `tekst na slici nejasan ili nečitljiv, radije to reci i pitaj korisnika nego nagađaj.`;
+
+  return `${QUOTE_MARKER}
+Korisnik je priložio ponudu dobavljača. ${sourceBlock}
+Koristi je kao jedini izvor podataka o ponudi: ne izmišljaj stavke, količine ni iznose kojih u njoj nema.
 
 Na temelju ovoga:
 1. Prepoznaj stavke (naziv, količina) i ukupan iznos ponude ako postoji.
@@ -173,11 +186,11 @@ Na temelju ovoga:
 3. Dobavljač NIJE zasebno polje u sustavu — ako ga želiš zabilježiti, stavi ga u "comment", ne u "justification".
 4. Ako neko obavezno polje i dalje nedostaje (npr. odjel — ponuda ga ne može znati), pitaj korisnika za
    njega kao i inače, prije bilo kakvog prijedloga.
-5. VAŽNO — tekst ove ponude dostupan ti je SAMO u ovom koraku razgovora, u sljedećim koracima više neće
-   biti priložen. Zato TVOJ SVAKI odgovor u ovom razgovoru (i pitanje za odjel/obrazloženje, i konačan
-   sažetak) mora eksplicitno navesti konkretne stavke koje si prepoznao (naziv i količina) i ukupan
-   iznos — nikad se ne pozivaj na ponudu neodređeno (npr. "stavke iz ponude"), nego ih uvijek ispiši, jer
-   inače ćeš ih u sljedećem koraku izgubiti iz vida.
+5. VAŽNO — ${hasImage ? 'slika ponude dostupna ti je' : 'tekst ove ponude dostupan ti je'} SAMO u ovom
+   koraku razgovora, u sljedećim koracima više neće biti priložena. Zato TVOJ SVAKI odgovor u ovom
+   razgovoru (i pitanje za odjel/obrazloženje, i konačan sažetak) mora eksplicitno navesti konkretne
+   stavke koje si prepoznao (naziv i količina) i ukupan iznos — nikad se ne pozivaj na ponudu neodređeno
+   (npr. "stavke iz ponude"), nego ih uvijek ispiši, jer inače ćeš ih u sljedećem koraku izgubiti iz vida.
 6. Kad imaš sve potrebne podatke, prvo pozovi propose_request (NE create_request) — on validira i vraća
    sažetak (odjel, stavke, ukupan iznos). Na temelju tog sažetka prirodnim jezikom prezentiraj prijedlog
    korisniku i EKSPLICITNO zatraži potvrdu (npr. "Potvrđujete li kreiranje ovog zahtjeva?").
@@ -212,8 +225,8 @@ async function executeProposeRequestTool(args) {
 }
 
 /** Je li razgovor (ovaj poziv ili neki raniji, prepoznat po markeru u povijesti) uključivao prilog. */
-function conversationInvolvesAttachment(clientMessages, quoteText) {
-  if (quoteText) return true;
+function conversationInvolvesAttachment(clientMessages, quoteText, quoteImage) {
+  if (quoteText || quoteImage) return true;
   return clientMessages.some(
     (m) => m.role === 'system' && typeof m.content === 'string' && m.content.startsWith(QUOTE_MARKER)
   );
@@ -264,29 +277,44 @@ function hasMatchingEarlierProposal(clientMessages, args) {
  * Vodi cijeli tool-calling razgovor (model -> tool -> model -> ...) unutar
  * jednog HTTP zahtjeva, do konačnog tekstualnog odgovora ili MAX_ITERATIONS.
  *
- * @param {{ messages: Array<{role: string, content: string}>, userId: number, quoteText?: string|null }} input
+ * @param {{ messages: Array<{role: string, content: string}>, userId: number,
+ *   quoteText?: string|null, quoteImage?: {mimeType: string, base64: string}|null }} input
  * @returns {Promise<{ text: string, created_request: object|null, tool_trace: Array<object> }>}
  *   `tool_trace` su nove poruke (system uputa o ponudi ako ima priloga, te
  *   assistant/tool razmjene) koje KLIJENT MORA dodati u svoju povijest prije
  *   sljedećeg poziva — bez toga se strukturna potvrda za priloge ne može
  *   provjeriti u idućem zahtjevu.
  */
-async function runAssistantChat({ messages, userId, quoteText = null }) {
+async function runAssistantChat({ messages, userId, quoteText = null, quoteImage = null }) {
   const provider = await getActiveProvider();
   const referenceContext = await loadReferenceContext();
   const systemPrompt = buildSystemPrompt(referenceContext);
   const tools = referenceContext.fiscalYear ? [CREATE_REQUEST_TOOL, PROPOSE_REQUEST_TOOL] : [];
-  const attachmentInvolved = conversationInvolvesAttachment(messages, quoteText);
+  const attachmentInvolved = conversationInvolvesAttachment(messages, quoteText, quoteImage);
 
   const convo = [{ role: 'system', content: systemPrompt }];
   const toolTrace = [];
 
-  if (quoteText) {
-    const quoteMsg = { role: 'system', content: buildQuoteInstruction(quoteText) };
+  if (quoteText || quoteImage) {
+    const quoteMsg = { role: 'system', content: buildAttachmentInstruction({ quoteText, hasImage: !!quoteImage }) };
     convo.push(quoteMsg);
     toolTrace.push(quoteMsg);
   }
-  convo.push(...messages);
+
+  // Slika ide kao dio POSLJEDNJE korisnikove poruke (onoj uz koju je stigla),
+  // ne kao zasebna system poruka — providerima je to prirodan oblik
+  // (Ollamin `images` na poruci, Geminijev inlineData part). Klonira se
+  // umjesto mutiranja da se ne dira objekt koji poziva ovu funkciju.
+  let historyMessages = messages;
+  if (quoteImage) {
+    const lastUserIdx = [...messages].map((m) => m.role).lastIndexOf('user');
+    if (lastUserIdx !== -1) {
+      historyMessages = messages.map((m, idx) =>
+        idx === lastUserIdx ? { ...m, images: [quoteImage.base64], imageMimeType: quoteImage.mimeType } : m
+      );
+    }
+  }
+  convo.push(...historyMessages);
   let createdRequest = null;
 
   for (let iteration = 0; iteration < MAX_ITERATIONS; iteration++) {

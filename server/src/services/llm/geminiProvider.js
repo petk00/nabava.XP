@@ -2,8 +2,9 @@
 // Sučelje: async chat(messages, tools) -> { text, tool_calls }.
 //
 // Tool-calling ovdje prati službenu Gemini "Function calling" specifikaciju
-// (functionDeclarations / functionCall / functionResponse) — NIJE ručno
-// testirano uživo (nema GEMINI_API_KEY u ovom okruženju), za razliku od
+// (functionDeclarations / functionCall / functionResponse), a slika ide kroz
+// inlineData part (Gemini "Image understanding" spec) — NIJE ručno testirano
+// uživo (nema GEMINI_API_KEY u ovom okruženju), za razliku od
 // OllamaProvider-a. Preporuka: prije korištenja u evaluaciji za diplomski,
 // napraviti barem jedan probni poziv sa stvarnim ključem.
 //
@@ -51,6 +52,7 @@ function toGeminiTools(tools) {
  * assistantOrchestrator.js):
  *   { role: 'assistant', content, tool_calls: [{ id, name, arguments }] }
  *   { role: 'tool', tool_call_id, name, content: '<JSON string>' }
+ *   { role: 'user', content, images: ['<base64>'], imageMimeType: 'image/png' }
  */
 function toGeminiContents(messages) {
   return messages
@@ -76,9 +78,18 @@ function toGeminiContents(messages) {
           parts: [{ functionResponse: { name: m.name, response } }],
         };
       }
+
+      const parts = [];
+      if (m.content) parts.push({ text: m.content });
+      if (Array.isArray(m.images) && m.images.length > 0) {
+        for (const image of m.images) {
+          parts.push({ inlineData: { mimeType: m.imageMimeType || 'image/png', data: image } });
+        }
+      }
+
       return {
         role: m.role === 'assistant' ? 'model' : 'user',
-        parts: [{ text: m.content }],
+        parts,
       };
     });
 }

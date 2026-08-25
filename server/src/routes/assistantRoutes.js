@@ -4,7 +4,12 @@ const multer = require('multer');
 const authenticateToken = require('../middleware/authMiddleware');
 const { runAssistantChat } = require('../services/assistantOrchestrator');
 const { extractQuoteText, QuoteExtractionError } = require('../services/quoteExtractionService');
+const { detectMimeTypeFromBuffer } = require('../services/fileTypeService');
 const { getSetting, setSetting, SETTING_KEYS } = require('../config/appSettings');
+
+// Slika ponude ide izravno modelu (vision), PDF se i dalje čita server-side
+// (quoteExtractionService) — vidi assistantOrchestrator.js.
+const IMAGE_MIME_TYPES = ['image/jpeg', 'image/png'];
 
 const ALLOWED_PROVIDERS = ['ollama', 'gemini'];
 // 'tool' i assistant-s-tool_calls poruke se pojavljuju kad klijent ponovno
@@ -40,11 +45,13 @@ const requireAdmin = (req, res, next) => {
  * autentikacijskom kontekstu prijavljenog korisnika, nikad s većim pravima.
  *
  * Prihvaća ili obični JSON ({ messages }) ili multipart/form-data s
- * dodatnim opcionalnim PDF prilogom (polje "file") — u tom slučaju
- * "messages" stiže kao JSON string u istom form polju. Tekst ponude se
- * izvlači JEDNOM, server-side (quoteExtractionService), prije poziva
+ * dodatnim opcionalnim prilogom (polje "file") — PDF ili slika (JPG/PNG), u
+ * tom slučaju "messages" stiže kao JSON string u istom form polju. PDF tekst
+ * se izvlači JEDNOM, server-side (quoteExtractionService), prije poziva
  * providera — isti tekst ide oba providera, bez oslanjanja na vlastitu
- * vision sposobnost pojedinog modela.
+ * vision sposobnost pojedinog modela. Slika NE prolazi kroz OCR/ekstrakciju
+ * — sirovi bajtovi idu izravno providerovom nativnom vision parametru
+ * (namjerno — ovdje se upravo testira vizualna sposobnost modela).
  *
  * Odgovor sadrži i "tool_trace" (nove assistant/tool poruke iz ovog poteza,
  * npr. propose_request poziv i rezultat) — klijent ih MORA dodati u svoju
@@ -88,23 +95,33 @@ router.post('/chat', authenticateToken, uploadQuote.single('file'), async (req, 
   }
 
   let quoteText = null;
+  let quoteImage = null;
   if (req.file) {
-    if (req.file.mimetype !== 'application/pdf') {
-      return res.status(400).json({ message: 'Priložena datoteka mora biti PDF.' });
-    }
-    try {
-      quoteText = await extractQuoteText(req.file.buffer);
-    } catch (error) {
-      if (error instanceof QuoteExtractionError) {
-        return res.status(400).json({ message: error.message });
+    // Magic-bytes odlučuje granu, ne deklarirani mimetype — isti princip kao
+    // i za PDF do sad. PDF ide postojećim tekstualnim putem
+    // (quoteExtractionService); slika NE prolazi kroz njega — sirovi bajtovi
+    // idu izravno providerovom nativnom vision parametru (docs/AI.md).
+    const detectedMime = await detectMimeTypeFromBuffer(req.file.buffer).catch(() => null);
+
+    if (detectedMime === 'application/pdf') {
+      try {
+        quoteText = await extractQuoteText(req.file.buffer);
+      } catch (error) {
+        if (error instanceof QuoteExtractionError) {
+          return res.status(400).json({ message: error.message });
+        }
+        console.error('POST /api/assistant/chat quote extraction error:', error);
+        return res.status(500).json({ message: 'Greška pri obradi priložene ponude.' });
       }
-      console.error('POST /api/assistant/chat quote extraction error:', error);
-      return res.status(500).json({ message: 'Greška pri obradi priložene ponude.' });
+    } else if (IMAGE_MIME_TYPES.includes(detectedMime)) {
+      quoteImage = { mimeType: detectedMime, base64: req.file.buffer.toString('base64') };
+    } else {
+      return res.status(400).json({ message: 'Priložena datoteka mora biti PDF ili slika (JPG/PNG).' });
     }
   }
 
   try {
-    const result = await runAssistantChat({ messages, userId: req.user.id_user, quoteText });
+    const result = await runAssistantChat({ messages, userId: req.user.id_user, quoteText, quoteImage });
     return res.json({
       text: result.text,
       created_request: result.created_request,
