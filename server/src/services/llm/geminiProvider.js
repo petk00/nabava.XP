@@ -52,7 +52,7 @@ function toGeminiTools(tools) {
  * assistantOrchestrator.js):
  *   { role: 'assistant', content, tool_calls: [{ id, name, arguments }] }
  *   { role: 'tool', tool_call_id, name, content: '<JSON string>' }
- *   { role: 'user', content, images: ['<base64>'], imageMimeType: 'image/png' }
+ *   { role: 'user', content, images: [{ mimeType: 'image/png', data: '<base64>' }] }
  */
 function toGeminiContents(messages) {
   return messages
@@ -83,7 +83,7 @@ function toGeminiContents(messages) {
       if (m.content) parts.push({ text: m.content });
       if (Array.isArray(m.images) && m.images.length > 0) {
         for (const image of m.images) {
-          parts.push({ inlineData: { mimeType: m.imageMimeType || 'image/png', data: image } });
+          parts.push({ inlineData: { mimeType: image.mimeType || 'image/png', data: image.data } });
         }
       }
 

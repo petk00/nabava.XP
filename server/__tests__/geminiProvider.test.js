@@ -200,7 +200,7 @@ describe('GeminiProvider.chat — slika (vision, bez server-side OCR-a)', () => 
     global.fetch.mockResolvedValue({ ok: true, json: async () => ({ candidates: [{ content: { parts: [{ text: 'ok' }] } }] }) });
 
     await chat([
-      { role: 'user', content: 'Evo slike ponude.', images: ['ZmFrZS1wbmctYnl0ZXM='], imageMimeType: 'image/png' },
+      { role: 'user', content: 'Evo slike ponude.', images: [{ mimeType: 'image/png', data: 'ZmFrZS1wbmctYnl0ZXM=' }] },
     ]);
 
     const body = JSON.parse(global.fetch.mock.calls[0][1].body);
@@ -213,10 +213,32 @@ describe('GeminiProvider.chat — slika (vision, bez server-side OCR-a)', () => 
     });
   });
 
-  test('default mimeType je image/png ako imageMimeType nije naveden', async () => {
+  test('poruka s VIŠE "images" (npr. dvije priložene ponude, različiti mimeType) postaje više inlineData partova', async () => {
     global.fetch.mockResolvedValue({ ok: true, json: async () => ({ candidates: [{ content: { parts: [{ text: 'ok' }] } }] }) });
 
-    await chat([{ role: 'user', content: 'test', images: ['abc123'] }]);
+    await chat([
+      {
+        role: 'user',
+        content: 'Evo dvije slike ponuda.',
+        images: [
+          { mimeType: 'image/png', data: 'cG5nLWJ5dGVz' },
+          { mimeType: 'image/jpeg', data: 'anBnLWJ5dGVz' },
+        ],
+      },
+    ]);
+
+    const body = JSON.parse(global.fetch.mock.calls[0][1].body);
+    expect(body.contents[0].parts).toEqual([
+      { text: 'Evo dvije slike ponuda.' },
+      { inlineData: { mimeType: 'image/png', data: 'cG5nLWJ5dGVz' } },
+      { inlineData: { mimeType: 'image/jpeg', data: 'anBnLWJ5dGVz' } },
+    ]);
+  });
+
+  test('default mimeType je image/png ako mimeType nije naveden po slici', async () => {
+    global.fetch.mockResolvedValue({ ok: true, json: async () => ({ candidates: [{ content: { parts: [{ text: 'ok' }] } }] }) });
+
+    await chat([{ role: 'user', content: 'test', images: [{ data: 'abc123' }] }]);
 
     const body = JSON.parse(global.fetch.mock.calls[0][1].body);
     expect(body.contents[0].parts[1]).toEqual({ inlineData: { mimeType: 'image/png', data: 'abc123' } });

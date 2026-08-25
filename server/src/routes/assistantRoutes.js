@@ -22,12 +22,16 @@ const ALLOWED_ROLES_IN_MESSAGE = ['user', 'assistant', 'system', 'tool'];
 // formalnih Ponuda/Otpremnica dokumenata na zahtjevu (requestAttachmentRoutes.js: 10MB).
 const MAX_QUOTE_FILE_SIZE = 5 * 1024 * 1024;
 
-// Datoteka se drži samo u memoriji — koristi se isključivo za ekstrakciju
-// teksta, ne persistira se na disk (nije formalni "Ponuda" dokument na
-// zahtjevu, zahtjev u ovom trenutku razgovora još ni ne postoji).
+// Korisnik može priložiti više ponuda u istoj poruci (npr. za usporedbu
+// dobavljača) — vidi assistantOrchestrator.js buildAttachmentInstruction.
+const MAX_QUOTE_FILES = 5;
+
+// Datoteke se drže samo u memoriji — koriste se isključivo za ekstrakciju
+// teksta/slike, ne persistiraju se na disk (nisu formalni "Ponuda" dokumenti
+// na zahtjevu, zahtjev u ovom trenutku razgovora još ni ne postoji).
 const uploadQuote = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: MAX_QUOTE_FILE_SIZE },
+  limits: { fileSize: MAX_QUOTE_FILE_SIZE, files: MAX_QUOTE_FILES },
 });
 
 const requireAdmin = (req, res, next) => {
@@ -45,13 +49,16 @@ const requireAdmin = (req, res, next) => {
  * autentikacijskom kontekstu prijavljenog korisnika, nikad s većim pravima.
  *
  * Prihvaća ili obični JSON ({ messages }) ili multipart/form-data s
- * dodatnim opcionalnim prilogom (polje "file") — PDF ili slika (JPG/PNG), u
- * tom slučaju "messages" stiže kao JSON string u istom form polju. PDF tekst
- * se izvlači JEDNOM, server-side (quoteExtractionService), prije poziva
- * providera — isti tekst ide oba providera, bez oslanjanja na vlastitu
- * vision sposobnost pojedinog modela. Slika NE prolazi kroz OCR/ekstrakciju
- * — sirovi bajtovi idu izravno providerovom nativnom vision parametru
- * (namjerno — ovdje se upravo testira vizualna sposobnost modela).
+ * do MAX_QUOTE_FILES priloga (polje "file", ponovljeno) — svaki PDF ili
+ * slika (JPG/PNG), u tom slučaju "messages" stiže kao JSON string u istom
+ * form polju. Korisnik može priložiti VIŠE ponuda odjednom (npr. za
+ * usporedbu dobavljača za iste stavke) — svaki prilog se obrađuje zasebno i
+ * jasno označen (docs/AI.md, buildAttachmentInstruction). PDF tekst se
+ * izvlači JEDNOM po prilogu, server-side (quoteExtractionService), prije
+ * poziva providera — isti tekst ide oba providera, bez oslanjanja na
+ * vlastitu vision sposobnost pojedinog modela. Slika NE prolazi kroz
+ * OCR/ekstrakciju — sirovi bajtovi idu izravno providerovom nativnom vision
+ * parametru (namjerno — ovdje se upravo testira vizualna sposobnost modela).
  *
  * Odgovor sadrži i "tool_trace" (nove assistant/tool poruke iz ovog poteza,
  * npr. propose_request poziv i rezultat) — klijent ih MORA dodati u svoju
@@ -59,7 +66,7 @@ const requireAdmin = (req, res, next) => {
  * zahtjevu ne može provjeriti da je korisnik stvarno vidio i potvrdio
  * prijedlog prije create_request kad razgovor kreće od priloga.
  */
-router.post('/chat', authenticateToken, uploadQuote.single('file'), async (req, res) => {
+router.post('/chat', authenticateToken, uploadQuote.array('file', MAX_QUOTE_FILES), async (req, res) => {
   let messages = req.body.messages;
   if (typeof messages === 'string') {
     try {
@@ -94,34 +101,34 @@ router.post('/chat', authenticateToken, uploadQuote.single('file'), async (req, 
     }
   }
 
-  let quoteText = null;
-  let quoteImage = null;
-  if (req.file) {
-    // Magic-bytes odlučuje granu, ne deklarirani mimetype — isti princip kao
-    // i za PDF do sad. PDF ide postojećim tekstualnim putem
-    // (quoteExtractionService); slika NE prolazi kroz njega — sirovi bajtovi
-    // idu izravno providerovom nativnom vision parametru (docs/AI.md).
-    const detectedMime = await detectMimeTypeFromBuffer(req.file.buffer).catch(() => null);
+  // Svaki prilog se obrađuje zasebno preko ISTOG puta kao i jedan prilog do
+  // sad (magic-bytes -> PDF tekst ili slika) — samo se poziva N puta i
+  // rezultat se skuplja u niz koji orkestrator jasno označava po prilogu
+  // (Ponuda 1/2/... ), umjesto da ih vidi kao jedan spojen tekst.
+  const attachments = [];
+  for (const file of req.files || []) {
+    const detectedMime = await detectMimeTypeFromBuffer(file.buffer).catch(() => null);
 
     if (detectedMime === 'application/pdf') {
       try {
-        quoteText = await extractQuoteText(req.file.buffer);
+        const text = await extractQuoteText(file.buffer);
+        attachments.push({ filename: file.originalname, kind: 'pdf', text });
       } catch (error) {
         if (error instanceof QuoteExtractionError) {
-          return res.status(400).json({ message: error.message });
+          return res.status(400).json({ message: `"${file.originalname}": ${error.message}` });
         }
         console.error('POST /api/assistant/chat quote extraction error:', error);
-        return res.status(500).json({ message: 'Greška pri obradi priložene ponude.' });
+        return res.status(500).json({ message: `Greška pri obradi priloga "${file.originalname}".` });
       }
     } else if (IMAGE_MIME_TYPES.includes(detectedMime)) {
-      quoteImage = { mimeType: detectedMime, base64: req.file.buffer.toString('base64') };
+      attachments.push({ filename: file.originalname, kind: 'image', mimeType: detectedMime, base64: file.buffer.toString('base64') });
     } else {
-      return res.status(400).json({ message: 'Priložena datoteka mora biti PDF ili slika (JPG/PNG).' });
+      return res.status(400).json({ message: `Datoteka "${file.originalname}" mora biti PDF ili slika (JPG/PNG).` });
     }
   }
 
   try {
-    const result = await runAssistantChat({ messages, userId: req.user.id_user, quoteText, quoteImage });
+    const result = await runAssistantChat({ messages, userId: req.user.id_user, attachments });
     return res.json({
       text: result.text,
       created_request: result.created_request,
@@ -201,6 +208,11 @@ router.use((err, req, res, next) => {
   if (err instanceof multer.MulterError && err.code === 'LIMIT_FILE_SIZE') {
     return res.status(413).json({
       message: `Priložena datoteka je prevelika (maksimalno ${MAX_QUOTE_FILE_SIZE / (1024 * 1024)} MB).`,
+    });
+  }
+  if (err instanceof multer.MulterError && (err.code === 'LIMIT_FILE_COUNT' || err.code === 'LIMIT_UNEXPECTED_FILE')) {
+    return res.status(413).json({
+      message: `Previše priloga (maksimalno ${MAX_QUOTE_FILES}).`,
     });
   }
   next(err);

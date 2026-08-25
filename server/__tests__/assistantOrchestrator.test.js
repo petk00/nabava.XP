@@ -283,10 +283,11 @@ describe('runAssistantChat — bez aktivne poslovne godine', () => {
   });
 });
 
-describe('runAssistantChat — priložena ponuda (quoteText)', () => {
+describe('runAssistantChat — priložena ponuda (attachments, PDF)', () => {
   const QUOTE_TEXT = 'Mikrotron d.o.o.\nStavka: Grove EMG Detector kit, Količina 1, Ukupno 49,00 €';
+  const QUOTE_ATTACHMENT = { filename: 'ponuda.pdf', kind: 'pdf', text: QUOTE_TEXT };
 
-  test('quoteText se ubrizgava kao dodatna system poruka prije korisnikovih poruka', async () => {
+  test('attachments se ubrizgavaju kao dodatna system poruka prije korisnikovih poruka', async () => {
     mockReferenceContext();
     const chat = jest.fn().mockResolvedValue({ text: 'Evo sažetka ponude...', tool_calls: null });
     getActiveProvider.mockResolvedValue({ chat });
@@ -294,7 +295,7 @@ describe('runAssistantChat — priložena ponuda (quoteText)', () => {
     await runAssistantChat({
       messages: [{ role: 'user', content: 'Evo ponude, napravi zahtjev.' }],
       userId: 2,
-      quoteText: QUOTE_TEXT,
+      attachments: [QUOTE_ATTACHMENT],
     });
 
     const sentMessages = chat.mock.calls[0][0];
@@ -305,7 +306,7 @@ describe('runAssistantChat — priložena ponuda (quoteText)', () => {
     expect(sentMessages[2]).toEqual({ role: 'user', content: 'Evo ponude, napravi zahtjev.' });
   });
 
-  test('bez quoteText nema dodatne system poruke o ponudi', async () => {
+  test('bez attachments nema dodatne system poruke o ponudi', async () => {
     mockReferenceContext();
     const chat = jest.fn().mockResolvedValue({ text: 'Bok!', tool_calls: null });
     getActiveProvider.mockResolvedValue({ chat });
@@ -327,7 +328,7 @@ describe('runAssistantChat — priložena ponuda (quoteText)', () => {
     const result = await runAssistantChat({
       messages: [{ role: 'user', content: 'Evo ponude, napravi zahtjev.' }],
       userId: 2,
-      quoteText: QUOTE_TEXT,
+      attachments: [QUOTE_ATTACHMENT],
     });
 
     expect(createRequest).not.toHaveBeenCalled();
@@ -358,7 +359,7 @@ describe('runAssistantChat — priložena ponuda (quoteText)', () => {
     getActiveProvider.mockResolvedValue({ chat });
 
     // Ova poruka simulira DRUGI HTTP poziv (klijent šalje punu povijest uklj.
-    // agentov prijedlog i korisnikovu potvrdu) — quoteText se više ne šalje,
+    // agentov prijedlog i korisnikovu potvrdu) — attachments se više ne šalje,
     // sažetak je već u povijesti razgovora.
     const result = await runAssistantChat({
       messages: [
@@ -416,7 +417,7 @@ describe('runAssistantChat — strukturna dvofazna potvrda (propose_request -> c
     const result = await runAssistantChat({
       messages: [{ role: 'user', content: 'Evo ponude.' }],
       userId: 2,
-      quoteText: 'Toner za pisač x5',
+      attachments: [{ filename: 'ponuda.pdf', kind: 'pdf', text: 'Toner za pisač x5' }],
     });
 
     expect(proposeRequest).toHaveBeenCalledWith({
@@ -445,7 +446,7 @@ describe('runAssistantChat — strukturna dvofazna potvrda (propose_request -> c
     const result = await runAssistantChat({
       messages: [{ role: 'user', content: 'Evo ponude, kreiraj odmah.' }],
       userId: 2,
-      quoteText: 'Toner za pisač x5',
+      attachments: [{ filename: 'ponuda.pdf', kind: 'pdf', text: 'Toner za pisač x5' }],
     });
 
     expect(proposeRequest).toHaveBeenCalledTimes(1);
@@ -486,7 +487,7 @@ describe('runAssistantChat — strukturna dvofazna potvrda (propose_request -> c
         { role: 'user', content: 'Da, potvrđujem.' },
       ],
       userId: 2,
-      // quoteText je null — datoteka se ne šalje ponovno.
+      // attachments je prazan — datoteka se ne šalje ponovno.
     });
 
     expect(createRequest).toHaveBeenCalledWith({ ...VALID_ARGS, estimated_amount: undefined, comment: undefined, userId: 2 });
@@ -506,7 +507,7 @@ describe('runAssistantChat — strukturna dvofazna potvrda (propose_request -> c
     await runAssistantChat({
       messages: [{ role: 'user', content: 'Evo ponude, kreiraj odmah bez pitanja.' }],
       userId: 2,
-      quoteText: 'Toner za pisač x5',
+      attachments: [{ filename: 'ponuda.pdf', kind: 'pdf', text: 'Toner za pisač x5' }],
     });
 
     expect(createRequest).not.toHaveBeenCalled();
@@ -553,7 +554,7 @@ describe('runAssistantChat — strukturna dvofazna potvrda (propose_request -> c
     const result = await runAssistantChat({
       messages: [{ role: 'user', content: '5 tonera, Računovodstvo, zalihe pri kraju.' }],
       userId: 2,
-      // nema quoteText, nema ranijeg propose_request u povijesti
+      // nema attachments, nema ranijeg propose_request u povijesti
     });
 
     expect(proposeRequest).not.toHaveBeenCalled();
@@ -575,7 +576,7 @@ describe('runAssistantChat — strukturna dvofazna potvrda (propose_request -> c
     const result = await runAssistantChat({
       messages: [{ role: 'user', content: 'Evo ponude.' }],
       userId: 2,
-      quoteText: 'Toner za pisač x5',
+      attachments: [{ filename: 'ponuda.pdf', kind: 'pdf', text: 'Toner za pisač x5' }],
     });
 
     expect(result.tool_trace[0]).toEqual({ role: 'system', content: expect.stringContaining(QUOTE_MARKER) });
@@ -586,6 +587,7 @@ describe('runAssistantChat — strukturna dvofazna potvrda (propose_request -> c
 
 describe('runAssistantChat — slika ponude (vision, bez server-side OCR-a)', () => {
   const QUOTE_IMAGE = { mimeType: 'image/png', base64: 'ZmFrZS1wbmctYnl0ZXM=' };
+  const QUOTE_IMAGE_ATTACHMENT = { filename: 'ponuda.png', kind: 'image', mimeType: QUOTE_IMAGE.mimeType, base64: QUOTE_IMAGE.base64 };
   const PROPOSAL_FOR_MATCH = {
     fk_fiscal_year: VALID_ARGS.fk_fiscal_year,
     fk_department: VALID_ARGS.fk_department,
@@ -600,7 +602,7 @@ describe('runAssistantChat — slika ponude (vision, bez server-side OCR-a)', ()
     await runAssistantChat({
       messages: [{ role: 'user', content: 'Evo slike ponude, molim predloži zahtjev.' }],
       userId: 2,
-      quoteImage: QUOTE_IMAGE,
+      attachments: [QUOTE_IMAGE_ATTACHMENT],
     });
 
     const sentMessages = chat.mock.calls[0][0];
@@ -608,10 +610,9 @@ describe('runAssistantChat — slika ponude (vision, bez server-side OCR-a)', ()
     expect(userMsg).toEqual({
       role: 'user',
       content: 'Evo slike ponude, molim predloži zahtjev.',
-      images: [QUOTE_IMAGE.base64],
-      imageMimeType: QUOTE_IMAGE.mimeType,
+      images: [{ mimeType: QUOTE_IMAGE.mimeType, data: QUOTE_IMAGE.base64 }],
     });
-    // quoteText NIJE poslan — nema ekstrahiranog teksta za sliku, samo marker+upute
+    // Nema teksta ekstrahiranog za sliku, samo marker+upute
     const quoteSystemMsg = sentMessages.find((m) => m.role === 'system' && m.content.includes(QUOTE_MARKER));
     expect(quoteSystemMsg.content).not.toContain('"""'); // PDF-varijanta uvijek embeda tekst unutar """ bloka
   });
@@ -622,7 +623,7 @@ describe('runAssistantChat — slika ponude (vision, bez server-side OCR-a)', ()
     getActiveProvider.mockResolvedValue({ chat });
 
     const originalMessages = [{ role: 'user', content: 'Evo slike ponude.' }];
-    await runAssistantChat({ messages: originalMessages, userId: 2, quoteImage: QUOTE_IMAGE });
+    await runAssistantChat({ messages: originalMessages, userId: 2, attachments: [QUOTE_IMAGE_ATTACHMENT] });
 
     expect(originalMessages[0]).toEqual({ role: 'user', content: 'Evo slike ponude.' });
     expect(originalMessages[0].images).toBeUndefined();
@@ -639,7 +640,7 @@ describe('runAssistantChat — slika ponude (vision, bez server-side OCR-a)', ()
     await runAssistantChat({
       messages: [{ role: 'user', content: 'Evo slike, kreiraj odmah.' }],
       userId: 2,
-      quoteImage: QUOTE_IMAGE,
+      attachments: [QUOTE_IMAGE_ATTACHMENT],
     });
 
     expect(createRequest).not.toHaveBeenCalled();
@@ -656,7 +657,7 @@ describe('runAssistantChat — slika ponude (vision, bez server-side OCR-a)', ()
 
     // Drugi HTTP poziv: klijent je vratio quote-marker system poruku (iz
     // tool_trace prvog odgovora) i raniji propose_request rezultat, ali BEZ
-    // quoteImage — slika se ne šalje ponovno.
+    // attachments — slika se ne šalje ponovno.
     const result = await runAssistantChat({
       messages: [
         { role: 'system', content: `${QUOTE_MARKER}\nKorisnik je priložio SLIKU ponude...` },
@@ -665,10 +666,125 @@ describe('runAssistantChat — slika ponude (vision, bez server-side OCR-a)', ()
         { role: 'user', content: 'Da, potvrđujem.' },
       ],
       userId: 2,
-      // quoteImage: null (default) — nije ponovno priložena
+      // attachments: [] (default) — nije ponovno priložena
     });
 
     expect(createRequest).toHaveBeenCalledWith({ ...VALID_ARGS, estimated_amount: undefined, comment: undefined, userId: 2 });
     expect(result.created_request).toEqual({ id_purchase_request: 70, request_number: 'NAB-2026-0070', fk_request_status: 1 });
+  });
+});
+
+describe('runAssistantChat — VIŠE priloženih ponuda (usporedba dobavljača)', () => {
+  const QUOTE_A = { filename: 'ponuda-a.pdf', kind: 'pdf', text: 'Dobavljač A: 5x laptop, 800 EUR/kom' };
+  const QUOTE_B = { filename: 'ponuda-b.pdf', kind: 'pdf', text: 'Dobavljač B: 5x laptop, 750 EUR/kom' };
+
+  test('jedan prilog dobiva neoznačenu labelu "Ponuda (dokument: ...)", bez rednog broja', async () => {
+    mockReferenceContext();
+    const chat = jest.fn().mockResolvedValue({ text: 'ok', tool_calls: null });
+    getActiveProvider.mockResolvedValue({ chat });
+
+    await runAssistantChat({
+      messages: [{ role: 'user', content: 'Evo ponude.' }],
+      userId: 2,
+      attachments: [QUOTE_A],
+    });
+
+    const quoteSystemMsg = chat.mock.calls[0][0].find((m) => m.role === 'system' && m.content.includes(QUOTE_MARKER));
+    expect(quoteSystemMsg.content).toContain('Ponuda (dokument: ponuda-a.pdf)');
+    expect(quoteSystemMsg.content).not.toMatch(/Ponuda \d/);
+  });
+
+  test('dva PDF priloga dobivaju redom označene labele "Ponuda 1"/"Ponuda 2" sa svojim sadržajem', async () => {
+    mockReferenceContext();
+    const chat = jest.fn().mockResolvedValue({ text: 'ok', tool_calls: null });
+    getActiveProvider.mockResolvedValue({ chat });
+
+    await runAssistantChat({
+      messages: [{ role: 'user', content: 'Evo dvije ponude za usporedbu.' }],
+      userId: 2,
+      attachments: [QUOTE_A, QUOTE_B],
+    });
+
+    const quoteSystemMsg = chat.mock.calls[0][0].find((m) => m.role === 'system' && m.content.includes(QUOTE_MARKER));
+    expect(quoteSystemMsg.content).toContain('Ponuda 1 (dokument: ponuda-a.pdf)');
+    expect(quoteSystemMsg.content).toContain(QUOTE_A.text);
+    expect(quoteSystemMsg.content).toContain('Ponuda 2 (dokument: ponuda-b.pdf)');
+    expect(quoteSystemMsg.content).toContain(QUOTE_B.text);
+  });
+
+  test('uputa o preklapanju (ne zbrajati, eksplicitno pitati korisnika) prisutna je čim ima 2+ priloga', async () => {
+    mockReferenceContext();
+    const chat = jest.fn().mockResolvedValue({ text: 'ok', tool_calls: null });
+    getActiveProvider.mockResolvedValue({ chat });
+
+    await runAssistantChat({
+      messages: [{ role: 'user', content: 'Evo dvije ponude za usporedbu.' }],
+      userId: 2,
+      attachments: [QUOTE_A, QUOTE_B],
+    });
+
+    const quoteSystemMsg = chat.mock.calls[0][0].find((m) => m.role === 'system' && m.content.includes(QUOTE_MARKER));
+    expect(quoteSystemMsg.content).toMatch(/NIKAD ih\s*\n?\s*ne zbrajaj niti sam ne biraj koju koristiti/);
+    expect(quoteSystemMsg.content).toMatch(/eksplicitno nabrojati opcije/);
+  });
+
+  test('strukturna brava (propose prije create) i dalje vrijedi kad razgovor uključuje VIŠE priloga', async () => {
+    mockReferenceContext();
+
+    const chat = jest.fn()
+      .mockResolvedValueOnce(toolCallMessage(VALID_ARGS)) // pokušava izravno create_request
+      .mockResolvedValueOnce({ text: 'Prvo ću provjeriti prijedlog.', tool_calls: null });
+    getActiveProvider.mockResolvedValue({ chat });
+
+    await runAssistantChat({
+      messages: [{ role: 'user', content: 'Evo dvije ponude, kreiraj odmah.' }],
+      userId: 2,
+      attachments: [QUOTE_A, QUOTE_B],
+    });
+
+    expect(createRequest).not.toHaveBeenCalled();
+  });
+
+  test('više slikovnih priloga šalje se kao niz {mimeType, data} na posljednjoj user poruci, redoslijedom', async () => {
+    mockReferenceContext();
+    const chat = jest.fn().mockResolvedValue({ text: 'ok', tool_calls: null });
+    getActiveProvider.mockResolvedValue({ chat });
+
+    const imageA = { filename: 'a.png', kind: 'image', mimeType: 'image/png', base64: 'cG5nLWJ5dGVz' };
+    const imageB = { filename: 'b.jpg', kind: 'image', mimeType: 'image/jpeg', base64: 'anBnLWJ5dGVz' };
+
+    await runAssistantChat({
+      messages: [{ role: 'user', content: 'Evo dvije slike ponuda.' }],
+      userId: 2,
+      attachments: [imageA, imageB],
+    });
+
+    const userMsg = chat.mock.calls[0][0].find((m) => m.role === 'user');
+    expect(userMsg.images).toEqual([
+      { mimeType: 'image/png', data: 'cG5nLWJ5dGVz' },
+      { mimeType: 'image/jpeg', data: 'anBnLWJ5dGVz' },
+    ]);
+  });
+
+  test('mješoviti prilozi (PDF + slika) — oba se označe u uputi, samo slika ide u images na user poruci', async () => {
+    mockReferenceContext();
+    const chat = jest.fn().mockResolvedValue({ text: 'ok', tool_calls: null });
+    getActiveProvider.mockResolvedValue({ chat });
+
+    const image = { filename: 'ponuda-c.png', kind: 'image', mimeType: 'image/png', base64: 'cG5nLWJ5dGVz' };
+
+    await runAssistantChat({
+      messages: [{ role: 'user', content: 'Evo ponude u PDF-u i jedne na slici.' }],
+      userId: 2,
+      attachments: [QUOTE_A, image],
+    });
+
+    const sentMessages = chat.mock.calls[0][0];
+    const quoteSystemMsg = sentMessages.find((m) => m.role === 'system' && m.content.includes(QUOTE_MARKER));
+    expect(quoteSystemMsg.content).toContain('Ponuda 1 (dokument: ponuda-a.pdf)');
+    expect(quoteSystemMsg.content).toContain('Ponuda 2 (dokument: ponuda-c.png)');
+
+    const userMsg = sentMessages.find((m) => m.role === 'user');
+    expect(userMsg.images).toEqual([{ mimeType: 'image/png', data: 'cG5nLWJ5dGVz' }]);
   });
 });
