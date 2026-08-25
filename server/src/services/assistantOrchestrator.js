@@ -158,32 +158,75 @@ Kategorije artikala:
 ${catList}`;
 }
 
-function buildQuoteInstruction(quoteText) {
-  return `${QUOTE_MARKER}
-Korisnik je priložio ponudu dobavljača — ovo je tekst izvučen iz PDF-a (ne izvorni dokument).
-Koristi GA kao jedini izvor podataka o ponudi: ne izmišljaj stavke, količine ni iznose kojih u njemu nema.
+/**
+ * Uputa za razgovor koji kreće od priloženih ponuda — zajednička za sve
+ * oblike priloga (PDF tekst ili slika) i za bilo koji broj priloga:
+ *   - PDF: tekst izvučen server-side (quoteExtractionService), ubačen ovdje,
+ *     jasno označen brojem ("Ponuda N (dokument: naziv.pdf)").
+ *   - Slika: NE ekstrahira se ništa server-side — sirovi bajtovi idu izravno
+ *     providerovom vision parametru (vidi runAssistantChat), samo se ovdje
+ *     navodi redoslijedom kojim su slike priložene uz poruku.
+ *
+ * @param {Array<{filename: string, kind: 'pdf'|'image', text?: string}>} attachments
+ */
+function buildAttachmentInstruction(attachments) {
+  const multiple = attachments.length > 1;
+  let imageOrdinal = 0;
 
-"""
-${quoteText}
-"""
+  const labeledBlocks = attachments.map((a, idx) => {
+    const label = multiple ? `Ponuda ${idx + 1} (dokument: ${a.filename})` : `Ponuda (dokument: ${a.filename})`;
+    if (a.kind === 'pdf') {
+      return `${label} — tekst izvučen iz PDF-a:\n"""\n${a.text}\n"""`;
+    }
+    imageOrdinal += 1;
+    return `${label} — priložena je kao SLIKA uz ovu poruku (${imageOrdinal}. slika po redoslijedu ` +
+      `priloženih slika), pogledaj je izravno. Ako je tekst na slici nejasan ili nečitljiv, radije to ` +
+      `reci i pitaj korisnika nego nagađaj.`;
+  }).join('\n\n');
+
+  return `${QUOTE_MARKER}
+Korisnik je uz poruku priložio ${multiple ? `${attachments.length} dokumenta` : 'dokument'} i navodi da ${multiple ? 'su to ponude' : 'je to ponuda'} dobavljača — ali to PRVO provjeri za svaki dokument zasebno, ne uzimaj zdravo za gotovo.
+
+${labeledBlocks}
+
+Koristi ih kao jedini izvor podataka: ne izmišljaj stavke, količine ni iznose kojih u njima nema.
 
 Na temelju ovoga:
-1. Prepoznaj stavke (naziv, količina) i ukupan iznos ponude ako postoji.
-2. Za svaku stavku zaključi kategoriju isključivo iz popisa kategorija gore — nikad izmišljenu.
-3. Dobavljač NIJE zasebno polje u sustavu — ako ga želiš zabilježiti, stavi ga u "comment", ne u "justification".
-4. Ako neko obavezno polje i dalje nedostaje (npr. odjel — ponuda ga ne može znati), pitaj korisnika za
+1. Za SVAKI dokument zasebno provjeri je li uistinu ponuda/predračun dobavljača (ima dobavljača i
+   konkretne artikle s količinama i/ili cijenama, u komercijalnom formatu). Ako neki dokument NIJE ponuda
+   (npr. ugovor, dopis, obavijest, zapisnik ili bilo koji tekst bez konkretnih artikala i cijena) — NE
+   pretvaraj njegov sadržaj (rečenice, članke ugovora, odlomke dopisa) u izmišljene "stavke". Umjesto
+   toga, jasno reci korisniku koji dokument ne izgleda kao ponuda (po mogućnosti navedi što jest, npr.
+   "dokument 2 izgleda kao ugovor, ne ponuda") i pitaj što želi dalje za taj dokument — nemoj pozivati
+   propose_request ni create_request dok se to ne razjasni.
+2. Za dokumente koji JESU ponude: prepoznaj stavke (naziv, količina) i ukupan iznos ponude ako postoji.
+3. Ako je priložena VIŠE OD JEDNE ponude i dvije ili više njih nude ISTE ili vrlo slične stavke, NIKAD ih
+   ne zbrajaj niti sam ne biraj koju koristiti — moraš korisniku eksplicitno nabrojati opcije za tu stavku
+   (dobavljač/dokument + cijena/uvjeti iz svake ponude koja je nudi) i pitati koju odabrati, PRIJE poziva
+   propose_request. Stavke koje postoje samo u jednoj od ponuda ne trebaju ovo pitanje — njih tretiraj
+   normalno. (Ako je priložena samo jedna ponuda, ova točka se ne primjenjuje.)
+4. Za svaku stavku zaključi kategoriju isključivo iz popisa kategorija gore — nikad izmišljenu.
+5. Dobavljač NIJE zasebno polje u sustavu — ako ga želiš zabilježiti, stavi ga u "comment", ne u "justification".
+6. Ako neko obavezno polje i dalje nedostaje (npr. odjel — ponuda ga ne može znati), pitaj korisnika za
    njega kao i inače, prije bilo kakvog prijedloga.
-5. VAŽNO — tekst ove ponude dostupan ti je SAMO u ovom koraku razgovora, u sljedećim koracima više neće
-   biti priložen. Zato TVOJ SVAKI odgovor u ovom razgovoru (i pitanje za odjel/obrazloženje, i konačan
-   sažetak) mora eksplicitno navesti konkretne stavke koje si prepoznao (naziv i količina) i ukupan
-   iznos — nikad se ne pozivaj na ponudu neodređeno (npr. "stavke iz ponude"), nego ih uvijek ispiši, jer
-   inače ćeš ih u sljedećem koraku izgubiti iz vida.
-6. Kad imaš sve potrebne podatke, prvo pozovi propose_request (NE create_request) — on validira i vraća
+7. VALUTA — sustav prati "estimated_amount" isključivo u eurima (€). Ponuda može biti u bilo kojem
+   jeziku i navesti iznos u bilo kojoj valuti (USD, GBP, itd.) i bilo kojem brojevnom zapisu (npr.
+   "1,250.00" = tisuću dvjesto pedeset, decimalna točka, ne zarez). Ako ponuda NIJE u eurima, NIKAD ne
+   tretiraj taj broj kao da već jest u eurima (ne piši ga naprosto kao "X eur") — u svom odgovoru
+   EKSPLICITNO navedi izvornu valutu uz iznos (npr. "iznos na ponudi: 1,250.00 GBP") i jasno upozori
+   korisnika da provjeri/preračuna prije potvrde, jer ti ne znaš točan tečaj.
+8. VAŽNO — sadržaj ${multiple ? 'ovih dokumenata dostupan ti je' : 'ovog dokumenta dostupan ti je'} SAMO u
+   ovom koraku razgovora, u sljedećim koracima više neće biti priložen. Zato TVOJ SVAKI odgovor u ovom
+   razgovoru (i pitanje za odjel/obrazloženje, i konačan sažetak) mora eksplicitno navesti konkretne
+   stavke koje si prepoznao (naziv i količina) i ukupan iznos (s valutom ako nije €) — nikad se ne
+   pozivaj na ponudu neodređeno (npr. "stavke iz ponude"), nego ih uvijek ispiši, jer inače ćeš ih u
+   sljedećem koraku izgubiti iz vida.
+9. Kad imaš sve potrebne podatke, prvo pozovi propose_request (NE create_request) — on validira i vraća
    sažetak (odjel, stavke, ukupan iznos). Na temelju tog sažetka prirodnim jezikom prezentiraj prijedlog
    korisniku i EKSPLICITNO zatraži potvrdu (npr. "Potvrđujete li kreiranje ovog zahtjeva?").
-7. Alat create_request smiješ pozvati TEK u SLJEDEĆOJ poruci korisnika, nakon što jasno potvrdi (npr.
-   "da", "potvrđujem", "kreiraj") — nikad odmah nakon propose_request u istom koraku, čak i ako ti se
-   čini da imaš sve podatke. Sustav će prerani poziv odbiti.`;
+10. Alat create_request smiješ pozvati TEK u SLJEDEĆOJ poruci korisnika, nakon što jasno potvrdi (npr.
+    "da", "potvrđujem", "kreiraj") — nikad odmah nakon propose_request u istom koraku, čak i ako ti se
+    čini da imaš sve podatke. Sustav će prerani poziv odbiti.`;
 }
 
 async function executeCreateRequestTool(args, userId) {
@@ -211,9 +254,9 @@ async function executeProposeRequestTool(args) {
   return { ok: true, proposal };
 }
 
-/** Je li razgovor (ovaj poziv ili neki raniji, prepoznat po markeru u povijesti) uključivao prilog. */
-function conversationInvolvesAttachment(clientMessages, quoteText) {
-  if (quoteText) return true;
+/** Je li razgovor (ovaj poziv ili neki raniji, prepoznat po markeru u povijesti) uključivao prilog(e). */
+function conversationInvolvesAttachment(clientMessages, attachments) {
+  if (attachments && attachments.length > 0) return true;
   return clientMessages.some(
     (m) => m.role === 'system' && typeof m.content === 'string' && m.content.startsWith(QUOTE_MARKER)
   );
@@ -264,29 +307,46 @@ function hasMatchingEarlierProposal(clientMessages, args) {
  * Vodi cijeli tool-calling razgovor (model -> tool -> model -> ...) unutar
  * jednog HTTP zahtjeva, do konačnog tekstualnog odgovora ili MAX_ITERATIONS.
  *
- * @param {{ messages: Array<{role: string, content: string}>, userId: number, quoteText?: string|null }} input
+ * @param {{ messages: Array<{role: string, content: string}>, userId: number,
+ *   attachments?: Array<{filename: string, kind: 'pdf'|'image', text?: string,
+ *   mimeType?: string, base64?: string}> }} input
  * @returns {Promise<{ text: string, created_request: object|null, tool_trace: Array<object> }>}
- *   `tool_trace` su nove poruke (system uputa o ponudi ako ima priloga, te
- *   assistant/tool razmjene) koje KLIJENT MORA dodati u svoju povijest prije
- *   sljedećeg poziva — bez toga se strukturna potvrda za priloge ne može
- *   provjeriti u idućem zahtjevu.
+ *   `tool_trace` su nove poruke (system uputa o ponudi/ponudama ako ima
+ *   priloga, te assistant/tool razmjene) koje KLIJENT MORA dodati u svoju
+ *   povijest prije sljedećeg poziva — bez toga se strukturna potvrda za
+ *   priloge ne može provjeriti u idućem zahtjevu.
  */
-async function runAssistantChat({ messages, userId, quoteText = null }) {
+async function runAssistantChat({ messages, userId, attachments = [] }) {
   const provider = await getActiveProvider();
   const referenceContext = await loadReferenceContext();
   const systemPrompt = buildSystemPrompt(referenceContext);
   const tools = referenceContext.fiscalYear ? [CREATE_REQUEST_TOOL, PROPOSE_REQUEST_TOOL] : [];
-  const attachmentInvolved = conversationInvolvesAttachment(messages, quoteText);
+  const attachmentInvolved = conversationInvolvesAttachment(messages, attachments);
 
   const convo = [{ role: 'system', content: systemPrompt }];
   const toolTrace = [];
 
-  if (quoteText) {
-    const quoteMsg = { role: 'system', content: buildQuoteInstruction(quoteText) };
+  if (attachments.length > 0) {
+    const quoteMsg = { role: 'system', content: buildAttachmentInstruction(attachments) };
     convo.push(quoteMsg);
     toolTrace.push(quoteMsg);
   }
-  convo.push(...messages);
+
+  // Slike idu kao dio POSLJEDNJE korisnikove poruke (onoj uz koju su stigle),
+  // ne kao zasebna system poruka — providerima je to prirodan oblik
+  // (Ollamin `images` na poruci, Geminijev inlineData part). Svaka slika nosi
+  // vlastiti mimeType (prilozi mogu biti mješoviti JPG/PNG). Klonira se
+  // umjesto mutiranja da se ne dira objekt koji poziva ovu funkciju.
+  const imageAttachments = attachments.filter((a) => a.kind === 'image');
+  let historyMessages = messages;
+  if (imageAttachments.length > 0) {
+    const lastUserIdx = [...messages].map((m) => m.role).lastIndexOf('user');
+    if (lastUserIdx !== -1) {
+      const images = imageAttachments.map((a) => ({ mimeType: a.mimeType, data: a.base64 }));
+      historyMessages = messages.map((m, idx) => (idx === lastUserIdx ? { ...m, images } : m));
+    }
+  }
+  convo.push(...historyMessages);
   let createdRequest = null;
 
   for (let iteration = 0; iteration < MAX_ITERATIONS; iteration++) {

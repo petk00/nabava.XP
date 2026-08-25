@@ -33,6 +33,7 @@ function toOllamaTools(tools) {
  * assistantOrchestrator.js):
  *   { role: 'assistant', content, tool_calls: [{ id, name, arguments }] }
  *   { role: 'tool', tool_call_id, name, content: '<JSON string>' }
+ *   { role: 'user', content, images: [{ mimeType, data: '<base64, bez data: prefiksa>' }] }
  */
 function toOllamaMessages(messages) {
   return messages.map((m) => {
@@ -50,7 +51,13 @@ function toOllamaMessages(messages) {
     if (m.role === 'tool') {
       return { role: 'tool', tool_call_id: m.tool_call_id, content: m.content };
     }
-    return { role: m.role, content: m.content };
+    const out = { role: m.role, content: m.content };
+    if (Array.isArray(m.images) && m.images.length > 0) {
+      // Ollamin `images` je flat niz base64 stringova, bez mimeType-a po slici
+      // (ne razlikuje JPG/PNG) — mimeType se ovdje odbacuje.
+      out.images = m.images.map((img) => img.data);
+    }
+    return out;
   });
 }
 

@@ -40,6 +40,32 @@ describe('extractQuoteText — stvarna ponuda (mikrotron_M.pdf)', () => {
   });
 });
 
+describe('extractQuoteText — VIŠE poziva u istom procesu (regresija: sadržaj se ne smije miješati)', () => {
+  // Stvarnim testom (docs/AI.md, multi-ponuda scenarij) otkriveno: pdf-parse@1.1.1
+  // (bundlani pdf.js v1.10.100) drži interno GLOBALNO stanje koje kod parsiranja
+  // dva dokumenta jedan za drugim u ISTOM Node procesu zna vratiti sadržaj
+  // PRETHODNOG dokumenta umjesto stvarno zatraženog. Zato extractQuoteText svaki
+  // poziv izolira u zaseban child proces (pdfExtractWorker.js) — ovaj test to
+  // brani od regresije pozivajući extractQuoteText VIŠE PUTA zaredom, s pravim
+  // pdf-parseom (nije mockan), i provjerava da svaki poziv vrati SVOJ sadržaj.
+  test('dvije strukturno vrlo slične ponude (isti generator, iste stavke, drugi dobavljač) ekstrahiraju se ISPRAVNO, bez miješanja', async () => {
+    detectMimeTypeFromBuffer.mockResolvedValue('application/pdf');
+    const bufferA = fs.readFileSync(path.join(__dirname, 'fixtures', 'quote_supplier_A.pdf'));
+    const bufferB = fs.readFileSync(path.join(__dirname, 'fixtures', 'quote_supplier_B.pdf'));
+
+    const textA = await extractQuoteText(bufferA);
+    const textB = await extractQuoteText(bufferB);
+
+    expect(textA).toContain('Dobavljac A d.o.o.');
+    expect(textA).toContain('800,00 EUR');
+    expect(textA).not.toContain('Dobavljac B');
+
+    expect(textB).toContain('Dobavljac B d.o.o.');
+    expect(textB).toContain('750,00 EUR');
+    expect(textB).not.toContain('Dobavljac A');
+  });
+});
+
 describe('extractQuoteText — validacija ulaza', () => {
   test('odbija datoteku koja nije stvarno PDF prema magic bytes', async () => {
     detectMimeTypeFromBuffer.mockResolvedValue('text/plain');

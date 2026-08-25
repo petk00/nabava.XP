@@ -189,3 +189,67 @@ describe('GeminiProvider.chat — tool-calling', () => {
     });
   });
 });
+
+describe('GeminiProvider.chat — slika (vision, bez server-side OCR-a)', () => {
+  beforeEach(() => {
+    process.env.GEMINI_API_KEY = 'test-key';
+    getSetting.mockResolvedValue('gemini-2.5-flash');
+  });
+
+  test('poruka s "images" postaje inlineData part uz text part', async () => {
+    global.fetch.mockResolvedValue({ ok: true, json: async () => ({ candidates: [{ content: { parts: [{ text: 'ok' }] } }] }) });
+
+    await chat([
+      { role: 'user', content: 'Evo slike ponude.', images: [{ mimeType: 'image/png', data: 'ZmFrZS1wbmctYnl0ZXM=' }] },
+    ]);
+
+    const body = JSON.parse(global.fetch.mock.calls[0][1].body);
+    expect(body.contents[0]).toEqual({
+      role: 'user',
+      parts: [
+        { text: 'Evo slike ponude.' },
+        { inlineData: { mimeType: 'image/png', data: 'ZmFrZS1wbmctYnl0ZXM=' } },
+      ],
+    });
+  });
+
+  test('poruka s VIŠE "images" (npr. dvije priložene ponude, različiti mimeType) postaje više inlineData partova', async () => {
+    global.fetch.mockResolvedValue({ ok: true, json: async () => ({ candidates: [{ content: { parts: [{ text: 'ok' }] } }] }) });
+
+    await chat([
+      {
+        role: 'user',
+        content: 'Evo dvije slike ponuda.',
+        images: [
+          { mimeType: 'image/png', data: 'cG5nLWJ5dGVz' },
+          { mimeType: 'image/jpeg', data: 'anBnLWJ5dGVz' },
+        ],
+      },
+    ]);
+
+    const body = JSON.parse(global.fetch.mock.calls[0][1].body);
+    expect(body.contents[0].parts).toEqual([
+      { text: 'Evo dvije slike ponuda.' },
+      { inlineData: { mimeType: 'image/png', data: 'cG5nLWJ5dGVz' } },
+      { inlineData: { mimeType: 'image/jpeg', data: 'anBnLWJ5dGVz' } },
+    ]);
+  });
+
+  test('default mimeType je image/png ako mimeType nije naveden po slici', async () => {
+    global.fetch.mockResolvedValue({ ok: true, json: async () => ({ candidates: [{ content: { parts: [{ text: 'ok' }] } }] }) });
+
+    await chat([{ role: 'user', content: 'test', images: [{ data: 'abc123' }] }]);
+
+    const body = JSON.parse(global.fetch.mock.calls[0][1].body);
+    expect(body.contents[0].parts[1]).toEqual({ inlineData: { mimeType: 'image/png', data: 'abc123' } });
+  });
+
+  test('poruka bez "images" nema inlineData part', async () => {
+    global.fetch.mockResolvedValue({ ok: true, json: async () => ({ candidates: [{ content: { parts: [{ text: 'ok' }] } }] }) });
+
+    await chat([{ role: 'user', content: 'Bok' }]);
+
+    const body = JSON.parse(global.fetch.mock.calls[0][1].body);
+    expect(body.contents[0]).toEqual({ role: 'user', parts: [{ text: 'Bok' }] });
+  });
+});

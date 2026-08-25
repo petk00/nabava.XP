@@ -18,12 +18,14 @@ jest.mock('../src/services/quoteExtractionService', () => {
   const actual = jest.requireActual('../src/services/quoteExtractionService');
   return { extractQuoteText: jest.fn(), QuoteExtractionError: actual.QuoteExtractionError };
 });
+jest.mock('../src/services/fileTypeService', () => ({ detectMimeTypeFromBuffer: jest.fn() }));
 
 const supertest = require('supertest');
 const express  = require('express');
 const db       = require('../src/config/db');
 const { runAssistantChat } = require('../src/services/assistantOrchestrator');
 const { extractQuoteText, QuoteExtractionError } = require('../src/services/quoteExtractionService');
+const { detectMimeTypeFromBuffer } = require('../src/services/fileTypeService');
 
 const app = express();
 app.use(express.json());
@@ -77,7 +79,7 @@ describe('POST /api/assistant/chat — poziva orkestrator u auth kontekstu koris
     expect(runAssistantChat).toHaveBeenCalledWith({
       messages: [{ role: 'user', content: 'Bok' }],
       userId: 2,
-      quoteText: null,
+      attachments: [],
     });
   });
 
@@ -144,7 +146,8 @@ describe('POST /api/assistant/chat — poziva orkestrator u auth kontekstu koris
 });
 
 describe('POST /api/assistant/chat — multipart s priloženim PDF-om', () => {
-  test('izvučeni tekst prosljeđuje se orkestratoru kao quoteText', async () => {
+  test('izvučeni tekst prosljeđuje se orkestratoru kao attachments[0]', async () => {
+    detectMimeTypeFromBuffer.mockResolvedValue('application/pdf');
     extractQuoteText.mockResolvedValue('Ponuda: 5x Toner za pisač, Ukupno 93,75 EUR');
     runAssistantChat.mockResolvedValue({ text: 'Evo sažetka ponude...', created_request: null });
 
@@ -158,8 +161,49 @@ describe('POST /api/assistant/chat — multipart s priloženim PDF-om', () => {
     expect(runAssistantChat).toHaveBeenCalledWith({
       messages: [{ role: 'user', content: 'Evo ponude.' }],
       userId: 2,
-      quoteText: 'Ponuda: 5x Toner za pisač, Ukupno 93,75 EUR',
+      attachments: [{ filename: 'ponuda.pdf', kind: 'pdf', text: 'Ponuda: 5x Toner za pisač, Ukupno 93,75 EUR' }],
     });
+  });
+
+  test('DVA PDF priloga u istoj poruci (isto polje "file", ponovljeno) obrađuju se OBA, redoslijedom', async () => {
+    detectMimeTypeFromBuffer.mockResolvedValue('application/pdf');
+    extractQuoteText
+      .mockResolvedValueOnce('Dobavljač A: 5x laptop, 800 EUR/kom')
+      .mockResolvedValueOnce('Dobavljač B: 5x laptop, 750 EUR/kom');
+    runAssistantChat.mockResolvedValue({ text: 'Uočio sam preklapanje...', created_request: null });
+
+    const res = await supertest(app)
+      .post('/api/assistant/chat')
+      .field('messages', JSON.stringify([{ role: 'user', content: 'Evo dvije ponude za usporedbu.' }]))
+      .attach('file', Buffer.from('%PDF-1.4 a'), { filename: 'ponuda-a.pdf', contentType: 'application/pdf' })
+      .attach('file', Buffer.from('%PDF-1.4 b'), { filename: 'ponuda-b.pdf', contentType: 'application/pdf' });
+
+    expect(res.status).toBe(200);
+    expect(extractQuoteText).toHaveBeenCalledTimes(2);
+    expect(runAssistantChat).toHaveBeenCalledWith({
+      messages: [{ role: 'user', content: 'Evo dvije ponude za usporedbu.' }],
+      userId: 2,
+      attachments: [
+        { filename: 'ponuda-a.pdf', kind: 'pdf', text: 'Dobavljač A: 5x laptop, 800 EUR/kom' },
+        { filename: 'ponuda-b.pdf', kind: 'pdf', text: 'Dobavljač B: 5x laptop, 750 EUR/kom' },
+      ],
+    });
+  });
+
+  test('previše priloga (preko MAX_QUOTE_FILES) vraća 413 s jasnom porukom', async () => {
+    detectMimeTypeFromBuffer.mockResolvedValue('application/pdf');
+
+    let req = supertest(app)
+      .post('/api/assistant/chat')
+      .field('messages', JSON.stringify([{ role: 'user', content: 'Evo šest ponuda.' }]));
+    for (let i = 0; i < 6; i++) {
+      req = req.attach('file', Buffer.from(`%PDF-1.4 ${i}`), { filename: `ponuda-${i}.pdf`, contentType: 'application/pdf' });
+    }
+    const res = await req;
+
+    expect(res.status).toBe(413);
+    expect(res.body.message).toMatch(/previše priloga/i);
+    expect(runAssistantChat).not.toHaveBeenCalled();
   });
 
   test('nepoznat JSON u "messages" polju vraća 400', async () => {
@@ -172,19 +216,22 @@ describe('POST /api/assistant/chat — multipart s priloženim PDF-om', () => {
     expect(extractQuoteText).not.toHaveBeenCalled();
   });
 
-  test('deklarirani mimetype koji nije application/pdf vraća 400 bez pokušaja ekstrakcije', async () => {
+  test('nepoznat tip datoteke (magic bytes ni PDF ni slika) vraća 400 bez pokušaja ekstrakcije', async () => {
+    detectMimeTypeFromBuffer.mockResolvedValue('text/plain');
+
     const res = await supertest(app)
       .post('/api/assistant/chat')
       .field('messages', JSON.stringify([{ role: 'user', content: 'test' }]))
       .attach('file', Buffer.from('not a pdf'), { filename: 'ponuda.txt', contentType: 'text/plain' });
 
     expect(res.status).toBe(400);
-    expect(res.body.message).toMatch(/PDF/);
+    expect(res.body.message).toMatch(/PDF ili slika/);
     expect(extractQuoteText).not.toHaveBeenCalled();
     expect(runAssistantChat).not.toHaveBeenCalled();
   });
 
   test('QuoteExtractionError (npr. skenirana slika bez teksta) vraća 400 s porukom servisa', async () => {
+    detectMimeTypeFromBuffer.mockResolvedValue('application/pdf');
     extractQuoteText.mockRejectedValue(new QuoteExtractionError('PDF ne sadrži čitljiv tekst.'));
 
     const res = await supertest(app)
@@ -193,11 +240,12 @@ describe('POST /api/assistant/chat — multipart s priloženim PDF-om', () => {
       .attach('file', Buffer.from('%PDF-1.4 fake'), { filename: 'ponuda.pdf', contentType: 'application/pdf' });
 
     expect(res.status).toBe(400);
-    expect(res.body.message).toBe('PDF ne sadrži čitljiv tekst.');
+    expect(res.body.message).toBe('"ponuda.pdf": PDF ne sadrži čitljiv tekst.');
     expect(runAssistantChat).not.toHaveBeenCalled();
   });
 
   test('neočekivana greška pri ekstrakciji vraća 500 s generičkom porukom', async () => {
+    detectMimeTypeFromBuffer.mockResolvedValue('application/pdf');
     extractQuoteText.mockRejectedValue(new Error('nešto se pokvarilo interno'));
 
     const res = await supertest(app)
@@ -219,6 +267,83 @@ describe('POST /api/assistant/chat — multipart s priloženim PDF-om', () => {
     expect(res.status).toBe(413);
     expect(res.body.message).toMatch(/prevelika/i);
     expect(extractQuoteText).not.toHaveBeenCalled();
+  });
+});
+
+describe('POST /api/assistant/chat — multipart sa slikom ponude (vision, bez OCR-a)', () => {
+  test('PNG slika se NE šalje kroz extractQuoteText — sirovi base64 ide orkestratoru kao attachments[0]', async () => {
+    detectMimeTypeFromBuffer.mockResolvedValue('image/png');
+    runAssistantChat.mockResolvedValue({ text: 'Vidim ponudu na slici...', created_request: null });
+
+    const fileBuffer = Buffer.from('fake png bytes');
+    const res = await supertest(app)
+      .post('/api/assistant/chat')
+      .field('messages', JSON.stringify([{ role: 'user', content: 'Evo slike ponude.' }]))
+      .attach('file', fileBuffer, { filename: 'ponuda.png', contentType: 'image/png' });
+
+    expect(res.status).toBe(200);
+    expect(extractQuoteText).not.toHaveBeenCalled();
+    expect(runAssistantChat).toHaveBeenCalledWith({
+      messages: [{ role: 'user', content: 'Evo slike ponude.' }],
+      userId: 2,
+      attachments: [{ filename: 'ponuda.png', kind: 'image', mimeType: 'image/png', base64: fileBuffer.toString('base64') }],
+    });
+  });
+
+  test('JPEG slika prepoznata po magic bytes prihvaća se jednako', async () => {
+    detectMimeTypeFromBuffer.mockResolvedValue('image/jpeg');
+    runAssistantChat.mockResolvedValue({ text: 'ok', created_request: null });
+
+    const res = await supertest(app)
+      .post('/api/assistant/chat')
+      .field('messages', JSON.stringify([{ role: 'user', content: 'test' }]))
+      .attach('file', Buffer.from('fake jpeg bytes'), { filename: 'ponuda.jpg', contentType: 'image/jpeg' });
+
+    expect(res.status).toBe(200);
+    const call = runAssistantChat.mock.calls[0][0];
+    expect(call.attachments[0].mimeType).toBe('image/jpeg');
+    expect(call.attachments[0].kind).toBe('image');
+  });
+
+  test('deklarirani mimetype se ignorira — odlučuju magic bytes (datoteka nazvana .png ali stvarno PDF)', async () => {
+    detectMimeTypeFromBuffer.mockResolvedValue('application/pdf');
+    extractQuoteText.mockResolvedValue('tekst iz PDF-a');
+    runAssistantChat.mockResolvedValue({ text: 'ok', created_request: null });
+
+    const res = await supertest(app)
+      .post('/api/assistant/chat')
+      .field('messages', JSON.stringify([{ role: 'user', content: 'test' }]))
+      .attach('file', Buffer.from('%PDF-1.4 stvarni pdf'), { filename: 'krivo-nazvano.png', contentType: 'image/png' });
+
+    expect(res.status).toBe(200);
+    expect(extractQuoteText).toHaveBeenCalled();
+    const call = runAssistantChat.mock.calls[0][0];
+    expect(call.attachments).toEqual([{ filename: 'krivo-nazvano.png', kind: 'pdf', text: 'tekst iz PDF-a' }]);
+  });
+
+  test('PDF + slika u istoj poruci obrađuju se OBA i zadržavaju redoslijed u attachments', async () => {
+    detectMimeTypeFromBuffer
+      .mockResolvedValueOnce('application/pdf')
+      .mockResolvedValueOnce('image/png');
+    extractQuoteText.mockResolvedValue('Ponuda A tekst');
+    runAssistantChat.mockResolvedValue({ text: 'ok', created_request: null });
+
+    const imgBuffer = Buffer.from('fake png bytes');
+    const res = await supertest(app)
+      .post('/api/assistant/chat')
+      .field('messages', JSON.stringify([{ role: 'user', content: 'Evo ponude u PDF-u i jedne na slici.' }]))
+      .attach('file', Buffer.from('%PDF-1.4 a'), { filename: 'ponuda-a.pdf', contentType: 'application/pdf' })
+      .attach('file', imgBuffer, { filename: 'ponuda-b.png', contentType: 'image/png' });
+
+    expect(res.status).toBe(200);
+    expect(runAssistantChat).toHaveBeenCalledWith({
+      messages: [{ role: 'user', content: 'Evo ponude u PDF-u i jedne na slici.' }],
+      userId: 2,
+      attachments: [
+        { filename: 'ponuda-a.pdf', kind: 'pdf', text: 'Ponuda A tekst' },
+        { filename: 'ponuda-b.png', kind: 'image', mimeType: 'image/png', base64: imgBuffer.toString('base64') },
+      ],
+    });
   });
 });
 

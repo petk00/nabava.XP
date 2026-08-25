@@ -161,3 +161,48 @@ describe('OllamaProvider.chat — tool-calling', () => {
     expect(body.messages[2]).toEqual({ role: 'tool', tool_call_id: 'call_1', content: '{"ok":true}' });
   });
 });
+
+describe('OllamaProvider.chat — slika (vision, bez server-side OCR-a)', () => {
+  test('poruka s "images" prosljeđuje se Ollami kao flat base64 niz (bez mimeType-a, bez data: prefiksa)', async () => {
+    global.fetch.mockResolvedValue({ ok: true, json: async () => ({ message: { content: 'Vidim ponudu...' } }) });
+
+    await chat([
+      { role: 'user', content: 'Evo slike ponude.', images: [{ mimeType: 'image/png', data: 'ZmFrZS1wbmctYnl0ZXM=' }] },
+    ]);
+
+    const body = JSON.parse(global.fetch.mock.calls[0][1].body);
+    expect(body.messages[0]).toEqual({
+      role: 'user',
+      content: 'Evo slike ponude.',
+      images: ['ZmFrZS1wbmctYnl0ZXM='],
+    });
+  });
+
+  test('poruka s VIŠE "images" (npr. dvije priložene ponude) prosljeđuje sve, redoslijedom', async () => {
+    global.fetch.mockResolvedValue({ ok: true, json: async () => ({ message: { content: 'Vidim ponude...' } }) });
+
+    await chat([
+      {
+        role: 'user',
+        content: 'Evo dvije slike ponuda.',
+        images: [
+          { mimeType: 'image/png', data: 'cG5nLWJ5dGVz' },
+          { mimeType: 'image/jpeg', data: 'anBnLWJ5dGVz' },
+        ],
+      },
+    ]);
+
+    const body = JSON.parse(global.fetch.mock.calls[0][1].body);
+    expect(body.messages[0].images).toEqual(['cG5nLWJ5dGVz', 'anBnLWJ5dGVz']);
+  });
+
+  test('poruka bez "images" ne dobiva images polje (nema praznog niza)', async () => {
+    global.fetch.mockResolvedValue({ ok: true, json: async () => ({ message: { content: 'ok' } }) });
+
+    await chat([{ role: 'user', content: 'Bok' }]);
+
+    const body = JSON.parse(global.fetch.mock.calls[0][1].body);
+    expect(body.messages[0]).toEqual({ role: 'user', content: 'Bok' });
+    expect(body.messages[0].images).toBeUndefined();
+  });
+});
