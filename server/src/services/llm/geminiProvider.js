@@ -136,15 +136,27 @@ async function chat(messages, tools = []) {
 
   const url = `${GEMINI_API_BASE}/models/${encodeURIComponent(model)}:generateContent?key=${apiKey}`;
 
+  // Bez ovoga zahtjev koji Google nikad ne odgovori (opaženo stvarnim testom)
+  // visi neograničeno i blokira cijeli tool-calling turn.
+  const REQUEST_TIMEOUT_MS = 30000;
+  const abortController = new AbortController();
+  const timeoutId = setTimeout(() => abortController.abort(), REQUEST_TIMEOUT_MS);
+
   let res;
   try {
     res = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
+      signal: abortController.signal,
     });
   } catch (networkError) {
+    if (networkError.name === 'AbortError') {
+      throw new Error(`Gemini API nije odgovorio u ${REQUEST_TIMEOUT_MS / 1000}s.`);
+    }
     throw new Error(`Gemini API nije dostupan: ${networkError.message}`);
+  } finally {
+    clearTimeout(timeoutId);
   }
 
   if (!res.ok) {

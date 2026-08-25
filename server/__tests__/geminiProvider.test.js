@@ -97,6 +97,28 @@ describe('GeminiProvider.chat', () => {
     await expect(chat([{ role: 'user', content: 'test' }]))
       .rejects.toThrow(/Gemini API greška \(403\)/);
   });
+
+  test('baca jasnu grešku o isteku vremena kad fetch nikad ne odgovori (AbortError)', async () => {
+    // Stvarnim testom opaženo: bez timeouta, fetch koji Google nikad ne
+    // odgovori visi neograničeno i blokira cijeli tool-calling turn.
+    jest.useFakeTimers();
+    process.env.GEMINI_API_KEY = 'test-key';
+    getSetting.mockResolvedValue('gemini-2.5-flash');
+    global.fetch.mockImplementation((url, options) => new Promise((resolve, reject) => {
+      options.signal.addEventListener('abort', () => {
+        const err = new Error('This operation was aborted');
+        err.name = 'AbortError';
+        reject(err);
+      });
+    }));
+
+    const pending = expect(chat([{ role: 'user', content: 'test' }]))
+      .rejects.toThrow(/Gemini API nije odgovorio u 30s/);
+    await jest.advanceTimersByTimeAsync(30000);
+    await pending;
+
+    jest.useRealTimers();
+  });
 });
 
 describe('GeminiProvider.chat — tool-calling', () => {
