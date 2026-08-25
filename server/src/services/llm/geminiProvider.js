@@ -94,7 +94,7 @@ function toGeminiContents(messages) {
     });
 }
 
-/** Geminin candidates[0].content.parts -> kanonski { text, tool_calls }. */
+/** Geminin candidates[0].content.parts -> kanonski { text, tool_calls, usage }. */
 function parseResponse(data) {
   const parts = data?.candidates?.[0]?.content?.parts || [];
 
@@ -112,7 +112,16 @@ function parseResponse(data) {
       }))
     : null;
 
-  return { text, tool_calls };
+  // usageMetadata.promptTokenCount/candidatesTokenCount (docs.generativelanguage
+  // API) — koristi se za RQ1/RQ2 eval harness (docs/AI.md, evalHarness.js).
+  // NIJE ručno provjereno uživo (nema aktivne kvote na GEMINI_API_KEY u ovom
+  // okruženju u trenutku pisanja) — vidi napomenu na vrhu ovog file-a.
+  const usage = {
+    promptTokens: data?.usageMetadata?.promptTokenCount ?? null,
+    completionTokens: data?.usageMetadata?.candidatesTokenCount ?? null,
+  };
+
+  return { text, tool_calls, usage };
 }
 
 async function chat(messages, tools = []) {

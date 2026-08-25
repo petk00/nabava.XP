@@ -27,7 +27,26 @@ describe('OllamaProvider.chat', () => {
 
     const result = await chat([{ role: 'user', content: 'Bok' }]);
 
-    expect(result).toEqual({ text: 'Bok! Kako mogu pomoći?', tool_calls: null });
+    expect(result).toEqual({
+      text: 'Bok! Kako mogu pomoći?',
+      tool_calls: null,
+      usage: { promptTokens: null, completionTokens: null },
+    });
+  });
+
+  test('vraća prompt/completion tokene iz prompt_eval_count/eval_count', async () => {
+    global.fetch.mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        message: { content: 'ok' },
+        prompt_eval_count: 19,
+        eval_count: 142,
+      }),
+    });
+
+    const result = await chat([{ role: 'user', content: 'Bok' }]);
+
+    expect(result.usage).toEqual({ promptTokens: 19, completionTokens: 142 });
   });
 
   test('zove default localhost:11434 kad OLLAMA_BASE_URL nije postavljen', async () => {

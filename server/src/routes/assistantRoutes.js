@@ -133,6 +133,7 @@ router.post('/chat', authenticateToken, uploadQuote.array('file', MAX_QUOTE_FILE
       text: result.text,
       created_request: result.created_request,
       tool_trace: result.tool_trace,
+      usage: result.usage,
     });
   } catch (error) {
     console.error('POST /api/assistant/chat error:', error);

@@ -310,7 +310,9 @@ function hasMatchingEarlierProposal(clientMessages, args) {
  * @param {{ messages: Array<{role: string, content: string}>, userId: number,
  *   attachments?: Array<{filename: string, kind: 'pdf'|'image', text?: string,
  *   mimeType?: string, base64?: string}> }} input
- * @returns {Promise<{ text: string, created_request: object|null, tool_trace: Array<object> }>}
+ * @returns {Promise<{ text: string, created_request: object|null, tool_trace: Array<object>,
+ *   usage: { promptTokens: number, completionTokens: number } }>} `usage` je zbroj kroz SVE
+ *   pozive provideru unutar ovog poteza (tool-calling petlja zna pozvati model više puta).
  *   `tool_trace` su nove poruke (system uputa o ponudi/ponudama ako ima
  *   priloga, te assistant/tool razmjene) koje KLIJENT MORA dodati u svoju
  *   povijest prije sljedećeg poziva — bez toga se strukturna potvrda za
@@ -348,13 +350,23 @@ async function runAssistantChat({ messages, userId, attachments = [] }) {
   }
   convo.push(...historyMessages);
   let createdRequest = null;
+  // Jedan HTTP zahtjev/razgovorni potez zna pozvati provider.chat() VIŠE puta
+  // (tool-calling petlja: propose_request pa nastavak, itd.) — zbrajamo token
+  // usage kroz sve te pozive, ne samo zadnji, za RQ1/RQ2 eval harness
+  // (docs/AI.md, evalHarness.js).
+  const usage = { promptTokens: 0, completionTokens: 0 };
+  const addUsage = (u) => {
+    usage.promptTokens += u?.promptTokens || 0;
+    usage.completionTokens += u?.completionTokens || 0;
+  };
 
   for (let iteration = 0; iteration < MAX_ITERATIONS; iteration++) {
     const result = await provider.chat(convo, tools);
+    addUsage(result.usage);
 
     if (!result.tool_calls || result.tool_calls.length === 0) {
       if (result.text && result.text.trim()) {
-        return { text: result.text, created_request: createdRequest, tool_trace: toolTrace };
+        return { text: result.text, created_request: createdRequest, tool_trace: toolTrace, usage };
       }
       // Model nije vratio ni tekst ni tool_call (npr. generacija prekinuta
       // prije završetka — potvrđeno stvarnim testom s gemma4:12b i opsežnim
@@ -363,6 +375,7 @@ async function runAssistantChat({ messages, userId, attachments = [] }) {
         text: 'Model nije uspio dovršiti odgovor. Pokušajte ponovno ili preformulirajte poruku.',
         created_request: createdRequest,
         tool_trace: toolTrace,
+        usage,
       };
     }
 
@@ -436,6 +449,7 @@ async function runAssistantChat({ messages, userId, attachments = [] }) {
       'unesite podatke izravno kroz obrazac za novi zahtjev.',
     created_request: createdRequest,
     tool_trace: toolTrace,
+    usage,
   };
 }
 

@@ -112,6 +112,13 @@ async function chat(messages, tools = []) {
   return {
     text: data?.message?.content || null,
     tool_calls: normalizeToolCalls(data?.message?.tool_calls),
+    // prompt_eval_count/eval_count su Ollamin naziv za prompt/completion
+    // tokene (docs.ollama.ai/api) — koristi se za RQ1/RQ2 eval harness
+    // (docs/AI.md, evalHarness.js), ne izravno u chat odgovoru korisniku.
+    usage: {
+      promptTokens: data?.prompt_eval_count ?? null,
+      completionTokens: data?.eval_count ?? null,
+    },
   };
 }
 

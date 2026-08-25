@@ -63,7 +63,27 @@ describe('GeminiProvider.chat', () => {
 
     const result = await chat([{ role: 'user', content: 'Bok' }]);
 
-    expect(result).toEqual({ text: 'Bok! Kako mogu pomoći?', tool_calls: null });
+    expect(result).toEqual({
+      text: 'Bok! Kako mogu pomoći?',
+      tool_calls: null,
+      usage: { promptTokens: null, completionTokens: null },
+    });
+  });
+
+  test('vraća prompt/completion tokene iz usageMetadata', async () => {
+    process.env.GEMINI_API_KEY = 'test-key';
+    getSetting.mockResolvedValue('gemini-2.5-flash');
+    global.fetch.mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        candidates: [{ content: { parts: [{ text: 'ok' }] } }],
+        usageMetadata: { promptTokenCount: 25, candidatesTokenCount: 87, totalTokenCount: 112 },
+      }),
+    });
+
+    const result = await chat([{ role: 'user', content: 'Bok' }]);
+
+    expect(result.usage).toEqual({ promptTokens: 25, completionTokens: 87 });
   });
 
   test('šalje system poruke odvojeno kao system_instruction', async () => {

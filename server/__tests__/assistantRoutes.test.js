@@ -99,6 +99,22 @@ describe('POST /api/assistant/chat — poziva orkestrator u auth kontekstu koris
     });
   });
 
+  test('prosljeđuje usage (token brojanje) iz orkestratora — za RQ1/RQ2 eval harness', async () => {
+    runAssistantChat.mockResolvedValue({
+      text: 'Odgovor.',
+      created_request: null,
+      tool_trace: [],
+      usage: { promptTokens: 120, completionTokens: 34 },
+    });
+
+    const res = await supertest(app)
+      .post('/api/assistant/chat')
+      .send({ messages: [{ role: 'user', content: 'test' }] });
+
+    expect(res.status).toBe(200);
+    expect(res.body.usage).toEqual({ promptTokens: 120, completionTokens: 34 });
+  });
+
   test('prosljeđuje tool_trace iz orkestratora — klijent ga mora dodati u povijest za idući zahtjev', async () => {
     const trace = [
       { role: 'system', content: '[ai-asistent:priložena-ponuda]\n...' },
