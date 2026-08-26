@@ -253,11 +253,12 @@ Na temelju ovoga:
    "dokument 2 izgleda kao ugovor, ne ponuda") i pitaj što želi dalje za taj dokument — nemoj pozivati
    propose_request ni create_request dok se to ne razjasni.
 2. Za dokumente koji JESU ponude: prepoznaj stavke (naziv, količina) i ukupan iznos ponude ako postoji.
-3. Ako je priložena VIŠE OD JEDNE ponude i dvije ili više njih nude ISTE ili vrlo slične stavke, NIKAD ih
-   ne zbrajaj niti sam ne biraj koju koristiti — moraš korisniku eksplicitno nabrojati opcije za tu stavku
-   (dobavljač/dokument + cijena/uvjeti iz svake ponude koja je nudi) i pitati koju odabrati, PRIJE poziva
-   propose_request. Stavke koje postoje samo u jednoj od ponuda ne trebaju ovo pitanje — njih tretiraj
-   normalno. (Ako je priložena samo jedna ponuda, ova točka se ne primjenjuje.)
+3. Ako je priložena VIŠE OD JEDNE ponude, svaka ponuda pridonosi zahtjevu SVOJIM VLASTITIM stavkama —
+   uključi stavke iz SVIH ponuda kao zasebne retke, i kad dvije ili više ponuda nude isti ili vrlo sličan
+   artikl (npr. "laptop" na obje ponude). NE preskači, ne spajaj u jedan redak i NE pitaj korisnika koju
+   ponudu odabrati — svaka takva stavka ide u zahtjev zasebno, sa svojom vlastitom količinom, po svojoj
+   ponudi. Ukupan iznos zahtjeva je ZBROJ iznosa svih priloženih ponuda. (Ako je priložena samo jedna
+   ponuda, ova točka se ne primjenjuje.)
 4. Za svaku stavku zaključi kategoriju isključivo iz popisa kategorija gore — nikad izmišljenu.
 5. Dobavljač NIJE zasebno polje u sustavu — ako ga želiš zabilježiti, stavi ga u "comment", ne u "justification".
 6. Ako neko obavezno polje i dalje nedostaje (npr. odjel — ponuda ga ne može znati), pitaj korisnika za

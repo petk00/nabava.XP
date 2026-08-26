@@ -760,7 +760,12 @@ describe('runAssistantChat — VIŠE priloženih ponuda (usporedba dobavljača)'
     expect(quoteSystemMsg.content).toContain(QUOTE_B.text);
   });
 
-  test('uputa o preklapanju (ne zbrajati, eksplicitno pitati korisnika) prisutna je čim ima 2+ priloga', async () => {
+  test('uputa o više ponuda (svaka pridonosi svojim stavkama, zbroji ukupno, NE pitati korisnika) prisutna je čim ima 2+ priloga', async () => {
+    // Namjerna promjena dizajna (bila suprotna ranije: pitati korisnika kod
+    // preklapajućih stavki) — korisnik eksplicitno potvrdio da svaka ponuda
+    // pridonosi zahtjevu svojim vlastitim stavkama, čak i kad se artikl na
+    // dvije ponude zove isto (npr. "laptop" na obje) — ne spaja se u jedan
+    // redak niti se pita korisnika, iznos se jednostavno zbraja.
     mockReferenceContext();
     const chat = jest.fn().mockResolvedValue({ text: 'ok', tool_calls: null });
     getActiveProvider.mockResolvedValue({ chat });
@@ -772,8 +777,8 @@ describe('runAssistantChat — VIŠE priloženih ponuda (usporedba dobavljača)'
     });
 
     const quoteSystemMsg = chat.mock.calls[0][0].find((m) => m.role === 'system' && m.content.includes(QUOTE_MARKER));
-    expect(quoteSystemMsg.content).toMatch(/NIKAD ih\s*\n?\s*ne zbrajaj niti sam ne biraj koju koristiti/);
-    expect(quoteSystemMsg.content).toMatch(/eksplicitno nabrojati opcije/);
+    expect(quoteSystemMsg.content).toMatch(/NE preskači, ne spajaj u jedan redak i NE pitaj korisnika/);
+    expect(quoteSystemMsg.content).toMatch(/Ukupan iznos zahtjeva je ZBROJ iznosa svih priloženih ponuda/);
   });
 
   test('strukturna brava (propose prije create) i dalje vrijedi kad razgovor uključuje VIŠE priloga', async () => {

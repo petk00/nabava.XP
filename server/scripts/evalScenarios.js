@@ -26,7 +26,7 @@ const FIXTURES_DIR = path.join(__dirname, '..', 'eval-scenarios', 'fixtures');
 const SCENARIOS = [
   {
     id: 'scenario1_pdf_tekst',
-    description: 'PDF ponuda s čistim tekstualnim slojem (4 stavke, uredska oprema).',
+    description: 'PDF ponuda s čistim tekstualnim slojem — kreira zahtjev uz koji se prilaže izvorna ponuda.',
     // 3 turna: prilog -> agent traži odjel/obrazloženje -> odgovor (propose_request
     // očekivan) -> potvrda (create_request očekivan). Bez turnova 2-3 scenarij
     // nikad ne bi stigao do propose/create (potvrđeno probnim runom).
@@ -41,33 +41,33 @@ const SCENARIOS = [
   },
   {
     id: 'scenario2_slika_dobra',
-    description: 'Kvalitetna slika ponude (PNG), ista stavke kao scenarij 1.',
+    description: 'Kvalitetna slika ponude (PNG) — kreira zahtjev uz koji se prilaže izvorna slika ponude.',
     turns: [
       'U prilogu je slika ponude, molim vas pripremite zahtjev za nabavu na temelju nje.',
       'Odjel: Informatička služba. Obrazloženje: opremanje nove sobe za sastanke.',
       'Da, potvrđujem kreiranje zahtjeva.',
     ],
-    attachments: [path.join(FIXTURES_DIR, 'scenario2_ponuda.png')],
+    attachments: [path.join(FIXTURES_DIR, 'scenario2_ponuda.jpeg')],
     expectsProposeBeforeCreate: true,
     repeatCount: 5,
   },
   {
     id: 'scenario3_slika_losa',
-    description: 'Nekvalitetna (zamućena, nakošena) slika iste ponude kao scenarij 2.',
+    description: 'Nekvalitetna (zamućena, nakošena) slika ponude — testira robusnost vision ekstrakcije i uspješno kreiranje kad su podaci ipak čitljivi.',
     turns: [
       'Fotografirao sam ponudu mobitelom, malo je nakošena, ali nadam se da se vidi. Pripremite zahtjev.',
       'Odjel: Informatička služba. Obrazloženje: opremanje nove sobe za sastanke.',
       'Da, potvrđujem kreiranje zahtjeva.',
     ],
-    attachments: [path.join(FIXTURES_DIR, 'scenario3_ponuda_degraded.png')],
+    attachments: [path.join(FIXTURES_DIR, 'scenario3_ponuda_degraded.jpeg')],
     expectsProposeBeforeCreate: true,
     repeatCount: 5,
   },
   {
     id: 'scenario4_pdf_engleski',
-    description: 'PDF ponuda na engleskom, decimalna točka, USD.',
+    description: 'Prava PDF ponuda na engleskom (UK dobavljač), decimalna točka, GBP.',
     turns: [
-      'Attaching a quote from a US supplier, please prepare a purchase request based on it.',
+      'Attaching a quote from a UK supplier, please prepare a purchase request based on it.',
       'Odjel: Informatička služba. Obrazloženje: opremanje nove sobe za sastanke.',
       'Da, potvrđujem kreiranje zahtjeva.',
     ],
@@ -77,9 +77,9 @@ const SCENARIOS = [
   },
   {
     id: 'scenario5_sve_u_jednoj_recenici',
-    description: 'Potpuno specificiran zahtjev u jednoj složenoj rečenici.',
+    description: 'Potpuno specificiran zahtjev u jednoj složenoj rečenici — više artikala, razne kategorije.',
     turns: [
-      'Molim vas kreirajte zahtjev za Odjel za razvoj informacijskog sustava za nabavu 2 vanjska SSD diska od 2TB, jer trenutna oprema za sigurnosne kopije više ne zadovoljava potrebe tima.',
+      'Molim vas pripremite zahtjev za Informatičku službu: 3 bežična miša, 2 licence za antivirusni program i 10 kutija papira za pisač, jer postojeća zaliha i oprema više ne zadovoljavaju potrebe tima. Obrazloženje: redovna dopuna opreme i potrošnog materijala.',
     ],
     attachments: [],
     expectsProposeBeforeCreate: false,
@@ -87,9 +87,12 @@ const SCENARIOS = [
   },
   {
     id: 'scenario6_nejasan_bez_kolicine',
-    description: 'Nejasan zahtjev bez definirane količine — agent mora pitati, ne nagađati.',
+    description: 'Nejasan zahtjev bez definirane količine — agent mora pitati, ne nagađati, a korisnik zatim potvrđuje ispravan broj.',
+    // 2 turna: nedostaje količina (i obrazloženje) -> agent mora pitati ->
+    // korisnik potvrđuje ispravan broj i obrazloženje.
     turns: [
-      'Trebamo nabaviti bežične tipkovnice za Odjel za studentske poslove, stare su već dotrajale.',
+      'Trebamo nabaviti bežične tipkovnice za Studentsku referadu, stare su već dotrajale.',
+      'Trebamo 8 komada. Obrazloženje: zamjena dotrajale opreme.',
     ],
     attachments: [],
     expectsProposeBeforeCreate: false,
@@ -118,13 +121,13 @@ const SCENARIOS = [
   },
   {
     id: 'scenario9_vise_ponuda_preklapanje',
-    description: 'Dvije ponude odjednom, dijelom iste stavke (laptop preklapa, miš/monitor ne).',
-    // 3 turna: prilozi -> agent bi trebao eksplicitno pitati koju ponudu za
-    // laptop (preklapajuća stavka) + odjel/obrazloženje -> odgovor koji
-    // razrješava sve -> potvrda.
+    description: 'Dvije ponude odjednom (laptop na objema, miš samo na A, monitor samo na B) — agent spaja SVE stavke iz obje ponude i zbraja iznos, ne pita korisnika.',
+    // 3 turna: prilozi -> agent traži odjel/obrazloženje (stavke već ima iz
+    // obje ponude, ne treba razrješavati preklapanje — vidi
+    // buildAttachmentInstruction točka 3) -> potvrda.
     turns: [
-      'Prilažem dvije ponude za istu nabavu, molim vas usporedite ih i pripremite zahtjev.',
-      'Za laptope koristite ponudu od Elektro Sistemi d.o.o. (jeftinija opcija). Odjel: Informatička služba. Obrazloženje: nadopuna opreme tima.',
+      'Prilažem dvije ponude za istu nabavu, molim vas pripremite zahtjev na temelju obje.',
+      'Odjel: Informatička služba. Obrazloženje: nadopuna opreme tima.',
       'Da, potvrđujem kreiranje zahtjeva.',
     ],
     attachments: [
@@ -138,7 +141,7 @@ const SCENARIOS = [
     id: 'scenario10_nije_ponuda',
     description: 'Dokument koji nije ponuda (zapisnik sa sastanka) — agent mora prepoznati i tražiti pravi dokument.',
     turns: ['U prilogu je ponuda dobavljača, molim pripremite zahtjev za nabavu na temelju nje.'],
-    attachments: [path.join(FIXTURES_DIR, 'scenario10_not_a_quote.pdf')],
+    attachments: [path.join(FIXTURES_DIR, 'scenario10_not_a_quote.jpg')],
     expectsProposeBeforeCreate: true,
     repeatCount: 5,
   },

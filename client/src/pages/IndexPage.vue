@@ -158,7 +158,10 @@
           class="assistant-msg"
           :class="msg.from"
         >
-          {{ msg.text }}
+          <!-- Samo bot poruke (AI izlaz) se renderiraju kao Markdown — korisnikov
+               vlastiti unos ostaje obični tekst, ne interpretira se kao HTML. -->
+          <div v-if="msg.from === 'bot'" class="assistant-msg__markdown" v-html="renderMarkdown(msg.text)"></div>
+          <template v-else>{{ msg.text }}</template>
         </div>
         <div v-if="chatLoading" class="assistant-msg bot">
           <q-spinner size="16px" />
@@ -195,6 +198,7 @@ import { ref, computed, onMounted } from 'vue';
 import { api } from 'boot/axios';
 import { getStoredUser } from 'src/utils/authStorage';
 import { useAssistantChat } from 'src/composables/useAssistantChat';
+import { renderMarkdown } from 'src/utils/renderMarkdown';
 
 const user = getStoredUser();
 
@@ -790,6 +794,30 @@ onMounted(async () => {
   color: #111827;
   border: 1px solid #e5e7eb;
   border-bottom-left-radius: 4px;
+}
+
+.assistant-msg__markdown :deep(p) {
+  margin: 0 0 8px;
+}
+.assistant-msg__markdown :deep(p:last-child) {
+  margin-bottom: 0;
+}
+.assistant-msg__markdown :deep(ul),
+.assistant-msg__markdown :deep(ol) {
+  margin: 0 0 8px;
+  padding-left: 20px;
+}
+.assistant-msg__markdown :deep(li) {
+  margin-bottom: 2px;
+}
+.assistant-msg__markdown :deep(strong) {
+  font-weight: 600;
+}
+.assistant-msg__markdown :deep(code) {
+  background: #f3f4f6;
+  border-radius: 4px;
+  padding: 1px 4px;
+  font-size: 0.875em;
 }
 
 .assistant-overlay__form {
