@@ -79,6 +79,41 @@ function normalizeToolCalls(rawToolCalls) {
   });
 }
 
+// Za razliku od geminiProvider.js (30s), ovdje je limit namjerno velikodušan:
+// stvarnim eval harness testiranjem (docs/eval-runs/) potvrđeno da gemma4:12b
+// uz temperature:1 zna legitimno "razmišljati" nekoliko minuta (najduže
+// uspješno opaženo ~8 min) — kratak timeout bi prekidao stvarne, samo spore
+// odgovore. 10 min je sigurnosna mreža protiv prave patologije (opažen jedan
+// slučaj ~40 min bez ikakvog napretka), ne protiv normalne spore generacije.
+const REQUEST_TIMEOUT_MS = 10 * 60 * 1000;
+
+// Stvarnim eval runom (docs/eval-runs/2026-08-26-ollama-5x.md) potvrđeno u
+// Ollaminim vlastitim logovima: scheduler zna usred rada REloadati model pod
+// memorijskim pritiskom (npr. -c 8192 -> 4096 pa natrag), prekidajući baš
+// zahtjev koji je tad u tijeku — vidljivo kod nas kao "fetch failed" (network
+// greška, ne HTTP error status). Vision (slika) zahtjevi su disproporcionalno
+// pogođeni (mmproj enkoder dodatno optereti već tijesnu memoriju). Reload
+// traje par sekundi do ~16s, pa JEDAN retry nakon kratke pauze pokriva ovaj
+// slučaj — namjerno SAMO na network-level grešku, ne na HTTP error status
+// (stvaran problem, ne treba ga maskirati) ni na AbortError iz REQUEST_TIMEOUT_MS
+// (već smo čekali 10 min, dodatni retry tu ne bi imao smisla).
+const NETWORK_RETRY_DELAY_MS = 3000;
+
+async function performChatRequest(baseUrl, body) {
+  const abortController = new AbortController();
+  const timeoutId = setTimeout(() => abortController.abort(), REQUEST_TIMEOUT_MS);
+  try {
+    return await fetch(`${baseUrl}/api/chat`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+      signal: abortController.signal,
+    });
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
 async function chat(messages, tools = []) {
   const baseUrl = process.env.OLLAMA_BASE_URL || 'http://localhost:11434';
 
@@ -92,31 +127,23 @@ async function chat(messages, tools = []) {
     body.tools = toOllamaTools(tools);
   }
 
-  // Za razliku od geminiProvider.js (30s), ovdje je limit namjerno velikodušan:
-  // stvarnim eval harness testiranjem (docs/eval-runs/) potvrđeno da gemma4:12b
-  // uz temperature:1 zna legitimno "razmišljati" nekoliko minuta (najduže
-  // uspješno opaženo ~8 min) — kratak timeout bi prekidao stvarne, samo spore
-  // odgovore. 10 min je sigurnosna mreža protiv prave patologije (opažen jedan
-  // slučaj ~40 min bez ikakvog napretka), ne protiv normalne spore generacije.
-  const REQUEST_TIMEOUT_MS = 10 * 60 * 1000;
-  const abortController = new AbortController();
-  const timeoutId = setTimeout(() => abortController.abort(), REQUEST_TIMEOUT_MS);
-
   let res;
   try {
-    res = await fetch(`${baseUrl}/api/chat`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-      signal: abortController.signal,
-    });
+    res = await performChatRequest(baseUrl, body);
   } catch (networkError) {
     if (networkError.name === 'AbortError') {
       throw new Error(`Ollama nije odgovorio u ${REQUEST_TIMEOUT_MS / 60000} min.`);
     }
-    throw new Error(`Ollama nije dostupan na ${baseUrl}: ${networkError.message}`);
-  } finally {
-    clearTimeout(timeoutId);
+    console.warn(`[ollamaProvider] mrežna greška, pokušavam ponovno za ${NETWORK_RETRY_DELAY_MS}ms:`, networkError.message);
+    await new Promise((resolve) => setTimeout(resolve, NETWORK_RETRY_DELAY_MS));
+    try {
+      res = await performChatRequest(baseUrl, body);
+    } catch (retryError) {
+      if (retryError.name === 'AbortError') {
+        throw new Error(`Ollama nije odgovorio u ${REQUEST_TIMEOUT_MS / 60000} min.`);
+      }
+      throw new Error(`Ollama nije dostupan na ${baseUrl}: ${retryError.message}`);
+    }
   }
 
   if (!res.ok) {

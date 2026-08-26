@@ -176,6 +176,7 @@ describe('runAssistantChat — uspješno kreiranje', () => {
       comment: undefined,
       items: VALID_ARGS.items,
       userId: 2,
+      attachments: [],
     });
 
     expect(result).toMatchObject({
@@ -417,7 +418,7 @@ describe('runAssistantChat — priložena ponuda (attachments, PDF)', () => {
       userId: 2,
     });
 
-    expect(createRequest).toHaveBeenCalledWith({ ...quoteDerivedArgs, userId: 2 });
+    expect(createRequest).toHaveBeenCalledWith({ ...quoteDerivedArgs, userId: 2, attachments: [] });
     expect(result.created_request).toEqual({
       id_purchase_request: 55, request_number: 'NAB-2026-0055', fk_request_status: 1,
     });
@@ -537,7 +538,7 @@ describe('runAssistantChat — strukturna dvofazna potvrda (propose_request -> c
       // attachments je prazan — datoteka se ne šalje ponovno.
     });
 
-    expect(createRequest).toHaveBeenCalledWith({ ...VALID_ARGS, estimated_amount: undefined, comment: undefined, userId: 2 });
+    expect(createRequest).toHaveBeenCalledWith({ ...VALID_ARGS, estimated_amount: undefined, comment: undefined, userId: 2, attachments: [] });
     expect(result.created_request).toEqual({
       id_purchase_request: 60, request_number: 'NAB-2026-0060', fk_request_status: 1,
     });
@@ -716,7 +717,7 @@ describe('runAssistantChat — slika ponude (vision, bez server-side OCR-a)', ()
       // attachments: [] (default) — nije ponovno priložena
     });
 
-    expect(createRequest).toHaveBeenCalledWith({ ...VALID_ARGS, estimated_amount: undefined, comment: undefined, userId: 2 });
+    expect(createRequest).toHaveBeenCalledWith({ ...VALID_ARGS, estimated_amount: undefined, comment: undefined, userId: 2, attachments: [] });
     expect(result.created_request).toEqual({ id_purchase_request: 70, request_number: 'NAB-2026-0070', fk_request_status: 1 });
   });
 });
@@ -833,5 +834,155 @@ describe('runAssistantChat — VIŠE priloženih ponuda (usporedba dobavljača)'
 
     const userMsg = sentMessages.find((m) => m.role === 'user');
     expect(userMsg.images).toEqual([{ mimeType: 'image/png', data: 'cG5nLWJ5dGVz' }]);
+  });
+});
+
+describe('runAssistantChat — formalni prilog uz zahtjev pri create_request (docs/AI.md)', () => {
+  // Mora se poklapati s ATTACHMENT_DATA_MARKER u assistantOrchestrator.js.
+  const ATTACHMENT_DATA_MARKER = '[ai-asistent:prilog-podaci]';
+  const QUOTE_ATTACHMENT = { filename: 'ponuda.pdf', kind: 'pdf', text: 'Toner x5', mimeType: 'application/pdf', base64: Buffer.from('%PDF-1.4 ponuda').toString('base64') };
+  const PROPOSAL_FOR_MATCH = { fk_fiscal_year: VALID_ARGS.fk_fiscal_year, fk_department: VALID_ARGS.fk_department, items: VALID_ARGS.items };
+
+  const attachmentDataCarrierMessage = (attachments) => ({
+    role: 'system',
+    content: `${ATTACHMENT_DATA_MARKER}${JSON.stringify(attachments.map((a) => ({ filename: a.filename, mimeType: a.mimeType, base64: a.base64 })))}`,
+  });
+
+  test('prvi potez (upload) — carrier poruka s base64 ide u tool_trace, ali NIKAD modelu (provider.chat)', async () => {
+    mockReferenceContext();
+    const chat = jest.fn().mockResolvedValue({ text: 'Evo sažetka...', tool_calls: null });
+    getActiveProvider.mockResolvedValue({ chat });
+
+    const result = await runAssistantChat({
+      messages: [{ role: 'user', content: 'Evo ponude.' }],
+      userId: 2,
+      attachments: [QUOTE_ATTACHMENT],
+    });
+
+    const carrierInTrace = result.tool_trace.find((m) => m.role === 'system' && m.content.startsWith(ATTACHMENT_DATA_MARKER));
+    expect(carrierInTrace).toBeDefined();
+    expect(JSON.parse(carrierInTrace.content.slice(ATTACHMENT_DATA_MARKER.length))).toEqual([
+      { filename: 'ponuda.pdf', mimeType: 'application/pdf', base64: QUOTE_ATTACHMENT.base64 },
+    ]);
+
+    const sentToModel = chat.mock.calls[0][0];
+    expect(sentToModel.some((m) => typeof m.content === 'string' && m.content.startsWith(ATTACHMENT_DATA_MARKER))).toBe(false);
+  });
+
+  test('create_request u KASNIJEM potezu (bez ponovnog uploada) — prilog se ipak sprema, dekodiran iz carrier poruke echoedane od klijenta', async () => {
+    mockReferenceContext();
+    createRequest.mockResolvedValue({ id_purchase_request: 90, request_number: 'NAB-2026-0090', fk_request_status: 1 });
+
+    const chat = jest.fn()
+      .mockResolvedValueOnce(toolCallMessage(VALID_ARGS, 'create_att'))
+      .mockResolvedValueOnce({ text: 'Zahtjev NAB-2026-0090 je kreiran.', tool_calls: null });
+    getActiveProvider.mockResolvedValue({ chat });
+
+    // Simulira TREĆI HTTP poziv: klijent je vjerno echoedao carrier poruku iz
+    // PRVOG poteza (uz ostatak povijesti) — attachments param OVDJE je []
+    // jer se datoteka ne šalje ponovno preko multipart-a.
+    await runAssistantChat({
+      messages: [
+        { role: 'system', content: `${QUOTE_MARKER}\n...` },
+        attachmentDataCarrierMessage([QUOTE_ATTACHMENT]),
+        { role: 'user', content: 'Evo ponude.' },
+        priorProposalToolMessage(PROPOSAL_FOR_MATCH, 'propose_1'),
+        { role: 'user', content: 'Da, potvrđujem.' },
+      ],
+      userId: 2,
+      attachments: [],
+    });
+
+    expect(createRequest).toHaveBeenCalledWith(expect.objectContaining({
+      attachments: [{
+        fileName: 'ponuda.pdf',
+        mimeType: 'application/pdf',
+        buffer: Buffer.from(QUOTE_ATTACHMENT.base64, 'base64'),
+      }],
+    }));
+  });
+
+  test('tekstualni tok bez priloga — attachments prosljeđen u createRequest je uvijek prazan niz', async () => {
+    mockReferenceContext();
+    createRequest.mockResolvedValue({ id_purchase_request: 91, request_number: 'NAB-2026-0091', fk_request_status: 1 });
+
+    const chat = jest.fn()
+      .mockResolvedValueOnce(toolCallMessage(VALID_ARGS))
+      .mockResolvedValueOnce({ text: 'Zahtjev kreiran.', tool_calls: null });
+    getActiveProvider.mockResolvedValue({ chat });
+
+    await runAssistantChat({
+      messages: [{ role: 'user', content: '5 tonera, Računovodstvo, zalihe pri kraju.' }],
+      userId: 2,
+    });
+
+    expect(createRequest).toHaveBeenCalledWith(expect.objectContaining({ attachments: [] }));
+  });
+});
+
+describe('runAssistantChat — cross-turn kočnica protiv dvostrukog create_request (bez update tool-a)', () => {
+  // Stvarnim eval testiranjem (docs/eval-runs/2026-08-26-ollama-5x.md) otkriveno:
+  // korisnikova poruka "promijenite količinu..." nakon što je zahtjev VEĆ
+  // kreiran u ranijem potezu znala je navesti model da pozove create_request
+  // PO DRUGI PUT, praveći pravi duplikat u bazi (createdRequest lokalna
+  // varijabla štiti samo unutar JEDNOG HTTP poziva, ne kroz cijelu
+  // konverzaciju).
+  const priorCreateToolMessage = (created, id = 'create_1') => ({
+    role: 'tool',
+    tool_call_id: id,
+    name: 'create_request',
+    content: JSON.stringify({ ok: true, ...created }),
+  });
+
+  test('pokušaj create_request u SLJEDEĆEM potezu nakon što je zahtjev VEĆ kreiran ranije — odbijen, ne stvara duplikat', async () => {
+    mockReferenceContext();
+
+    const chat = jest.fn()
+      .mockResolvedValueOnce(toolCallMessage(VALID_ARGS, 'create_2')) // model pokušava "izmjenu" ponovnim create_request-om
+      .mockResolvedValueOnce({ text: 'Zahtjev NAB-2026-0060 je već kreiran, ne mogu ga mijenjati kroz chat.', tool_calls: null });
+    getActiveProvider.mockResolvedValue({ chat });
+
+    const result = await runAssistantChat({
+      messages: [
+        { role: 'user', content: '5 tonera, Računovodstvo, zalihe pri kraju.' },
+        { role: 'assistant', content: '', tool_calls: [{ id: 'create_1', name: 'create_request', arguments: VALID_ARGS }] },
+        priorCreateToolMessage({ id_purchase_request: 60, request_number: 'NAB-2026-0060', fk_request_status: 1 }, 'create_1'),
+        { role: 'assistant', content: 'Zahtjev NAB-2026-0060 je kreiran.' },
+        { role: 'user', content: 'Zapravo promijenite količinu na 10.' },
+      ],
+      userId: 2,
+    });
+
+    expect(createRequest).not.toHaveBeenCalled(); // KLJUČNA provjera — nema duplikata u bazi
+    expect(result.created_request).toBeNull();
+
+    const rejection = result.tool_trace.find((m) => m.tool_call_id === 'create_2');
+    const parsed = JSON.parse(rejection.content);
+    expect(parsed.ok).toBe(false);
+    expect(parsed.already_created_earlier).toBe(true);
+    expect(parsed.message).toMatch(/NAB-2026-0060/);
+    expect(parsed.message).toMatch(/dopunu|administratora/i);
+  });
+
+  test('drugi pokušaj u ISTOM potezu (nakon uspješnog create_request unutar tekuće petlje) i dalje koristi postojeću "already_created" kočnicu', async () => {
+    mockReferenceContext();
+    createRequest.mockResolvedValue({ id_purchase_request: 61, request_number: 'NAB-2026-0061', fk_request_status: 1 });
+
+    const chat = jest.fn()
+      .mockResolvedValueOnce(toolCallMessage(VALID_ARGS, 'create_a'))
+      .mockResolvedValueOnce(toolCallMessage(VALID_ARGS, 'create_b')) // model odmah pokuša opet u ISTOM potezu
+      .mockResolvedValueOnce({ text: 'Zahtjev je kreiran.', tool_calls: null });
+    getActiveProvider.mockResolvedValue({ chat });
+
+    const result = await runAssistantChat({
+      messages: [{ role: 'user', content: '5 tonera, Računovodstvo, zalihe pri kraju.' }],
+      userId: 2,
+    });
+
+    expect(createRequest).toHaveBeenCalledTimes(1);
+    const secondRejection = result.tool_trace.find((m) => m.tool_call_id === 'create_b');
+    const parsed = JSON.parse(secondRejection.content);
+    expect(parsed.already_created).toBe(true);
+    expect(parsed.already_created_earlier).toBeUndefined();
   });
 });

@@ -28,6 +28,59 @@ const MAX_ITERATIONS = 6;
 // vidi conversationInvolvesAttachment().
 const QUOTE_MARKER = '[ai-asistent:priložena-ponuda]';
 
+// Nosi IZVORNE bajtove priloga (base64) kroz razgovor preko istog echo
+// mehanizma kao QUOTE_MARKER — potrebno jer create_request (koji originalnu
+// datoteku sprema kao formalni prilog uz zahtjev, requestService.js) često
+// stiže tek nekoliko poteza NAKON uploada, kad attachments param više nije
+// postavljen (multipart upload ide samo uz PRVU poruku razgovora). Ova
+// poruka je NAMJERNO isključena iz onoga što se šalje modelu (vidi
+// runAssistantChat) — model ne treba i ne smije "čitati" sirovi base64,
+// samo bi trošio kontekst bez ikakve koristi.
+const ATTACHMENT_DATA_MARKER = '[ai-asistent:prilog-podaci]';
+
+function isAttachmentDataCarrier(message) {
+  return message?.role === 'system' && typeof message.content === 'string' && message.content.startsWith(ATTACHMENT_DATA_MARKER);
+}
+
+/** Gradi skrivenu system poruku koja nosi base64 SVIH priloga ovog poteza — ide u tool_trace, NIKAD u convo. */
+function buildAttachmentDataCarrier(attachments) {
+  const payload = attachments.map((a) => ({
+    filename: a.filename,
+    mimeType: a.kind === 'pdf' ? 'application/pdf' : a.mimeType,
+    base64: a.base64,
+  }));
+  return { role: 'system', content: `${ATTACHMENT_DATA_MARKER}${JSON.stringify(payload)}` };
+}
+
+/**
+ * Razrješava izvorne bajtove priloga za spremanje uz create_request: prvo
+ * pokuša OVAJ potez (attachments param, svježe uploadano), pa tek onda
+ * potraži carrier poruku echoedanu iz ranijeg poteza u clientMessages.
+ * @returns {Array<{buffer: Buffer, fileName: string, mimeType: string}>}
+ */
+function resolveAttachmentsForSave(attachments, clientMessages) {
+  let source;
+  if (attachments && attachments.length > 0) {
+    source = attachments.map((a) => ({
+      filename: a.filename,
+      mimeType: a.kind === 'pdf' ? 'application/pdf' : a.mimeType,
+      base64: a.base64,
+    }));
+  } else {
+    const carrier = clientMessages.find(isAttachmentDataCarrier);
+    if (!carrier) return [];
+    try {
+      source = JSON.parse(carrier.content.slice(ATTACHMENT_DATA_MARKER.length));
+    } catch {
+      return [];
+    }
+  }
+
+  return source
+    .filter((a) => a.base64)
+    .map((a) => ({ fileName: a.filename, mimeType: a.mimeType, buffer: Buffer.from(a.base64, 'base64') }));
+}
+
 const REQUEST_PARAMETERS_SCHEMA = {
   type: 'object',
   properties: {
@@ -229,7 +282,7 @@ Na temelju ovoga:
     čini da imaš sve podatke. Sustav će prerani poziv odbiti.`;
 }
 
-async function executeCreateRequestTool(args, userId) {
+async function executeCreateRequestTool(args, userId, attachmentsForSave) {
   const created = await createRequest({
     fk_fiscal_year: args?.fk_fiscal_year,
     fk_department: args?.fk_department,
@@ -238,6 +291,7 @@ async function executeCreateRequestTool(args, userId) {
     comment: args?.comment,
     items: args?.items,
     userId,
+    attachments: attachmentsForSave,
   });
   return { ok: true, ...created };
 }
@@ -304,6 +358,31 @@ function hasMatchingEarlierProposal(clientMessages, args) {
 }
 
 /**
+ * Traži RANIJI uspješan create_request rezultat u clientMessages (bilo koji
+ * turn PRIJE ovog HTTP zahtjeva) — za razliku od `createdRequest` lokalne
+ * varijable niže (koja štiti samo unutar JEDNOG HTTP poziva), ovo hvata
+ * pokušaj ponovnog create_request-a u SLJEDEĆEM potezu iste konverzacije
+ * (npr. korisnik nakon potvrde poruke traži izmjenu već kreiranog zahtjeva —
+ * stvarnim eval testiranjem potvrđeno da model tad zna pozvati create_request
+ * PO DRUGI PUT i napraviti pravi duplikat u bazi, docs/eval-runs/). Sustav
+ * NEMA "update" tool, pa je jedina ispravna reakcija odbiti drugi create i
+ * to jasno objasniti — ne pokušati "popraviti" ponovnim kreiranjem.
+ */
+function findEarlierSuccessfulCreate(clientMessages) {
+  for (const m of clientMessages) {
+    if (m.role !== 'tool' || m.name !== 'create_request') continue;
+    let parsed;
+    try {
+      parsed = JSON.parse(m.content);
+    } catch {
+      continue;
+    }
+    if (parsed?.ok) return parsed;
+  }
+  return null;
+}
+
+/**
  * Vodi cijeli tool-calling razgovor (model -> tool -> model -> ...) unutar
  * jednog HTTP zahtjeva, do konačnog tekstualnog odgovora ili MAX_ITERATIONS.
  *
@@ -332,6 +411,10 @@ async function runAssistantChat({ messages, userId, attachments = [] }) {
     const quoteMsg = { role: 'system', content: buildAttachmentInstruction(attachments) };
     convo.push(quoteMsg);
     toolTrace.push(quoteMsg);
+
+    // Ide SAMO u tool_trace (za echo natrag klijentu), NIKAD u convo — vidi
+    // napomenu uz ATTACHMENT_DATA_MARKER gore.
+    toolTrace.push(buildAttachmentDataCarrier(attachments));
   }
 
   // Slike idu kao dio POSLJEDNJE korisnikove poruke (onoj uz koju su stigle),
@@ -348,7 +431,9 @@ async function runAssistantChat({ messages, userId, attachments = [] }) {
       historyMessages = messages.map((m, idx) => (idx === lastUserIdx ? { ...m, images } : m));
     }
   }
-  convo.push(...historyMessages);
+  // Carrier poruka (ako je echoedana natrag iz ranijeg poteza) isključuje se
+  // iz onoga što stvarno ide modelu — vidi ATTACHMENT_DATA_MARKER napomenu.
+  convo.push(...historyMessages.filter((m) => !isAttachmentDataCarrier(m)));
   let createdRequest = null;
   // Jedan HTTP zahtjev/razgovorni potez zna pozvati provider.chat() VIŠE puta
   // (tool-calling petlja: propose_request pa nastavak, itd.) — zbrajamo token
@@ -398,9 +483,21 @@ async function runAssistantChat({ messages, userId, attachments = [] }) {
           }
         }
       } else if (call.name === 'create_request') {
+        const earlierCreate = createdRequest ? null : findEarlierSuccessfulCreate(messages);
         if (createdRequest) {
           // Sigurnosna kočnica protiv duplog kreiranja u istom razgovoru.
           toolResultPayload = { ok: true, already_created: true, ...createdRequest };
+        } else if (earlierCreate) {
+          // Cross-turn kočnica: zahtjev je već kreiran u NEKOM RANIJEM potezu
+          // iste konverzacije (createdRequest gore štiti samo unutar ovog
+          // jednog HTTP poziva). Nema "update" tool-a, pa se drugi
+          // create_request ODBIJA umjesto da tiho napravi duplikat.
+          toolResultPayload = {
+            ok: false,
+            already_created_earlier: true,
+            request_number: earlierCreate.request_number,
+            message: `Zahtjev ${earlierCreate.request_number} je već kreiran ranije u ovom razgovoru i NE MOŽE se mijenjati kroz chat (nema alata za ažuriranje postojećeg zahtjeva). Objasni ovo korisniku, navedi broj zahtjeva ${earlierCreate.request_number}, i reci mu da izmjena postaje moguća tek kad administrator/odobravatelj vrati zahtjev na dopunu (status "Zahtjeva izmjene") — tada ga korisnik može urediti kroz obrazac za uređivanje zahtjeva. Do tada, ako je izmjena hitna, neka kontaktira administratora izravno. NE pokušavaj ponovno pozvati create_request za ovu izmjenu.`,
+          };
         } else if (attachmentInvolved && !hasMatchingEarlierProposal(messages, call.arguments)) {
           // Strukturna brava: razgovor je krenuo od priloga, a odgovarajući
           // propose_request iz RANIJEG zahtjeva ne postoji (ili se poklapa
@@ -412,7 +509,8 @@ async function runAssistantChat({ messages, userId, attachments = [] }) {
           };
         } else {
           try {
-            toolResultPayload = await executeCreateRequestTool(call.arguments, userId);
+            const attachmentsForSave = resolveAttachmentsForSave(attachments, messages);
+            toolResultPayload = await executeCreateRequestTool(call.arguments, userId, attachmentsForSave);
             createdRequest = {
               id_purchase_request: toolResultPayload.id_purchase_request,
               request_number: toolResultPayload.request_number,

@@ -112,7 +112,17 @@ router.post('/chat', authenticateToken, uploadQuote.array('file', MAX_QUOTE_FILE
     if (detectedMime === 'application/pdf') {
       try {
         const text = await extractQuoteText(file.buffer);
-        attachments.push({ filename: file.originalname, kind: 'pdf', text });
+        // base64 (uz već-izvučeni text) čuva se da bi se izvorna datoteka
+        // mogla spremiti kao formalni prilog uz zahtjev kad create_request
+        // stvarno izvrši — vidi assistantOrchestrator.js
+        // (buildAttachmentDataCarrier/resolveAttachmentsForSave).
+        attachments.push({
+          filename: file.originalname,
+          kind: 'pdf',
+          text,
+          mimeType: 'application/pdf',
+          base64: file.buffer.toString('base64'),
+        });
       } catch (error) {
         if (error instanceof QuoteExtractionError) {
           return res.status(400).json({ message: `"${file.originalname}": ${error.message}` });
