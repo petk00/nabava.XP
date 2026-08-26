@@ -6,6 +6,7 @@
 
 const db = require('../config/db');
 const { STATUS } = require('../constants/status');
+const { saveAttachmentBuffer, cleanupAttachmentFile } = require('./attachmentService');
 
 const MAX_JUSTIFICATION_LEN = 1000;
 
@@ -98,11 +99,16 @@ async function validateBusinessRules(queryable, { fk_fiscal_year, fk_department,
 
 /**
  * Kreira zahtjev za nabavu (status Poslano) i njegove stavke pod transakcijom.
+ * @param {Array<{buffer: Buffer, fileName: string, mimeType: string}>} [attachments]
+ *   Opcionalno — izvorna ponuda (ili više njih) na temelju koje je AI asistent
+ *   sastavio zahtjev (docs/AI.md); sprema se kao formalni "Ponuda" prilog uz
+ *   zahtjev, ISTIM mehanizmom kao ručni upload (attachmentService.js), unutar
+ *   iste transakcije. Ručni unos (requestRoutes.js) ovo polje ne šalje.
  * @returns {Promise<{ id_purchase_request: number, request_number: string, fk_request_status: number }>}
  * @throws {RequestValidationError} kod neispravnog ulaza ili poslovnog pravila (400)
  * @throws {Error} s `error.code === 'ER_DUP_ENTRY'` kod konflikta pri generiranju broja, ili drugu neočekivanu grešku
  */
-async function createRequest({ fk_fiscal_year, fk_department, justification, estimated_amount, comment, items, userId }) {
+async function createRequest({ fk_fiscal_year, fk_department, justification, estimated_amount, comment, items, userId, attachments = [] }) {
   validateCreateInput({ fk_fiscal_year, fk_department, justification, estimated_amount, items });
 
   const statusId = STATUS.POSLANO;
@@ -179,6 +185,29 @@ async function createRequest({ fk_fiscal_year, fk_department, justification, est
       `,
       [itemValues]
     );
+
+    // Status je uvijek POSLANO ovdje (statusId gore) — dozvoljen status za
+    // "Ponuda" prilog po UPLOAD_RULES (requestAttachmentRoutes.js), pa se ta
+    // provjera namjerno ne ponavlja. Ako nešto iz ove petlje baci, čistimo
+    // datoteke koje smo već zapisali na disk prije nego greška izađe do
+    // vanjskog catch bloka (koji radi SQL rollback, ali ne zna za disk).
+    const savedAttachmentPaths = [];
+    try {
+      for (const attachment of attachments) {
+        const saved = await saveAttachmentBuffer(connection, {
+          requestId: newRequestId,
+          uploadedByUserId: userId,
+          buffer: attachment.buffer,
+          fileName: attachment.fileName,
+          mimeType: attachment.mimeType,
+          documentType: 'Ponuda',
+        });
+        savedAttachmentPaths.push(saved.file_path);
+      }
+    } catch (error) {
+      savedAttachmentPaths.forEach((filePath) => cleanupAttachmentFile(filePath));
+      throw error;
+    }
 
     await connection.query(
       `

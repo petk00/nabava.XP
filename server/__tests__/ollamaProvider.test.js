@@ -88,11 +88,37 @@ describe('OllamaProvider.chat', () => {
       .rejects.toThrow(/Ollama API greška \(500\)/);
   });
 
-  test('baca jasnu grešku kad Ollama uopće nije dostupan (mrežna greška)', async () => {
+  test('baca jasnu grešku kad Ollama uopće nije dostupan (mrežna greška NA OBA pokušaja)', async () => {
+    jest.useFakeTimers();
     global.fetch.mockRejectedValue(new Error('connect ECONNREFUSED'));
 
-    await expect(chat([{ role: 'user', content: 'test' }]))
+    const pending = expect(chat([{ role: 'user', content: 'test' }]))
       .rejects.toThrow(/Ollama nije dostupan/);
+    await jest.runAllTimersAsync();
+    await pending;
+
+    expect(global.fetch).toHaveBeenCalledTimes(2); // prvi pokušaj + 1 retry
+    jest.useRealTimers();
+  });
+
+  test('mrežna greška na PRVOM pokušaju, uspjeh na retry-u — vraća rezultat, ne baca grešku', async () => {
+    // Stvarnim eval runom (docs/eval-runs/2026-08-26-ollama-5x.md) potvrđeno:
+    // Ollamin scheduler zna usred rada reloadati model pod memorijskim
+    // pritiskom, prekidajući baš zahtjev koji je tad u tijeku ("fetch
+    // failed") — reload traje par sekundi, pa retry nakon kratke pauze
+    // uobičajeno uspije na drugi pokušaj.
+    jest.useFakeTimers();
+    global.fetch
+      .mockRejectedValueOnce(new Error('fetch failed'))
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ message: { content: 'Vidim sliku ponude...' } }) });
+
+    const pending = chat([{ role: 'user', content: 'test' }]);
+    await jest.runAllTimersAsync();
+    const result = await pending;
+
+    expect(result.text).toBe('Vidim sliku ponude...');
+    expect(global.fetch).toHaveBeenCalledTimes(2);
+    jest.useRealTimers();
   });
 
   test('baca jasnu grešku o isteku vremena kad fetch nikad ne odgovori (AbortError)', async () => {

@@ -177,7 +177,13 @@ describe('POST /api/assistant/chat — multipart s priloženim PDF-om', () => {
     expect(runAssistantChat).toHaveBeenCalledWith({
       messages: [{ role: 'user', content: 'Evo ponude.' }],
       userId: 2,
-      attachments: [{ filename: 'ponuda.pdf', kind: 'pdf', text: 'Ponuda: 5x Toner za pisač, Ukupno 93,75 EUR' }],
+      attachments: [{
+        filename: 'ponuda.pdf',
+        kind: 'pdf',
+        text: 'Ponuda: 5x Toner za pisač, Ukupno 93,75 EUR',
+        mimeType: 'application/pdf',
+        base64: Buffer.from('%PDF-1.4 fake').toString('base64'),
+      }],
     });
   });
 
@@ -200,8 +206,14 @@ describe('POST /api/assistant/chat — multipart s priloženim PDF-om', () => {
       messages: [{ role: 'user', content: 'Evo dvije ponude za usporedbu.' }],
       userId: 2,
       attachments: [
-        { filename: 'ponuda-a.pdf', kind: 'pdf', text: 'Dobavljač A: 5x laptop, 800 EUR/kom' },
-        { filename: 'ponuda-b.pdf', kind: 'pdf', text: 'Dobavljač B: 5x laptop, 750 EUR/kom' },
+        {
+          filename: 'ponuda-a.pdf', kind: 'pdf', text: 'Dobavljač A: 5x laptop, 800 EUR/kom',
+          mimeType: 'application/pdf', base64: Buffer.from('%PDF-1.4 a').toString('base64'),
+        },
+        {
+          filename: 'ponuda-b.pdf', kind: 'pdf', text: 'Dobavljač B: 5x laptop, 750 EUR/kom',
+          mimeType: 'application/pdf', base64: Buffer.from('%PDF-1.4 b').toString('base64'),
+        },
       ],
     });
   });
@@ -334,7 +346,10 @@ describe('POST /api/assistant/chat — multipart sa slikom ponude (vision, bez O
     expect(res.status).toBe(200);
     expect(extractQuoteText).toHaveBeenCalled();
     const call = runAssistantChat.mock.calls[0][0];
-    expect(call.attachments).toEqual([{ filename: 'krivo-nazvano.png', kind: 'pdf', text: 'tekst iz PDF-a' }]);
+    expect(call.attachments).toEqual([{
+      filename: 'krivo-nazvano.png', kind: 'pdf', text: 'tekst iz PDF-a',
+      mimeType: 'application/pdf', base64: Buffer.from('%PDF-1.4 stvarni pdf').toString('base64'),
+    }]);
   });
 
   test('PDF + slika u istoj poruci obrađuju se OBA i zadržavaju redoslijed u attachments', async () => {
@@ -356,7 +371,10 @@ describe('POST /api/assistant/chat — multipart sa slikom ponude (vision, bez O
       messages: [{ role: 'user', content: 'Evo ponude u PDF-u i jedne na slici.' }],
       userId: 2,
       attachments: [
-        { filename: 'ponuda-a.pdf', kind: 'pdf', text: 'Ponuda A tekst' },
+        {
+          filename: 'ponuda-a.pdf', kind: 'pdf', text: 'Ponuda A tekst',
+          mimeType: 'application/pdf', base64: Buffer.from('%PDF-1.4 a').toString('base64'),
+        },
         { filename: 'ponuda-b.png', kind: 'image', mimeType: 'image/png', base64: imgBuffer.toString('base64') },
       ],
     });
