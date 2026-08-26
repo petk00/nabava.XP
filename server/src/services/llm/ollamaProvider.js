@@ -92,15 +92,31 @@ async function chat(messages, tools = []) {
     body.tools = toOllamaTools(tools);
   }
 
+  // Za razliku od geminiProvider.js (30s), ovdje je limit namjerno velikodušan:
+  // stvarnim eval harness testiranjem (docs/eval-runs/) potvrđeno da gemma4:12b
+  // uz temperature:1 zna legitimno "razmišljati" nekoliko minuta (najduže
+  // uspješno opaženo ~8 min) — kratak timeout bi prekidao stvarne, samo spore
+  // odgovore. 10 min je sigurnosna mreža protiv prave patologije (opažen jedan
+  // slučaj ~40 min bez ikakvog napretka), ne protiv normalne spore generacije.
+  const REQUEST_TIMEOUT_MS = 10 * 60 * 1000;
+  const abortController = new AbortController();
+  const timeoutId = setTimeout(() => abortController.abort(), REQUEST_TIMEOUT_MS);
+
   let res;
   try {
     res = await fetch(`${baseUrl}/api/chat`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
+      signal: abortController.signal,
     });
   } catch (networkError) {
+    if (networkError.name === 'AbortError') {
+      throw new Error(`Ollama nije odgovorio u ${REQUEST_TIMEOUT_MS / 60000} min.`);
+    }
     throw new Error(`Ollama nije dostupan na ${baseUrl}: ${networkError.message}`);
+  } finally {
+    clearTimeout(timeoutId);
   }
 
   if (!res.ok) {

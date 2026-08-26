@@ -94,6 +94,27 @@ describe('OllamaProvider.chat', () => {
     await expect(chat([{ role: 'user', content: 'test' }]))
       .rejects.toThrow(/Ollama nije dostupan/);
   });
+
+  test('baca jasnu grešku o isteku vremena kad fetch nikad ne odgovori (AbortError)', async () => {
+    // Stvarnim eval harness testiranjem opaženo: povremeno (temperature:1)
+    // gemma4:12b zna "razmišljati" jako dugo bez ikakvog napretka — bez
+    // timeouta takav zahtjev visi neograničeno.
+    jest.useFakeTimers();
+    global.fetch.mockImplementation((url, options) => new Promise((resolve, reject) => {
+      options.signal.addEventListener('abort', () => {
+        const err = new Error('This operation was aborted');
+        err.name = 'AbortError';
+        reject(err);
+      });
+    }));
+
+    const pending = expect(chat([{ role: 'user', content: 'test' }]))
+      .rejects.toThrow(/Ollama nije odgovorio u 10 min/);
+    await jest.advanceTimersByTimeAsync(10 * 60 * 1000);
+    await pending;
+
+    jest.useRealTimers();
+  });
 });
 
 describe('OllamaProvider.chat — tool-calling', () => {
