@@ -991,3 +991,21 @@ describe('runAssistantChat — cross-turn kočnica protiv dvostrukog create_requ
     expect(parsed.already_created_earlier).toBeUndefined();
   });
 });
+
+describe('runAssistantChat — finalni tekst prolazi kroz fixEkavica (safety net za ekavicu/srbizme)', () => {
+  test('poznata ekavica riječ u modelovom odgovoru se ispravi prije nego stigne korisniku', async () => {
+    // Stvarnim testom opaženo: gemma4:12b zna proklizniti na ekavicu unatoč
+    // eksplicitnoj uputi u system promptu (docs/AI.md) — ovo je determinstički
+    // ispravak koji se primjenjuje na SVAKI finalni tekstualni odgovor.
+    mockReferenceContext();
+    const chat = jest.fn().mockResolvedValue({
+      text: 'Vaš zahtev za nabavu je uspješno kreiran. Broj zahtjeva je NAB-2026-0095.',
+      tool_calls: null,
+    });
+    getActiveProvider.mockResolvedValue({ chat });
+
+    const result = await runAssistantChat({ messages: [{ role: 'user', content: 'Bok' }], userId: 2 });
+
+    expect(result.text).toBe('Vaš zahtjev za nabavu je uspješno kreiran. Broj zahtjeva je NAB-2026-0095.');
+  });
+});

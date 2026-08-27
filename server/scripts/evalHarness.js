@@ -28,6 +28,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const http = require('node:http');
 const { SCENARIOS } = require('./evalScenarios');
 
 const BASE_URL = process.env.EVAL_BASE_URL || 'http://localhost:3000';
@@ -37,6 +38,52 @@ const ADMIN_EMAIL = process.env.EVAL_ADMIN_EMAIL || null;
 const ADMIN_PASSWORD = process.env.EVAL_ADMIN_PASSWORD || null;
 const OLLAMA_BASE_URL = process.env.OLLAMA_BASE_URL || 'http://localhost:11434';
 const OLLAMA_MODEL_NAME = 'gemma4:12b'; // vidi ollamaProvider.js OLLAMA_MODEL
+
+// Node-ov fetch (undici) ima tvrdi default headersTimeout/bodyTimeout od
+// 300000ms (5 min), kraći od backendova VLASTITOG 10-min budžeta za čekanje
+// na Ollamu (ollamaProvider.js REQUEST_TIMEOUT_MS) — spor ali uredan odgovor
+// (npr. scenariji s više priloga) zato ispadne kao "fetch failed" iako
+// backend nikad nije ni pao. Taj se limit ne može pouzdano nadjačati preko
+// fetch()-ove "dispatcher" opcije (isprobano: vanjski 'undici' paket kao
+// dispatcher baca UND_ERR_INVALID_ARG zbog neusklađenosti internih
+// handler-sučelja s undici-jem ugrađenim u ovu Node verziju), pa poziv prema
+// /api/assistant/chat ide preko node:http izravno — taj modul nema takav
+// default, čeka koliko mu kažemo preko "timeout" opcije.
+const CHAT_FETCH_TIMEOUT_MS = 11 * 60 * 1000;
+
+/** POST prema /api/assistant/chat preko node:http (vidi napomenu gore zašto ne fetch). */
+function postChat({ headers, bodyBuffer }) {
+  return new Promise((resolve, reject) => {
+    const url = new URL(`${BASE_URL}/api/assistant/chat`);
+    const req = http.request(
+      {
+        hostname: url.hostname,
+        port: url.port || 80,
+        path: url.pathname,
+        method: 'POST',
+        headers: { ...headers, 'Content-Length': bodyBuffer.length },
+        timeout: CHAT_FETCH_TIMEOUT_MS,
+      },
+      (res) => {
+        const chunks = [];
+        res.on('data', (chunk) => chunks.push(chunk));
+        res.on('end', () => {
+          const text = Buffer.concat(chunks).toString('utf8');
+          resolve({
+            status: res.statusCode,
+            ok: res.statusCode >= 200 && res.statusCode < 300,
+            statusText: res.statusMessage,
+            json: async () => JSON.parse(text),
+          });
+        });
+      }
+    );
+    req.on('timeout', () => req.destroy(new Error(`Backend nije odgovorio u ${CHAT_FETCH_TIMEOUT_MS / 60000} min.`)));
+    req.on('error', reject);
+    req.write(bodyBuffer);
+    req.end();
+  });
+}
 
 function parseArgs() {
   const args = { provider: process.env.EVAL_PROVIDER || 'ollama', only: null, repeat: null };
@@ -115,7 +162,12 @@ async function getOllamaTemperatureNote() {
   }
 }
 
-function buildAttachmentsFormData(turnText, attachmentPaths) {
+/**
+ * Gradi multipart/form-data tijelo za prvi turn (prilozi). Koristi FormData/
+ * Response samo kao serijalizator u memoriji (bez mreže) da dobijemo ispravno
+ * enkodirane bajtove + boundary za slanje preko node:http (vidi postChat).
+ */
+async function buildAttachmentsBody(turnText, attachmentPaths) {
   const form = new FormData();
   form.append('messages', JSON.stringify([{ role: 'user', content: turnText }]));
   for (const filePath of attachmentPaths) {
@@ -124,7 +176,10 @@ function buildAttachmentsFormData(turnText, attachmentPaths) {
     const buffer = fs.readFileSync(filePath);
     form.append('file', new File([buffer], path.basename(filePath), { type: mimeType }));
   }
-  return form;
+  const serialized = new Response(form);
+  const bodyBuffer = Buffer.from(await serialized.arrayBuffer());
+  const contentType = serialized.headers.get('content-type');
+  return { bodyBuffer, contentType };
 }
 
 /** Skenira tool_trace za propose_request/create_request pozive (samo bilježenje, ne bodovanje). */
@@ -181,18 +236,17 @@ async function runOneAttempt(scenario, token, provider, attemptNumber) {
 
       let res;
       if (hasAttachments) {
-        const form = buildAttachmentsFormData(turnText, scenario.attachments);
-        res = await fetch(`${BASE_URL}/api/assistant/chat`, {
-          method: 'POST',
-          headers: { Authorization: `Bearer ${token}` },
-          body: form,
+        const { bodyBuffer, contentType } = await buildAttachmentsBody(turnText, scenario.attachments);
+        res = await postChat({
+          headers: { Authorization: `Bearer ${token}`, 'Content-Type': contentType },
+          bodyBuffer,
         });
       } else {
         conversation.push({ role: 'user', content: turnText });
-        res = await fetch(`${BASE_URL}/api/assistant/chat`, {
-          method: 'POST',
+        const bodyBuffer = Buffer.from(JSON.stringify({ messages: conversation }), 'utf8');
+        res = await postChat({
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-          body: JSON.stringify({ messages: conversation }),
+          bodyBuffer,
         });
       }
 
