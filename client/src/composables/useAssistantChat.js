@@ -20,6 +20,9 @@ import { getStoredUser } from 'src/utils/authStorage';
 
 const PROVIDER_LABELS = { ollama: 'Ollama (lokalno)', gemini: 'Gemini' };
 
+// Mora se poklapati s MAX_QUOTE_FILES u server/src/routes/assistantRoutes.js.
+const MAX_QUOTE_FILES = 5;
+
 const PROVIDER_OPTIONS = [
   { value: 'ollama', label: 'Ollama (lokalno)' },
   { value: 'gemini', label: 'Gemini' },
@@ -46,9 +49,9 @@ export function useAssistantChat() {
   const assistantBodyEl = ref(null);
   const chatLoading = ref(false);
 
-  // ── Prilog (PDF/slika ponude) ──
-  const pendingFile = ref(null); // File|null — čeka slanje, korisnik ga još može ukloniti
-  const fileInputModel = ref(null); // v-model za skriveni <q-file>, uvijek se odmah isprazni
+  // ── Prilozi (PDF/slika ponude, do MAX_QUOTE_FILES odjednom) ──
+  const pendingFiles = ref([]); // File[] — čekaju slanje, korisnik ih još može ukloniti pojedinačno
+  const fileInputModel = ref(null); // v-model za skriveni <q-file multiple>, uvijek se odmah isprazni
 
   // ── AI provider toggle (admin-only na backendu) ──
   const currentProvider = ref(null);
@@ -67,36 +70,41 @@ export function useAssistantChat() {
     }
   }
 
-  function attachFile(file) {
-    if (!file) return;
-    pendingFile.value = file;
+  function attachFiles(files) {
+    if (!files) return;
+    const list = Array.isArray(files) ? files : [files];
+    const room = MAX_QUOTE_FILES - pendingFiles.value.length;
+    if (room <= 0) return;
+    pendingFiles.value.push(...list.slice(0, room));
   }
 
-  function removeAttachedFile() {
-    pendingFile.value = null;
+  function removeAttachedFile(index) {
+    pendingFiles.value.splice(index, 1);
   }
 
-  function onFilePicked(file) {
-    if (file) attachFile(file);
+  function onFilePicked(files) {
+    attachFiles(files);
     fileInputModel.value = null;
   }
 
   function handleDrop(event) {
-    const file = event.dataTransfer?.files?.[0];
-    if (file) attachFile(file);
+    const files = event.dataTransfer?.files;
+    if (files && files.length > 0) attachFiles(Array.from(files));
   }
 
-  /** Šalje trenutnu conversationHistory (+ eventualni pendingFile) backendu i obrađuje odgovor. */
+  /** Šalje trenutnu conversationHistory (+ eventualne pendingFiles) backendu i obrađuje odgovor. */
   async function sendToBackend() {
     chatLoading.value = true;
     await scrollAssistantToBottom();
 
     try {
       let response;
-      if (pendingFile.value) {
+      if (pendingFiles.value.length > 0) {
         const formData = new FormData();
         formData.append('messages', JSON.stringify(conversationHistory.value));
-        formData.append('file', pendingFile.value);
+        for (const file of pendingFiles.value) {
+          formData.append('file', file);
+        }
         response = await api.post('/assistant/chat', formData, {
           headers: { 'Content-Type': 'multipart/form-data' },
         });
@@ -124,7 +132,7 @@ export function useAssistantChat() {
       chatMessages.value.push({ from: 'bot', text: resolveErrorMessage(error) });
       return { error: true };
     } finally {
-      pendingFile.value = null;
+      pendingFiles.value = [];
       chatLoading.value = false;
       await scrollAssistantToBottom();
     }
@@ -132,7 +140,7 @@ export function useAssistantChat() {
 
   async function submitAsk() {
     if (chatLoading.value) return;
-    const text = askInput.value.trim() || (pendingFile.value ? 'Evo priložene ponude.' : '');
+    const text = askInput.value.trim() || (pendingFiles.value.length > 0 ? 'Evo priloženih ponuda.' : '');
     if (!text) return;
 
     askInput.value = '';
@@ -145,7 +153,7 @@ export function useAssistantChat() {
 
   async function sendChatMessage() {
     if (chatLoading.value) return;
-    const text = chatInput.value.trim() || (pendingFile.value ? 'Evo priložene ponude.' : '');
+    const text = chatInput.value.trim() || (pendingFiles.value.length > 0 ? 'Evo priloženih ponuda.' : '');
     if (!text) return;
 
     chatMessages.value.push({ from: 'user', text });
@@ -157,7 +165,7 @@ export function useAssistantChat() {
 
   function closeAssistant() {
     askOpen.value = false;
-    pendingFile.value = null;
+    pendingFiles.value = [];
   }
 
   async function loadProviderSettings() {
@@ -188,10 +196,10 @@ export function useAssistantChat() {
     chatMessages,
     assistantBodyEl,
     chatLoading,
-    // prilog
-    pendingFile,
+    // prilozi
+    pendingFiles,
     fileInputModel,
-    attachFile,
+    attachFiles,
     removeAttachedFile,
     onFilePicked,
     handleDrop,

@@ -20,6 +20,7 @@
 const db = require('../config/db');
 const { getActiveProvider } = require('./llm/providerSelector');
 const { createRequest, proposeRequest, RequestValidationError } = require('./requestService');
+const { fixEkavica } = require('./croatianTextFixer');
 
 const MAX_ITERATIONS = 6;
 
@@ -145,7 +146,14 @@ const PROPOSE_REQUEST_TOOL = {
   parameters: REQUEST_PARAMETERS_SCHEMA,
 };
 
-const BASE_SYSTEM_PROMPT = `Ti si AI asistent za nabavu na Veleučilištu u Rijeci, unutar sustava nabava.XP.
+const BASE_SYSTEM_PROMPT = `JEZIK (NAJVAŽNIJE PRAVILO, provjeri PRIJE svakog slanja odgovora): odgovaraj
+ISKLJUČIVO na standardnom hrvatskom jeziku, ijekavicom. NIKAD ekavica, NIKAD srbizmi. Primjeri ispravno/
+POGREŠNO: "zahtjev"/NE "zahtev", "vrijeme"/NE "vreme", "mjesto"/NE "mesto", "cijena"/NE "cena", "dio"/NE
+"deo", "mlijeko"/NE "mleko", "prije"/NE "pre", "razumijem"/NE "razumem", "uvjet"/NE "uslov", "obavijest"/
+NE "obaveštenje". Prije nego pošalješ ijedan odgovor, u sebi provjeri sadrži li ijednu ekavicu/srbizam
+riječ i ako da, ispravi je — ovo vrijedi za SVAKU riječ u SVAKOM tvom odgovoru, ne samo za primjere gore.
+
+Ti si AI asistent za nabavu na Veleučilištu u Rijeci, unutar sustava nabava.XP.
 Pomažeš prijavljenom korisniku kreirati zahtjev za nabavu razgovorom.
 
 Pravila:
@@ -156,9 +164,7 @@ Pravila:
 - Alat create_request pozovi TEK KADA imaš sve obavezne podatke.
 - Kad alat vrati grešku, objasni korisniku problem jednostavnim riječima i zatraži ispravan podatak —
   ne odustaj od razgovora.
-- Kad alat uspije, potvrdi korisniku broj kreiranog zahtjeva kratkom rečenicom.
-- Odgovaraj isključivo na standardnom hrvatskom jeziku (ijekavica) — npr. "zahtjev", "vrijeme", "mjesto",
-  NIKAD ekavica ili srbizmi (npr. "zahtev", "vreme", "mesto").`;
+- Kad alat uspije, potvrdi korisniku broj kreiranog zahtjeva kratkom rečenicom.`;
 
 async function loadReferenceContext() {
   const [fyRows] = await db.query(
@@ -452,7 +458,7 @@ async function runAssistantChat({ messages, userId, attachments = [] }) {
 
     if (!result.tool_calls || result.tool_calls.length === 0) {
       if (result.text && result.text.trim()) {
-        return { text: result.text, created_request: createdRequest, tool_trace: toolTrace, usage };
+        return { text: fixEkavica(result.text), created_request: createdRequest, tool_trace: toolTrace, usage };
       }
       // Model nije vratio ni tekst ni tool_call (npr. generacija prekinuta
       // prije završetka — potvrđeno stvarnim testom s gemma4:12b i opsežnim

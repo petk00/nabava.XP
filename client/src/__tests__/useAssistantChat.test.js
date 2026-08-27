@@ -135,13 +135,13 @@ describe('prikaz grešaka — mreža/HTTP, UI se ne ruši', () => {
 });
 
 describe('slanje s prilogom (PDF/slika ponude)', () => {
-  test('attachFile + submitAsk šalje multipart FormData s "messages" i "file"', async () => {
+  test('attachFiles + submitAsk šalje multipart FormData s "messages" i "file"', async () => {
     api.post.mockResolvedValue({ data: { text: 'Analiziram ponudu...', created_request: null, tool_trace: [] } });
 
     const chat = useAssistantChat();
     const file = new File(['%PDF-1.4 fake'], 'ponuda.pdf', { type: 'application/pdf' });
-    chat.attachFile(file);
-    expect(chat.pendingFile.value).toBe(file);
+    chat.attachFiles(file);
+    expect(chat.pendingFiles.value).toEqual([file]);
 
     chat.askInput.value = 'Evo ponude.';
     await chat.submitAsk();
@@ -155,14 +155,38 @@ describe('slanje s prilogom (PDF/slika ponude)', () => {
     expect(sentFormData.get('file')).toBe(file);
     expect(JSON.parse(sentFormData.get('messages'))).toEqual([{ role: 'user', content: 'Evo ponude.' }]);
 
-    // prilog se briše nakon slanja
-    expect(chat.pendingFile.value).toBeNull();
+    // prilozi se brišu nakon slanja
+    expect(chat.pendingFiles.value).toEqual([]);
+  });
+
+  test('VIŠE priloga odjednom — svi idu pod isto "file" polje, redoslijedom', async () => {
+    api.post.mockResolvedValue({ data: { text: 'Uspoređujem ponude...', created_request: null, tool_trace: [] } });
+
+    const chat = useAssistantChat();
+    const fileA = new File(['a'], 'ponuda-a.pdf', { type: 'application/pdf' });
+    const fileB = new File(['b'], 'ponuda-b.pdf', { type: 'application/pdf' });
+    chat.attachFiles([fileA, fileB]);
+    expect(chat.pendingFiles.value).toEqual([fileA, fileB]);
+
+    chat.askInput.value = 'Evo dvije ponude.';
+    await chat.submitAsk();
+
+    const sentFormData = api.post.mock.calls[0][1];
+    expect(sentFormData.getAll('file')).toEqual([fileA, fileB]);
+  });
+
+  test('attachFiles pušta najviše MAX_QUOTE_FILES (5) priloga, višak se ignorira', () => {
+    const chat = useAssistantChat();
+    const files = Array.from({ length: 7 }, (_, i) => new File(['x'], `ponuda-${i}.pdf`, { type: 'application/pdf' }));
+    chat.attachFiles(files);
+
+    expect(chat.pendingFiles.value).toHaveLength(5);
   });
 
   test('prazan tekst uz prilog automatski dobiva razumnu poruku', async () => {
     api.post.mockResolvedValue({ data: { text: 'ok', created_request: null, tool_trace: [] } });
     const chat = useAssistantChat();
-    chat.attachFile(new File(['x'], 'ponuda.pdf', { type: 'application/pdf' }));
+    chat.attachFiles(new File(['x'], 'ponuda.pdf', { type: 'application/pdf' }));
     chat.askInput.value = '';
     await chat.submitAsk();
 
@@ -172,30 +196,33 @@ describe('slanje s prilogom (PDF/slika ponude)', () => {
     expect(sentMessages[0].content).toBeTruthy();
   });
 
-  test('removeAttachedFile uklanja prilog prije slanja', () => {
+  test('removeAttachedFile uklanja SAMO odabrani prilog (po indeksu) prije slanja', () => {
     const chat = useAssistantChat();
-    chat.attachFile(new File(['x'], 'ponuda.pdf', { type: 'application/pdf' }));
-    expect(chat.pendingFile.value).not.toBeNull();
-    chat.removeAttachedFile();
-    expect(chat.pendingFile.value).toBeNull();
+    const fileA = new File(['a'], 'ponuda-a.pdf', { type: 'application/pdf' });
+    const fileB = new File(['b'], 'ponuda-b.pdf', { type: 'application/pdf' });
+    chat.attachFiles([fileA, fileB]);
+
+    chat.removeAttachedFile(0);
+    expect(chat.pendingFiles.value).toEqual([fileB]);
   });
 
-  test('onFilePicked (iz q-file v-model) postavlja pendingFile i prazni fileInputModel', () => {
+  test('onFilePicked (iz q-file multiple v-model) dodaje pendingFiles i prazni fileInputModel', () => {
     const chat = useAssistantChat();
-    const file = new File(['x'], 'ponuda.pdf', { type: 'application/pdf' });
-    chat.fileInputModel.value = file;
-    chat.onFilePicked(file);
+    const files = [new File(['x'], 'ponuda.pdf', { type: 'application/pdf' })];
+    chat.fileInputModel.value = files;
+    chat.onFilePicked(files);
 
-    expect(chat.pendingFile.value).toBe(file);
+    expect(chat.pendingFiles.value).toEqual(files);
     expect(chat.fileInputModel.value).toBeNull();
   });
 
-  test('handleDrop (drag&drop) postavlja pendingFile iz dataTransfer', () => {
+  test('handleDrop (drag&drop) dodaje SVE datoteke iz dataTransfer', () => {
     const chat = useAssistantChat();
-    const file = new File(['x'], 'ponuda.pdf', { type: 'application/pdf' });
-    chat.handleDrop({ dataTransfer: { files: [file] } });
+    const fileA = new File(['a'], 'ponuda-a.pdf', { type: 'application/pdf' });
+    const fileB = new File(['b'], 'ponuda-b.pdf', { type: 'application/pdf' });
+    chat.handleDrop({ dataTransfer: { files: [fileA, fileB] } });
 
-    expect(chat.pendingFile.value).toBe(file);
+    expect(chat.pendingFiles.value).toEqual([fileA, fileB]);
   });
 });
 
@@ -211,7 +238,7 @@ describe('tool_trace — mora se vratiti u idućem zahtjevu (strukturna brava pr
     });
 
     const chat = useAssistantChat();
-    chat.attachFile(new File(['x'], 'ponuda.pdf', { type: 'application/pdf' }));
+    chat.attachFiles(new File(['x'], 'ponuda.pdf', { type: 'application/pdf' }));
     chat.askInput.value = 'Evo ponude.';
     await chat.submitAsk();
 
