@@ -17,6 +17,7 @@
           <q-icon name="add" size="20px" />
           <q-file
             v-model="fileInputModel"
+            multiple
             accept=".pdf,image/*"
             style="display:none"
             @update:model-value="onFilePicked"
@@ -56,12 +57,18 @@
         </div>
       </div>
 
-      <div v-if="pendingFile && !askOpen" class="pending-file-chip">
-        <q-icon name="attach_file" size="14px" />
-        <span class="pending-file-chip__name">{{ pendingFile.name }}</span>
-        <button type="button" aria-label="Ukloni prilog" @click="removeAttachedFile">
-          <q-icon name="close" size="14px" />
-        </button>
+      <div v-if="pendingFiles.length > 0 && !askOpen" class="pending-file-chip-row">
+        <div
+          v-for="(file, idx) in pendingFiles"
+          :key="file.name + idx"
+          class="pending-file-chip"
+        >
+          <q-icon name="attach_file" size="14px" />
+          <span class="pending-file-chip__name">{{ file.name }}</span>
+          <button type="button" aria-label="Ukloni prilog" @click="removeAttachedFile(idx)">
+            <q-icon name="close" size="14px" />
+          </button>
+        </div>
       </div>
 
       <div v-if="loading" class="loading-block">
@@ -168,15 +175,31 @@
         </div>
       </div>
 
-      <div v-if="pendingFile" class="pending-file-chip pending-file-chip--overlay">
-        <q-icon name="attach_file" size="14px" />
-        <span class="pending-file-chip__name">{{ pendingFile.name }}</span>
-        <button type="button" aria-label="Ukloni prilog" @click="removeAttachedFile">
-          <q-icon name="close" size="14px" />
-        </button>
+      <div v-if="pendingFiles.length > 0" class="pending-file-chip-row pending-file-chip-row--overlay">
+        <div
+          v-for="(file, idx) in pendingFiles"
+          :key="file.name + idx"
+          class="pending-file-chip pending-file-chip--overlay"
+        >
+          <q-icon name="attach_file" size="14px" />
+          <span class="pending-file-chip__name">{{ file.name }}</span>
+          <button type="button" aria-label="Ukloni prilog" @click="removeAttachedFile(idx)">
+            <q-icon name="close" size="14px" />
+          </button>
+        </div>
       </div>
 
       <form class="assistant-overlay__form" @submit.prevent="sendChatMessage">
+        <label class="assistant-overlay__attach-btn" aria-label="Dodaj prilog">
+          <q-icon name="add" size="20px" />
+          <q-file
+            v-model="fileInputModel"
+            multiple
+            accept=".pdf,image/*"
+            style="display:none"
+            @update:model-value="onFilePicked"
+          />
+        </label>
         <input
           v-model="chatInput"
           type="text"
@@ -209,7 +232,7 @@ const {
   chatMessages,
   assistantBodyEl,
   chatLoading,
-  pendingFile,
+  pendingFiles,
   fileInputModel,
   removeAttachedFile,
   onFilePicked,
@@ -417,13 +440,28 @@ onMounted(async () => {
   background: #f0fbfe;
 }
 
-/* ── Prilog uz poruku (nov element, ne mijenja postojeći ask-bar/overlay stil) ── */
+/* ── Prilozi uz poruku (do MAX_QUOTE_FILES odjednom, nov element, ne mijenja
+      postojeći ask-bar/overlay stil) ── */
+.pending-file-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px;
+  margin: -14px auto 20px;
+}
+
+.pending-file-chip-row--overlay {
+  margin: 0 auto 8px;
+  max-width: 720px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
 .pending-file-chip {
   display: flex;
   align-items: center;
   gap: 6px;
   width: fit-content;
-  margin: -14px auto 20px;
   padding: 4px 10px;
   background: #f0fbfe;
   border-radius: 999px;
@@ -443,13 +481,6 @@ onMounted(async () => {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.pending-file-chip--overlay {
-  margin: 0 auto 8px;
-  max-width: 720px;
-  width: 100%;
-  box-sizing: border-box;
 }
 
 /* ── Card grid ── */
@@ -830,6 +861,25 @@ onMounted(async () => {
   margin: 0 auto;
   box-sizing: border-box;
   padding: 16px 24px 24px;
+}
+
+.assistant-overlay__attach-btn {
+  all: unset;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  color: #6b7280;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.15s, color 0.15s;
+}
+
+.assistant-overlay__attach-btn:hover {
+  background: #f0fbfe;
+  color: #00afdb;
 }
 
 .assistant-overlay__input {
