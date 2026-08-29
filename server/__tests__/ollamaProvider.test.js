@@ -1,29 +1,102 @@
 /**
  * Unit testovi: OllamaProvider (docs/AI.md, Faza 1).
- * global.fetch je mockan — ne gađa pravi Ollama.
+ * node:http je mockan — ne gađa pravi Ollama. (2026-08-29: chat() koristi
+ * node:http/https umjesto fetch() — undici-jev tvrd 5-min headersTimeout je
+ * lažno prekidao spore, ali uredne odgovore prije REQUEST_TIMEOUT_MS-a, vidi
+ * ollamaProvider.js komentar iznad performChatRequest.)
  */
+
+const http = require('node:http');
+
+jest.mock('node:http');
 
 const { chat } = require('../src/services/llm/ollamaProvider');
 
 const ORIGINAL_ENV = process.env;
-const ORIGINAL_FETCH = global.fetch;
 
 beforeEach(() => {
   process.env = { ...ORIGINAL_ENV };
-  global.fetch = jest.fn();
+  http.request.mockReset();
 });
 
 afterAll(() => {
   process.env = ORIGINAL_ENV;
-  global.fetch = ORIGINAL_FETCH;
 });
+
+/** Simulira uspješan http.request poziv — vraća zadani JSON body. */
+function mockHttpSuccessOnce(bodyObj, { status = 200, statusText = 'OK' } = {}) {
+  http.request.mockImplementationOnce((options, callback) => {
+    const resListeners = {};
+    const res = {
+      statusCode: status,
+      statusMessage: statusText,
+      on: (event, cb) => {
+        resListeners[event] = cb;
+      },
+    };
+    const req = {
+      on: jest.fn(),
+      write: jest.fn(),
+      end: jest.fn(),
+      destroy: jest.fn(),
+    };
+    Promise.resolve().then(() => {
+      callback(res);
+      resListeners.data(Buffer.from(JSON.stringify(bodyObj)));
+      resListeners.end();
+    });
+    return req;
+  });
+}
+
+/** Simulira mrežnu grešku (npr. ECONNREFUSED) — req emitira 'error'. */
+function mockHttpErrorOnce(err) {
+  http.request.mockImplementationOnce(() => {
+    const listeners = {};
+    const req = {
+      on: jest.fn((event, cb) => {
+        listeners[event] = cb;
+      }),
+      write: jest.fn(),
+      end: jest.fn(),
+      destroy: jest.fn(),
+    };
+    Promise.resolve().then(() => listeners.error && listeners.error(err));
+    return req;
+  });
+}
+
+/** Simulira istek REQUEST_TIMEOUT_MS-a — req emitira 'timeout', pa (stvarnim kodom) destroy(TimeoutError) -> 'error'. */
+function mockHttpTimeoutOnce() {
+  http.request.mockImplementationOnce(() => {
+    const listeners = {};
+    const req = {
+      on: jest.fn((event, cb) => {
+        listeners[event] = cb;
+      }),
+      write: jest.fn(),
+      end: jest.fn(),
+      destroy: jest.fn((err) => listeners.error && listeners.error(err)),
+    };
+    Promise.resolve().then(() => listeners.timeout && listeners.timeout());
+    return req;
+  });
+}
+
+function lastRequestBody() {
+  const writeCalls = http.request.mock.results.map((r) => r.value.write.mock.calls[0]?.[0]);
+  const lastBuffer = writeCalls[writeCalls.length - 1];
+  return JSON.parse(lastBuffer.toString('utf8'));
+}
+
+function lastRequestOptions() {
+  const calls = http.request.mock.calls;
+  return calls[calls.length - 1][0];
+}
 
 describe('OllamaProvider.chat', () => {
   test('vraća text iz message.content na uspješan odgovor', async () => {
-    global.fetch.mockResolvedValue({
-      ok: true,
-      json: async () => ({ message: { content: 'Bok! Kako mogu pomoći?' } }),
-    });
+    mockHttpSuccessOnce({ message: { content: 'Bok! Kako mogu pomoći?' } });
 
     const result = await chat([{ role: 'user', content: 'Bok' }]);
 
@@ -35,14 +108,7 @@ describe('OllamaProvider.chat', () => {
   });
 
   test('vraća prompt/completion tokene iz prompt_eval_count/eval_count', async () => {
-    global.fetch.mockResolvedValue({
-      ok: true,
-      json: async () => ({
-        message: { content: 'ok' },
-        prompt_eval_count: 19,
-        eval_count: 142,
-      }),
-    });
+    mockHttpSuccessOnce({ message: { content: 'ok' }, prompt_eval_count: 19, eval_count: 142 });
 
     const result = await chat([{ role: 'user', content: 'Bok' }]);
 
@@ -51,95 +117,96 @@ describe('OllamaProvider.chat', () => {
 
   test('zove default localhost:11434 kad OLLAMA_BASE_URL nije postavljen', async () => {
     delete process.env.OLLAMA_BASE_URL;
-    global.fetch.mockResolvedValue({ ok: true, json: async () => ({ message: { content: 'ok' } }) });
+    mockHttpSuccessOnce({ message: { content: 'ok' } });
 
     await chat([{ role: 'user', content: 'test' }]);
 
-    expect(global.fetch).toHaveBeenCalledWith(
-      'http://localhost:11434/api/chat',
-      expect.objectContaining({ method: 'POST' })
+    const options = lastRequestOptions();
+    expect(options).toEqual(
+      expect.objectContaining({ hostname: 'localhost', port: '11434', path: '/api/chat', method: 'POST' })
     );
   });
 
   test('poštuje OLLAMA_BASE_URL iz env-a i šalje model gemma4:12b', async () => {
     process.env.OLLAMA_BASE_URL = 'http://ollama-host:11434';
-    global.fetch.mockResolvedValue({ ok: true, json: async () => ({ message: { content: 'ok' } }) });
+    mockHttpSuccessOnce({ message: { content: 'ok' } });
 
     await chat([{ role: 'user', content: 'test' }]);
 
-    expect(global.fetch).toHaveBeenCalledWith(
-      'http://ollama-host:11434/api/chat',
-      expect.objectContaining({ method: 'POST' })
-    );
-    const body = JSON.parse(global.fetch.mock.calls[0][1].body);
+    const options = lastRequestOptions();
+    expect(options).toEqual(expect.objectContaining({ hostname: 'ollama-host', port: '11434', method: 'POST' }));
+    const body = lastRequestBody();
     expect(body.model).toBe('gemma4:12b');
     expect(body.stream).toBe(false);
   });
 
   test('baca grešku kad Ollama vrati ne-ok status', async () => {
-    global.fetch.mockResolvedValue({
-      ok: false,
-      status: 500,
-      statusText: 'Internal Server Error',
-      text: async () => 'model not loaded',
+    http.request.mockImplementationOnce((options, callback) => {
+      const resListeners = {};
+      const res = {
+        statusCode: 500,
+        statusMessage: 'Internal Server Error',
+        on: (event, cb) => {
+          resListeners[event] = cb;
+        },
+      };
+      const req = { on: jest.fn(), write: jest.fn(), end: jest.fn(), destroy: jest.fn() };
+      Promise.resolve().then(() => {
+        callback(res);
+        resListeners.data(Buffer.from('model not loaded'));
+        resListeners.end();
+      });
+      return req;
     });
 
-    await expect(chat([{ role: 'user', content: 'test' }]))
-      .rejects.toThrow(/Ollama API greška \(500\)/);
+    await expect(chat([{ role: 'user', content: 'test' }])).rejects.toThrow(/Ollama API greška \(500\)/);
   });
 
   test('baca jasnu grešku kad Ollama uopće nije dostupan (mrežna greška NA OBA pokušaja)', async () => {
     jest.useFakeTimers();
-    global.fetch.mockRejectedValue(new Error('connect ECONNREFUSED'));
+    mockHttpErrorOnce(new Error('connect ECONNREFUSED'));
+    mockHttpErrorOnce(new Error('connect ECONNREFUSED'));
 
-    const pending = expect(chat([{ role: 'user', content: 'test' }]))
-      .rejects.toThrow(/Ollama nije dostupan/);
+    const pending = expect(chat([{ role: 'user', content: 'test' }])).rejects.toThrow(/Ollama nije dostupan/);
     await jest.runAllTimersAsync();
     await pending;
 
-    expect(global.fetch).toHaveBeenCalledTimes(2); // prvi pokušaj + 1 retry
+    expect(http.request).toHaveBeenCalledTimes(2); // prvi pokušaj + 1 retry
     jest.useRealTimers();
   });
 
   test('mrežna greška na PRVOM pokušaju, uspjeh na retry-u — vraća rezultat, ne baca grešku', async () => {
     // Stvarnim eval runom (docs/eval-runs/2026-08-26-ollama-5x.md) potvrđeno:
     // Ollamin scheduler zna usred rada reloadati model pod memorijskim
-    // pritiskom, prekidajući baš zahtjev koji je tad u tijeku ("fetch
-    // failed") — reload traje par sekundi, pa retry nakon kratke pauze
-    // uobičajeno uspije na drugi pokušaj.
+    // pritiskom, prekidajući baš zahtjev koji je tad u tijeku — reload traje
+    // par sekundi, pa retry nakon kratke pauze uobičajeno uspije.
     jest.useFakeTimers();
-    global.fetch
-      .mockRejectedValueOnce(new Error('fetch failed'))
-      .mockResolvedValueOnce({ ok: true, json: async () => ({ message: { content: 'Vidim sliku ponude...' } }) });
+    mockHttpErrorOnce(new Error('fetch failed'));
+    mockHttpSuccessOnce({ message: { content: 'Vidim sliku ponude...' } });
 
     const pending = chat([{ role: 'user', content: 'test' }]);
     await jest.runAllTimersAsync();
     const result = await pending;
 
     expect(result.text).toBe('Vidim sliku ponude...');
-    expect(global.fetch).toHaveBeenCalledTimes(2);
+    expect(http.request).toHaveBeenCalledTimes(2);
     jest.useRealTimers();
   });
 
-  test('baca jasnu grešku o isteku vremena kad fetch nikad ne odgovori (AbortError)', async () => {
+  test('baca jasnu grešku o isteku vremena kad Ollama nikad ne odgovori (TimeoutError, JEDAN neprekinut pokušaj)', async () => {
     // Stvarnim eval harness testiranjem opaženo: povremeno (temperature:1)
     // gemma4:12b zna "razmišljati" jako dugo bez ikakvog napretka — bez
-    // timeouta takav zahtjev visi neograničeno.
-    jest.useFakeTimers();
-    global.fetch.mockImplementation((url, options) => new Promise((resolve, reject) => {
-      options.signal.addEventListener('abort', () => {
-        const err = new Error('This operation was aborted');
-        err.name = 'AbortError';
-        reject(err);
-      });
-    }));
+    // timeouta takav zahtjev visi neograničeno. VAŽNO (2026-08-29): ovo mora
+    // biti JEDAN neprekinut pokušaj do punog REQUEST_TIMEOUT_MS-a, ne dva
+    // kraća (undici-jev 5-min limit je ranije lažno prekidao prvi pokušaj i
+    // retry ga je bacao od nule) — zato ovdje NEMA retryja nakon timeouta.
+    mockHttpTimeoutOnce();
 
-    const pending = expect(chat([{ role: 'user', content: 'test' }]))
-      .rejects.toThrow(/Ollama nije odgovorio u 10 min/);
-    await jest.advanceTimersByTimeAsync(10 * 60 * 1000);
-    await pending;
+    await expect(chat([{ role: 'user', content: 'test' }])).rejects.toThrow(/Ollama nije odgovorio u 10 min/);
 
-    jest.useRealTimers();
+    expect(http.request).toHaveBeenCalledTimes(1); // NEMA retryja na pravi timeout
+    const options = lastRequestOptions();
+    expect(options.timeout).toBe(10 * 60 * 1000); // pun budžet u JEDNOM pokušaju, ne 5 min
   });
 });
 
@@ -151,34 +218,31 @@ describe('OllamaProvider.chat — tool-calling', () => {
   };
 
   test('šalje tools u OpenAI-kompatibilnom obliku kad su prisutni', async () => {
-    global.fetch.mockResolvedValue({ ok: true, json: async () => ({ message: { content: 'ok' } }) });
+    mockHttpSuccessOnce({ message: { content: 'ok' } });
 
     await chat([{ role: 'user', content: 'test' }], [TOOL]);
 
-    const body = JSON.parse(global.fetch.mock.calls[0][1].body);
+    const body = lastRequestBody();
     expect(body.tools).toEqual([
       { type: 'function', function: { name: TOOL.name, description: TOOL.description, parameters: TOOL.parameters } },
     ]);
   });
 
   test('ne šalje "tools" polje kad nema alata', async () => {
-    global.fetch.mockResolvedValue({ ok: true, json: async () => ({ message: { content: 'ok' } }) });
+    mockHttpSuccessOnce({ message: { content: 'ok' } });
 
     await chat([{ role: 'user', content: 'test' }], []);
 
-    const body = JSON.parse(global.fetch.mock.calls[0][1].body);
+    const body = lastRequestBody();
     expect(body.tools).toBeUndefined();
   });
 
   test('normalizira message.tool_calls u kanonski oblik { id, name, arguments }', async () => {
-    global.fetch.mockResolvedValue({
-      ok: true,
-      json: async () => ({
-        message: {
-          content: '',
-          tool_calls: [{ id: 'call_1', function: { name: 'create_request', arguments: { fk_department: 3 } } }],
-        },
-      }),
+    mockHttpSuccessOnce({
+      message: {
+        content: '',
+        tool_calls: [{ id: 'call_1', function: { name: 'create_request', arguments: { fk_department: 3 } } }],
+      },
     });
 
     const result = await chat([{ role: 'user', content: 'test' }], [TOOL]);
@@ -188,14 +252,11 @@ describe('OllamaProvider.chat — tool-calling', () => {
   });
 
   test('parsira tool_calls.function.arguments kad Ollama vrati JSON string umjesto objekta', async () => {
-    global.fetch.mockResolvedValue({
-      ok: true,
-      json: async () => ({
-        message: {
-          content: '',
-          tool_calls: [{ id: 'call_1', function: { name: 'create_request', arguments: '{"fk_department":3}' } }],
-        },
-      }),
+    mockHttpSuccessOnce({
+      message: {
+        content: '',
+        tool_calls: [{ id: 'call_1', function: { name: 'create_request', arguments: '{"fk_department":3}' } }],
+      },
     });
 
     const result = await chat([{ role: 'user', content: 'test' }], [TOOL]);
@@ -204,7 +265,7 @@ describe('OllamaProvider.chat — tool-calling', () => {
   });
 
   test('šalje prethodne assistant tool_calls i tool-rezultat poruke u Ollaminom obliku', async () => {
-    global.fetch.mockResolvedValue({ ok: true, json: async () => ({ message: { content: 'Gotovo.' } }) });
+    mockHttpSuccessOnce({ message: { content: 'Gotovo.' } });
 
     const history = [
       { role: 'user', content: 'Trebam 5 tonera.' },
@@ -218,7 +279,7 @@ describe('OllamaProvider.chat — tool-calling', () => {
 
     await chat(history, [TOOL]);
 
-    const body = JSON.parse(global.fetch.mock.calls[0][1].body);
+    const body = lastRequestBody();
     expect(body.messages[1]).toEqual({
       role: 'assistant',
       content: '',
@@ -230,13 +291,13 @@ describe('OllamaProvider.chat — tool-calling', () => {
 
 describe('OllamaProvider.chat — slika (vision, bez server-side OCR-a)', () => {
   test('poruka s "images" prosljeđuje se Ollami kao flat base64 niz (bez mimeType-a, bez data: prefiksa)', async () => {
-    global.fetch.mockResolvedValue({ ok: true, json: async () => ({ message: { content: 'Vidim ponudu...' } }) });
+    mockHttpSuccessOnce({ message: { content: 'Vidim ponudu...' } });
 
     await chat([
       { role: 'user', content: 'Evo slike ponude.', images: [{ mimeType: 'image/png', data: 'ZmFrZS1wbmctYnl0ZXM=' }] },
     ]);
 
-    const body = JSON.parse(global.fetch.mock.calls[0][1].body);
+    const body = lastRequestBody();
     expect(body.messages[0]).toEqual({
       role: 'user',
       content: 'Evo slike ponude.',
@@ -245,7 +306,7 @@ describe('OllamaProvider.chat — slika (vision, bez server-side OCR-a)', () => 
   });
 
   test('poruka s VIŠE "images" (npr. dvije priložene ponude) prosljeđuje sve, redoslijedom', async () => {
-    global.fetch.mockResolvedValue({ ok: true, json: async () => ({ message: { content: 'Vidim ponude...' } }) });
+    mockHttpSuccessOnce({ message: { content: 'Vidim ponude...' } });
 
     await chat([
       {
@@ -258,16 +319,16 @@ describe('OllamaProvider.chat — slika (vision, bez server-side OCR-a)', () => 
       },
     ]);
 
-    const body = JSON.parse(global.fetch.mock.calls[0][1].body);
+    const body = lastRequestBody();
     expect(body.messages[0].images).toEqual(['cG5nLWJ5dGVz', 'anBnLWJ5dGVz']);
   });
 
   test('poruka bez "images" ne dobiva images polje (nema praznog niza)', async () => {
-    global.fetch.mockResolvedValue({ ok: true, json: async () => ({ message: { content: 'ok' } }) });
+    mockHttpSuccessOnce({ message: { content: 'ok' } });
 
     await chat([{ role: 'user', content: 'Bok' }]);
 
-    const body = JSON.parse(global.fetch.mock.calls[0][1].body);
+    const body = lastRequestBody();
     expect(body.messages[0]).toEqual({ role: 'user', content: 'Bok' });
     expect(body.messages[0].images).toBeUndefined();
   });

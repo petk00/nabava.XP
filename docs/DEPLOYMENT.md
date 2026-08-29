@@ -150,3 +150,51 @@ Backend na startu **odbija pokretanje** ako nedostaje `JWT_SECRET` (ili je krać
 
 U `docker-compose.yml` odkomentirati `SMTP_*` varijable i upisati podatke SMTP računa.
 Bez SMTP konfiguracije sustav normalno radi — admin ručno prosljeđuje invite linkove.
+
+## Opcionalno: AI asistent (Ollama / Gemini)
+
+Sustav radi i bez AI asistenta — bez konfiguracije ispod chat jednostavno vrati poruku da
+asistent nije dostupan. Detalji modula: `docs/AI.md`.
+
+Aktivni provider (`ollama` ili `gemini`) i Gemini model **nisu** env varijable nego runtime
+postavke u tablici `AppSetting`; administrator ih mijenja kroz `PUT /api/assistant/settings`
+(ili prekidačem u chat prozoru) bez restarta servera. Iz okoline dolaze samo adresa Ollame i
+Gemini ključ.
+
+### Varijanta A — Ollama radi na hostu (preporučeno kad server ima GPU)
+
+Ništa se ne konfigurira: backend po defaultu gađa `http://host.docker.internal:11434`, a
+`docker-compose.yml` za to na Linuxu mapira `host-gateway`. Provjera iz kontejnera:
+
+```bash
+docker compose exec backend node -e "fetch('http://host.docker.internal:11434/api/tags').then(r=>r.json()).then(d=>console.log(d.models.map(m=>m.name)))"
+```
+
+### Varijanta B — Ollama kao kontejner
+
+```bash
+# u .env
+OLLAMA_BASE_URL=http://ollama:11434
+
+docker compose --profile ollama up -d
+docker compose exec ollama ollama pull gemma4:12b   # ~8 GB, jednom
+```
+
+Servis `ollama` ima vlastiti profil, pa ga obični `docker compose up -d` **ne** pokreće.
+Bez GPU-a je generiranje presporo za stvarnu upotrebu.
+
+### Gemini
+
+```bash
+# u .env
+GEMINI_API_KEY=...
+```
+
+Ključ se čita tek pri stvarnom pozivu, pa njegov izostanak ne blokira pokretanje servera.
+
+### Timeout
+
+`client/nginx.conf` za `/api/assistant/` ima `proxy_read_timeout 660s` — namjerno mnogo više od
+60 s koliko vrijedi za ostatak `/api/`. Jedan potez razgovora s lokalnim modelom traje minutama
+(izmjereni medijani 100-900 s, `docs/eval-runs/`), a backend čeka do 10 minuta po pozivu modelu.
+Ako se taj limit smanji, asistent kroz nginx počne vraćati 504 iako backend uredno radi.

@@ -289,13 +289,30 @@ Na temelju ovoga:
     čini da imaš sve podatke. Sustav će prerani poziv odbiti.`;
 }
 
+/**
+ * Isti hrvatski safety net (croatianTextFixer.js) koji čisti TEKST odgovora
+ * primjenjuje se i na prozna polja koja idu u BAZU. Bez ovoga je ekavica
+ * ispravljena samo u chat prozoru, dok zahtjev trajno ostaje zapisan s npr.
+ * "zahtev"/"uslovi" u obrazloženju — a obrazloženje je ono što kasnije čita
+ * odobravatelj i što ide u PDF zahtjeva.
+ *
+ * `item_name` se NAMJERNO ne dira: naziv artikla je podatak prepisan iz
+ * ponude (često kataloški kod ili kratica, npr. "PRE-2000"), gdje bi lažni
+ * pogodak pravila trajno iskrivio zapis o stvarnom artiklu; ekavica se u
+ * nazivima artikala ni ne pojavljuje, za razliku od proznog obrazloženja
+ * koje model sam sastavlja.
+ */
+function fixTextField(value) {
+  return typeof value === 'string' ? fixEkavica(value) : value;
+}
+
 async function executeCreateRequestTool(args, userId, attachmentsForSave) {
   const created = await createRequest({
     fk_fiscal_year: args?.fk_fiscal_year,
     fk_department: args?.fk_department,
-    justification: args?.justification,
+    justification: fixTextField(args?.justification),
     estimated_amount: args?.estimated_amount,
-    comment: args?.comment,
+    comment: fixTextField(args?.comment),
     items: args?.items,
     userId,
     attachments: attachmentsForSave,
@@ -304,12 +321,14 @@ async function executeCreateRequestTool(args, userId, attachmentsForSave) {
 }
 
 async function executeProposeRequestTool(args) {
+  // Sažetak koji korisnik vidi PRIJE potvrde mora biti isti tekst koji će
+  // create_request stvarno upisati — inače bi potvrdio jedno, a spremilo se drugo.
   const proposal = await proposeRequest({
     fk_fiscal_year: args?.fk_fiscal_year,
     fk_department: args?.fk_department,
-    justification: args?.justification,
+    justification: fixTextField(args?.justification),
     estimated_amount: args?.estimated_amount,
-    comment: args?.comment,
+    comment: fixTextField(args?.comment),
     items: args?.items,
   });
   return { ok: true, proposal };

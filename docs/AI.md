@@ -1,12 +1,73 @@
-# AI asistent za kreiranje zahtjeva — prijedlog implementacije
+# AI asistent za kreiranje zahtjeva — dizajn i status implementacije
 
-> **Status:** prijedlog / nije implementirano. Trenutno u kodu postoji samo vizualni mock
-> (ask-bar + fullscreen overlay na `client/src/pages/IndexPage.vue`) bez ikakve backend/AI logike —
-> `submitAsk()` i `sendChatMessage()` samo simuliraju odgovor kroz `setTimeout`.
+> **Status (2026-08-29): IMPLEMENTIRANO i u upotrebi**, uz odstupanja od izvornog prijedloga
+> opisana u odjeljku [Stvarno stanje implementacije](#stvarno-stanje-implementacije) niže.
+> Ostatak dokumenta zadržan je kao zapis izvornog dizajna i obrazloženja odluka (materijal za
+> diplomski rad) — gdje se implementacija razišla s prijedlogom, to je označeno u tom odjeljku
+> i u statusima uz faze na dnu.
 
-Ovaj dokument opisuje kako bi se u `nabava.XP` implementirao konverzacijski AI modul koji
-korisniku pomaže kreirati zahtjev za nabavu razgovorom, umjesto ručnog popunjavanja
-`NewRequestPage.vue` wizarda.
+Ovaj dokument opisuje konverzacijski AI modul koji korisniku pomaže kreirati zahtjev za nabavu
+razgovorom, umjesto ručnog popunjavanja `NewRequestPage.vue` wizarda.
+
+## Stvarno stanje implementacije
+
+Što danas postoji u kodu:
+
+| Sloj | Datoteka | Napomena |
+|---|---|---|
+| UI (ask-bar + overlay, markdown render) | `client/src/pages/IndexPage.vue`, `client/src/composables/useAssistantChat.js`, `client/src/utils/renderMarkdown.js` | Mock sa `setTimeout` zamijenjen stvarnim pozivom; odgovor se renderira kao Markdown, sanitiziran DOMPurifyjem. |
+| API | `server/src/routes/assistantRoutes.js` | `POST /api/assistant/chat`, `GET`/`PUT /api/assistant/settings` (admin). Rate limit u `index.js`. |
+| Orkestracija | `server/src/services/assistantOrchestrator.js` | Tool-calling petlja, `MAX_ITERATIONS = 6`. |
+| Provideri | `server/src/services/llm/{ollamaProvider,geminiProvider,providerSelector}.js` | Runtime toggle iz tablice `AppSetting`, bez restarta. |
+| Poslovna logika | `server/src/services/requestService.js` | `createRequest` / `proposeRequest`, dijeljeni s `POST /api/requests`. |
+| Prilozi | `server/src/services/{quoteExtractionService,pdfExtractWorker,attachmentService}.js` | PDF tekst u zasebnom procesu; slika ide izravno vision modelu; izvorna datoteka se sprema kao formalni "Ponuda" prilog. |
+| Hrvatski safety net | `server/src/services/croatianTextFixer.js` | Determinstički ispravak ekavice nad tekstom odgovora **i** nad `justification`/`comment` prije upisa u bazu. |
+| Evaluacija | `server/scripts/{evalHarness,evalScenarios,aggregateEvalResults,scoreEvalResults}.js`, `docs/EVAL_SCENARIOS.md`, `docs/eval-runs/` | 10 kanonskih scenarija, sirovi JSONL rezultati, agregat (RQ2) i radni list za bodovanje točnosti (RQ1). |
+
+### Odstupanja od izvornog prijedloga
+
+- **Nema granularnih "draft" alata.** `add_item()` / `remove_item()` / `set_justification()` /
+  `preview_request()` nisu implementirani. Umjesto postupnog građenja drafta kroz alate, model
+  drži stanje u razgovoru i predaje **cijeli** zahtjev odjednom kroz `propose_request` (validacija
+  + sažetak, bez pisanja) i `create_request` (jedini alat koji piše u bazu). Manje koraka po
+  razgovoru, manje prilika modelu da izgubi stanje — ali cijena je da izmjena znači ponovno
+  slanje cijelog prijedloga.
+- **Nema alata za istraživanje šifrarnika.** `list_departments()`, `list_item_categories()`,
+  `get_active_fiscal_year()`, `find_similar_past_items()` i `get_user_recent_departments()` nisu
+  alati; aktivna poslovna godina te popis aktivnih odjela i kategorija (naziv + ID) ubacuju se
+  izravno u system prompt (`loadReferenceContext` / `buildSystemPrompt`). Za veličinu šifrarnika
+  na Veleučilištu to stane u kontekst i štedi cijeli krug tool-poziva po razgovoru, što je kod
+  lokalnog modela latencijski značajno. `find_similar_past_items()` (učenje kategorizacije iz
+  prošlih zahtjeva) time ostaje neiskorišten — kandidat za dalje.
+- **Potvrda je server-side brava, ne UI dijalog.** Faza 5 je predviđala pregled s gumbom
+  "Potvrdi". Implementirano je jače: kad je razgovor krenuo od priloga, server **odbija**
+  `create_request` osim ako u povijesti poruka postoji odgovarajući uspješan `propose_request`
+  iz **ranijeg** HTTP zahtjeva — dakle model ne može predložiti i kreirati u istom potezu.
+  Potvrda se traži prirodnim jezikom, bez zasebne komponente.
+- **Nema streaminga (SSE).** `POST /api/assistant/chat` vraća jedan JSON odgovor kad je potez
+  gotov. Uz latencije lokalnog modela (medijani 100-900 s, `docs/eval-runs/`) ovo je najveći
+  preostali UX nedostatak.
+- **Stanje razgovora živi na klijentu.** Server ne pamti razgovore; klijent vraća cijelu povijest
+  plus `tool_trace` u svakom zahtjevu. To znači da su brave (dvofazna potvrda, zabrana duplog
+  `create_request`) provedene **na serveru, ali nad stanjem koje šalje klijent** — dovoljno protiv
+  pogrešaka modela, nije granica povjerenja protiv namjerno krivotvorenog klijenta. Sama
+  poslovna validacija to ne ovisi: `create_request` uvijek prolazi `requestService.js` i uvijek
+  u kontekstu prijavljenog korisnika.
+- **Ollamin `/api/chat`, ne OpenAI-kompatibilna ruta.** Tool-calling se šalje kroz Ollamin
+  nativni format (`ollamaProvider.js`), a ne kroz `/v1/chat/completions` kako je prijedlog
+  pretpostavljao.
+- **Vision za slike.** Prijedlog je poznavao samo tekst. Danas: PDF se čita server-side i isti
+  tekst ide oba providera, dok slika (JPG/PNG) ide izravno nativnom vision parametru providera —
+  namjerno, jer se time i mjeri vizualna sposobnost modela.
+- **`created_via` nije dodan u shemu.** Razlikovanje AI-kreiranih zahtjeva u audit tragu ostalo je
+  neimplementirano; za evaluaciju se koriste eval runovi, ne oznaka u bazi.
+
+### Preduvjeti za rad (deployment)
+
+Asistent u Docker deploymentu treba dvije stvari koje ostatak sustava ne treba — adresu Ollame
+(`OLLAMA_BASE_URL`) odnosno `GEMINI_API_KEY`, i produženi `proxy_read_timeout` na
+`/api/assistant/` u `client/nginx.conf` (default od 60 s je kraći od tipičnog trajanja jednog
+poteza). Detalji: `docs/DEPLOYMENT.md`, odjeljak *Opcionalno: AI asistent*.
 
 ## Cilj i princip dizajna
 
@@ -34,7 +95,7 @@ ne samo kroz env varijablu koju treba restartati server:
 
 | Provider | Kako radi | Prednost | Mana |
 |---|---|---|---|
-| **Lokalni Gemma (Ollama)** | Poziva lokalni `POST http://localhost:11434/api/chat`, model `gemma4:12b`, podržava tool-calling preko Ollamine OpenAI-kompatibilne rute. | Podaci ne napuštaju server, nema troška po pozivu. | Treba GPU/RAM na serveru, sporiji i slabiji od cloud modela pri manjim varijantama. |
+| **Lokalni Gemma (Ollama)** | Poziva lokalni `POST http://localhost:11434/api/chat`, model `gemma4:12b`. (Implementirano kroz Ollamin **nativni** `/api/chat` tool-calling format, ne kroz OpenAI-kompatibilnu rutu kako je prijedlog pretpostavljao.) | Podaci ne napuštaju server, nema troška po pozivu. | Treba GPU/RAM na serveru, sporiji i slabiji od cloud modela pri manjim varijantama. |
 | **Gemini Flash API** | Cloud poziv na Google-ov API, function-calling podržan nativno. | Brže, kvalitetnije zaključivanje. | Podaci idu na Google servere, trošak po pozivu, treba API ključ. |
 
 Toggle bi trebao biti runtime postavka (npr. admin postavka spremljena u bazi ili konfiguracijskoj
@@ -196,6 +257,8 @@ integracijskim testovima, vidi `docs/TEST_PLAN.md`):
 
 Prioritet: **Visoko**
 
+Status: ✅ **Napravljeno.** Opseg polja koja agent smije popuniti odgovara `REQUEST_PARAMETERS_SCHEMA` u `assistantOrchestrator.js`; ponašanje kod dvosmislenosti (pitaj, ne pogađaj) provjerava se eval scenarijima 6 i 7.
+
 - Definirati točno koja polja agent smije popuniti (odjel, kategorija, stavke: naziv/količina,
   procijenjena cijena, obrazloženje) i što je out-of-scope (npr. batch kreiranje više zahtjeva
   odjednom).
@@ -207,6 +270,8 @@ Prioritet: **Visoko**
 ### Faza 1 — LLM provider abstraction layer (backend)
 
 Prioritet: **Visoko**
+
+Status: ✅ **Napravljeno.** Toggle je postavka `ai_provider` u tablici `AppSetting`, mijenja se kroz `PUT /api/assistant/settings` (admin). Ollama je testirana uživo kroz sve eval runove; **Gemini provider još nije potvrđen stvarnim pozivom** — vidi napomenu na vrhu `geminiProvider.js`.
 
 - Zajedničko sučelje: `chat(messages, tools) -> { text?, tool_calls? }`, s podrškom za streaming.
 - `OllamaProvider` — poziva lokalni `POST http://localhost:11434/api/chat` s `gemma4:12b`
@@ -221,6 +286,8 @@ Prioritet: **Visoko**
 ### Faza 2 — Domenski "tools" (function-calling shema)
 
 Prioritet: **Visoko**
+
+Status: 🔀 **Izmijenjeno.** Umjesto 10 predviđenih alata implementirana su dva (`propose_request`, `create_request`), a šifrarnici se ubacuju u system prompt. Obrazloženje i posljedice: odjeljak *Odstupanja od izvornog prijedloga*.
 
 - `list_departments()`, `list_item_categories()`, `get_active_fiscal_year()` — mapiraju se na
   postojeće `referenceRoutes.js` endpointe, tako da agent nikad ne izmišlja nazive
@@ -239,6 +306,8 @@ Prioritet: **Visoko**
 
 Prioritet: **Visoko**
 
+Status: ✅ **Napravljeno.** `server/src/services/requestService.js`; `POST /api/requests` i `create_request` zovu istu funkciju, postojeći testovi rute prošli nepromijenjeni.
+
 - Izvući validacijsku/kreacijsku logiku iz `POST /api/requests` (`requestRoutes.js:475-593` —
   provjera zatvorene godine, pripadnost odjela/kategorije, generiranje `NAB-YYYY-NNNN` broja pod
   transakcijom) u samostalnu `server/src/services/requestService.js`, po uzoru na
@@ -251,6 +320,8 @@ Prioritet: **Visoko**
 ### Faza 4 — Orkestracija razgovora
 
 Prioritet: **Visoko**
+
+Status: 🔀 **Napravljeno bez streaminga.** Ruta, petlja i rate limiting postoje; odgovor je jedan JSON kad je potez gotov, SSE nije implementiran.
 
 - Nova ruta `server/src/routes/assistantRoutes.js`, montirana na `/api/assistant`, analogna
   `requestRoutes.js`/`referenceRoutes.js` po stilu.
@@ -265,6 +336,8 @@ Prioritet: **Visoko**
 
 Prioritet: **Visoko**
 
+Status: 🔀 **Izmijenjeno (jače nego predviđeno).** Umjesto UI dijaloga s gumbom, server odbija `create_request` bez odgovarajućeg `propose_request` iz ranijeg zahtjeva kad je razgovor krenuo od priloga.
+
 - Nakon `preview_request()`, frontend prikazuje jasan pregled (odjel, stavke, obrazloženje) i
   traži eksplicitan klik "Potvrdi" prije nego se `create_request()` uopće smije pozvati.
 - Ovo je tvrdi zahtjev iz principa dizajna (korisnik ima zadnju riječ) — ne smije se preskočiti
@@ -274,6 +347,8 @@ Prioritet: **Visoko**
 
 Prioritet: **Srednje**
 
+Status: ✅ **Napravljeno**, uz jedan preostali detalj: klijent dobiva `created_request` u odgovoru, ali ga još ne koristi (nema redirecta na kreirani zahtjev ni osvježavanja liste).
+
 - Zamijeniti `setTimeout` mock u `submitAsk()`/`sendChatMessage()` pravim streaming pozivom na
   `/api/assistant/chat`.
 - Loading/typing indikatori, prikaz tool-poziva korisniku (opcionalno, radi transparentnosti —
@@ -282,6 +357,8 @@ Prioritet: **Srednje**
 ### Faza 7 — Testiranje
 
 Prioritet: **Visoko**
+
+Status: 🔀 **Djelomično.** Unit razina je pokrivena opsežno (`assistantOrchestrator.test.js`, `assistantRoutes.test.js`, oba providera, `croatianTextFixer`, `quoteExtractionService`). Integracijski test AI puta nad pravom bazom i e2e test asistenta još ne postoje.
 
 - Unit: `LlmProvider` sučelje testirano s oba providera mockirana.
 - Integracijski (Jest + Supertest, prava MySQL baza): simulacija punog razgovora s mockiranim
@@ -294,6 +371,8 @@ Prioritet: **Visoko**
 
 Prioritet: **Visoko / Za diplomski**
 
+Status: 🔀 **Djelomično.** Prompt injection pokriven scenarijem 8; ključ je isključivo u `server/.env`. Evaluacijska infrastruktura je gotova (`EVAL_SCENARIOS.md`, harness, agregat, bodovanje), ali usporedba Ollama vs. Gemini još nema Gemini stranu.
+
 - Prompt injection otpornost — potvrditi da `create_request()` ne može zaobići provjeru
   proračuna/poslovne godine bez obzira što model "kaže".
 - Gemini API ključ isključivo u `server/.env`, nikad izložen frontendu.
@@ -302,10 +381,13 @@ Prioritet: **Visoko / Za diplomski**
 
 ## Otvorena pitanja
 
-- Treba li `find_similar_past_items()` raditi jednostavan `LIKE` upit ili prava full-text/semantic
-  pretraga (MySQL full-text index na `PurchaseRequestItem.item_name`, ili vektorska pretraga uz
-  embedding model)? Za početak dovoljan je `LIKE`/full-text — semantic search je optimizacija za
-  kasnije ako se pokaže nedovoljnim.
-- Gdje živi runtime toggle za provider — globalna admin postavka ili po-korisnički izbor?
-- Treba li glasovni unos (mikrofon ikona na ask-baru je trenutno čisto dekorativna) — izvan opsega
-  ovog dokumenta, zaseban feature (speech-to-text).
+- ~~Gdje živi runtime toggle za provider — globalna admin postavka ili po-korisnički izbor?~~
+  **Riješeno:** globalna admin postavka (`AppSetting.ai_provider`), vidljiva i promjenjiva samo
+  administratoru; zaposlenik razgovara s onim providerom koji je trenutno aktivan.
+- `find_similar_past_items()` (`LIKE` vs. full-text vs. vektorska pretraga) — **i dalje otvoreno i
+  neimplementirano.** Kategorizaciju danas model zaključuje samo iz naziva kategorija u promptu;
+  učenje iz prošlih zahtjeva ostaje najizgledniji sljedeći korak za točnost.
+- Streaming (SSE) odgovora — otvoreno; uz izmjerene latencije lokalnog modela ovo je najveći
+  preostali UX nedostatak.
+- Glasovni unos (mikrofon ikona na ask-baru je i dalje čisto dekorativna) — izvan opsega ovog
+  dokumenta, zaseban feature (speech-to-text).
