@@ -7,6 +7,9 @@
 // stringom), i ispravno nastavlja razgovor kad mu se tool rezultat vrati
 // kao poruka role: 'tool'.
 
+const http = require('node:http');
+const https = require('node:https');
+
 const OLLAMA_MODEL = 'gemma4:12b';
 
 // Ollamin runtime default num_ctx (obično 2048-4096) je premalen za ovaj
@@ -82,7 +85,7 @@ function normalizeToolCalls(rawToolCalls) {
 // Za razliku od geminiProvider.js (30s), ovdje je limit namjerno velikodušan:
 // stvarnim eval harness testiranjem (docs/eval-runs/) potvrđeno da gemma4:12b
 // uz temperature:1 zna legitimno "razmišljati" nekoliko minuta (najduže
-// uspješno opaženo ~8 min) — kratak timeout bi prekidao stvarne, samo spore
+// uspješno opaženo ~8.5 min) — kratak timeout bi prekidao stvarne, samo spore
 // odgovore. 10 min je sigurnosna mreža protiv prave patologije (opažen jedan
 // slučaj ~40 min bez ikakvog napretka), ne protiv normalne spore generacije.
 const REQUEST_TIMEOUT_MS = 10 * 60 * 1000;
@@ -90,28 +93,64 @@ const REQUEST_TIMEOUT_MS = 10 * 60 * 1000;
 // Stvarnim eval runom (docs/eval-runs/2026-08-26-ollama-5x.md) potvrđeno u
 // Ollaminim vlastitim logovima: scheduler zna usred rada REloadati model pod
 // memorijskim pritiskom (npr. -c 8192 -> 4096 pa natrag), prekidajući baš
-// zahtjev koji je tad u tijeku — vidljivo kod nas kao "fetch failed" (network
-// greška, ne HTTP error status). Vision (slika) zahtjevi su disproporcionalno
-// pogođeni (mmproj enkoder dodatno optereti već tijesnu memoriju). Reload
-// traje par sekundi do ~16s, pa JEDAN retry nakon kratke pauze pokriva ovaj
-// slučaj — namjerno SAMO na network-level grešku, ne na HTTP error status
-// (stvaran problem, ne treba ga maskirati) ni na AbortError iz REQUEST_TIMEOUT_MS
-// (već smo čekali 10 min, dodatni retry tu ne bi imao smisla).
+// zahtjev koji je tad u tijeku — vidljivo kod nas kao mrežna greška (ne HTTP
+// error status). Reload traje par sekundi do ~16s, pa JEDAN retry nakon
+// kratke pauze pokriva ovaj slučaj — namjerno SAMO na brzu network-level
+// grešku, ne na HTTP error status (stvaran problem, ne treba ga maskirati)
+// ni na TimeoutError iz REQUEST_TIMEOUT_MS (već smo čekali 10 min, dodatni
+// retry tu ne bi imao smisla).
 const NETWORK_RETRY_DELAY_MS = 3000;
 
+// NAMJERNO node:http/https umjesto fetch(): Node-ov fetch (undici) ima tvrd,
+// nepromjenjiv default headersTimeout/bodyTimeout od 5 min koji se aktivira
+// PRIJE gornjeg REQUEST_TIMEOUT_MS-a (10 min) i baca grešku koja izgleda kao
+// "mrežni problem" (upada u NETWORK_RETRY_DELAY_MS granu ispod). Retry tad
+// šalje POTPUNO nov zahtjev — Ollama otkazuje generiranje prekinutog
+// zahtjeva na disconnect (Go http.Server context cancellation), pa se cijeli
+// prompt (uključujući velik prilog) obrađuje iznova od nule. Stvaran
+// izmjeren obrazac: 5 min (uzalud) + 3s pauza + 5 min (uzalud) = ~605s,
+// UVIJEK, bez obzira koliko je REQUEST_TIMEOUT_MS postavljen — otkriveno
+// dijagnostikom 2026-08-29 (docs/eval-runs/). node:http/https nema taj
+// ugrađeni limit — čeka jedan neprekinut pokušaj do REQUEST_TIMEOUT_MS.
 async function performChatRequest(baseUrl, body) {
-  const abortController = new AbortController();
-  const timeoutId = setTimeout(() => abortController.abort(), REQUEST_TIMEOUT_MS);
-  try {
-    return await fetch(`${baseUrl}/api/chat`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-      signal: abortController.signal,
+  const bodyBuffer = Buffer.from(JSON.stringify(body), 'utf8');
+  const url = new URL(`${baseUrl}/api/chat`);
+  const transport = url.protocol === 'https:' ? https : http;
+
+  return new Promise((resolve, reject) => {
+    const req = transport.request(
+      {
+        hostname: url.hostname,
+        port: url.port || (url.protocol === 'https:' ? 443 : 80),
+        path: url.pathname,
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Content-Length': bodyBuffer.length },
+        timeout: REQUEST_TIMEOUT_MS,
+      },
+      (res) => {
+        const chunks = [];
+        res.on('data', (chunk) => chunks.push(chunk));
+        res.on('end', () => {
+          const text = Buffer.concat(chunks).toString('utf8');
+          resolve({
+            ok: res.statusCode >= 200 && res.statusCode < 300,
+            status: res.statusCode,
+            statusText: res.statusMessage,
+            text: async () => text,
+            json: async () => JSON.parse(text),
+          });
+        });
+      }
+    );
+    req.on('timeout', () => {
+      const timeoutError = new Error('timeout');
+      timeoutError.name = 'TimeoutError';
+      req.destroy(timeoutError);
     });
-  } finally {
-    clearTimeout(timeoutId);
-  }
+    req.on('error', (err) => reject(err));
+    req.write(bodyBuffer);
+    req.end();
+  });
 }
 
 async function chat(messages, tools = []) {
@@ -131,7 +170,7 @@ async function chat(messages, tools = []) {
   try {
     res = await performChatRequest(baseUrl, body);
   } catch (networkError) {
-    if (networkError.name === 'AbortError') {
+    if (networkError.name === 'TimeoutError') {
       throw new Error(`Ollama nije odgovorio u ${REQUEST_TIMEOUT_MS / 60000} min.`);
     }
     console.warn(`[ollamaProvider] mrežna greška, pokušavam ponovno za ${NETWORK_RETRY_DELAY_MS}ms:`, networkError.message);
@@ -139,7 +178,7 @@ async function chat(messages, tools = []) {
     try {
       res = await performChatRequest(baseUrl, body);
     } catch (retryError) {
-      if (retryError.name === 'AbortError') {
+      if (retryError.name === 'TimeoutError') {
         throw new Error(`Ollama nije odgovorio u ${REQUEST_TIMEOUT_MS / 60000} min.`);
       }
       throw new Error(`Ollama nije dostupan na ${baseUrl}: ${retryError.message}`);

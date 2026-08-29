@@ -29,6 +29,7 @@
 const fs = require('fs');
 const path = require('path');
 const http = require('node:http');
+const db = require('../src/config/db');
 const { SCENARIOS } = require('./evalScenarios');
 
 const BASE_URL = process.env.EVAL_BASE_URL || 'http://localhost:3000';
@@ -216,6 +217,56 @@ function summarizeToolTrace(toolTrace) {
   };
 }
 
+/** Izvuče "request_number" iz uspješnog create_request tool rezultata u tool_trace-u (ili null). */
+function extractCreatedRequestNumber(toolTrace) {
+  for (const msg of toolTrace) {
+    if (msg.role === 'tool' && msg.name === 'create_request') {
+      try {
+        const payload = JSON.parse(msg.content);
+        if (payload?.ok && payload.request_number) return payload.request_number;
+      } catch {
+        // ignoriraj neparsabilan sadržaj
+      }
+    }
+  }
+  return null;
+}
+
+/**
+ * Dohvaća STVARNO spremljeno stanje kreiranog zahtjeva iz baze (ne ono što
+ * je model TVRDIO da je poslao, nego ono što je requestService.js zaista
+ * upisao) — nužno za bodovanje točnosti (usporedba s expectedResult u
+ * evalScenarios.js), pošto tool_trace sam po sebi ne nosi nazive
+ * odjela/kategorija ni potvrdu da je transakcija uistinu prošla.
+ */
+async function fetchCreatedRequest(requestNumber) {
+  if (!requestNumber) return null;
+  const [[request]] = await db.query(
+    `SELECT pr.total_amount, pr.justification, d.name AS department_name
+     FROM PurchaseRequest pr
+     JOIN Department d ON d.id_department = pr.fk_department
+     WHERE pr.request_number = ?`,
+    [requestNumber]
+  );
+  if (!request) return null;
+  const [items] = await db.query(
+    `SELECT pri.item_name, pri.quantity, c.name AS category_name
+     FROM PurchaseRequestItem pri
+     JOIN ItemCategory c ON c.id_item_category = pri.fk_item_category
+     JOIN PurchaseRequest pr ON pr.id_purchase_request = pri.fk_purchase_request
+     WHERE pr.request_number = ?
+     ORDER BY pri.id_purchase_request_item`,
+    [requestNumber]
+  );
+  return {
+    request_number: requestNumber,
+    department_name: request.department_name,
+    justification: request.justification,
+    total_amount: request.total_amount === null ? null : Number(request.total_amount),
+    items: items.map((i) => ({ item_name: i.item_name, quantity: i.quantity, category_name: i.category_name })),
+  };
+}
+
 /** Jedan pokušaj JEDNOG scenarija — može uključivati više turnova (echo tool_trace/povijesti). */
 async function runOneAttempt(scenario, token, provider, attemptNumber) {
   const startedAt = new Date().toISOString();
@@ -280,6 +331,12 @@ async function runOneAttempt(scenario, token, provider, attemptNumber) {
   const { tool_trace_summary, propose_request_called, create_request_called, propose_before_create } =
     summarizeToolTrace(allToolTrace);
 
+  let actualCreatedRequest = null;
+  if (create_request_called) {
+    const requestNumber = extractCreatedRequestNumber(allToolTrace);
+    actualCreatedRequest = await fetchCreatedRequest(requestNumber);
+  }
+
   return {
     scenario_id: scenario.id,
     scenario_description: scenario.description,
@@ -300,6 +357,7 @@ async function runOneAttempt(scenario, token, provider, attemptNumber) {
     propose_before_create,
     tool_trace_summary,
     final_response_text: lastResponseText,
+    actual_created_request: actualCreatedRequest,
   };
 }
 
@@ -361,7 +419,9 @@ async function main() {
   console.log(`[evalHarness] Metapodaci u ${metaFile}`);
 }
 
-main().catch((error) => {
-  console.error('[evalHarness] Greška:', error.message);
-  process.exit(1);
-});
+main()
+  .catch((error) => {
+    console.error('[evalHarness] Greška:', error.message);
+    process.exitCode = 1;
+  })
+  .finally(() => db.end());

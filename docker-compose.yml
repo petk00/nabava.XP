@@ -37,6 +37,16 @@ services:
       JWT_EXPIRES_IN: 1d
       CLIENT_URL: https://${SERVER_IP:-localhost}
       UPLOADS_DIR: /app/uploads
+      # AI asistent (docs/AI.md). Aktivni provider je runtime postavka u
+      # tablici AppSetting (PUT /api/assistant/settings), ali ADRESA Ollame i
+      # Gemini ključ moraju doći iz okoline — bez njih asistent u kontejneru
+      # ne može raditi ni s jednim providerom (unutar kontejnera "localhost"
+      # je sam kontejner, ne host).
+      #   - Ollama na HOSTU (uobičajeno, zbog GPU-a): ostavi default ispod.
+      #   - Ollama kao kontejner: pokreni s `--profile ollama` i u .env
+      #     postavi OLLAMA_BASE_URL=http://ollama:11434
+      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
       # SMTP_HOST: smtp.office365.com
       # SMTP_PORT: 587
       # SMTP_USER: your-email@veleri.hr
@@ -44,6 +54,10 @@ services:
       # SMTP_FROM: "veleri.XP <your-email@veleri.hr>"
     volumes:
       - uploads:/app/uploads
+    # Da default OLLAMA_BASE_URL (host.docker.internal) radi i na Linuxu —
+    # na macOS/Windows Docker Desktop to ime postoji samo od sebe, na Linuxu ne.
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     # Port 3000 nije izložen na hostu — backend je dostupan unutar Docker
     # mreže, proxiran kroz nginx (/api/). Za debug: ports: ['127.0.0.1:3000:3000']
 
@@ -59,6 +73,23 @@ services:
       - "80:80"
       - "443:443"
 
+  # Opcionalno — Ollama kao kontejner umjesto servisa na hostu (docs/AI.md,
+  # docs/DEPLOYMENT.md). Ne pokreće se u običnom `docker compose up`, nego samo
+  # uz `docker compose --profile ollama up -d`; namjerno, jer slika i model
+  # (gemma4:12b, ~8 GB) su velikima za deployment koji AI asistenta ne koristi,
+  # a bez GPU-a je generiranje presporo za stvarnu upotrebu.
+  # Nakon prvog pokretanja model treba jednom povući:
+  #   docker compose exec ollama ollama pull gemma4:12b
+  ollama:
+    image: ollama/ollama:latest
+    profiles: ["ollama"]
+    restart: unless-stopped
+    volumes:
+      - ollama_models:/root/.ollama
+    # Port 11434 nije izložen na hostu — backend mu pristupa unutar Docker
+    # mreže (u .env postaviti OLLAMA_BASE_URL=http://ollama:11434).
+
 volumes:
   mysql_data:
   uploads:
+  ollama_models:

@@ -1009,3 +1009,71 @@ describe('runAssistantChat — finalni tekst prolazi kroz fixEkavica (safety net
     expect(result.text).toBe('Vaš zahtjev za nabavu je uspješno kreiran. Broj zahtjeva je NAB-2026-0095.');
   });
 });
+
+describe('runAssistantChat — fixEkavica i nad podacima koji idu u BAZU, ne samo nad tekstom odgovora', () => {
+  test('create_request: obrazloženje i napomena se čiste prije upisa, naziv artikla ostaje netaknut', async () => {
+    mockReferenceContext();
+    createRequest.mockResolvedValue({
+      id_purchase_request: 51,
+      request_number: 'NAB-2026-0051',
+      fk_request_status: 1,
+    });
+
+    const chat = jest.fn()
+      .mockResolvedValueOnce(toolCallMessage({
+        ...VALID_ARGS,
+        justification: 'Zahtev je hitan jer su uslovi rada loši.',
+        comment: 'Dobavljač traži plaćanje pre isporuke.',
+        // Naziv artikla dolazi prepisan s ponude — smije sadržavati niz koji
+        // pravilo inače hvata, i NE smije se dirati (kataloška oznaka).
+        items: [{ fk_item_category: 7, item_name: 'Adapter PRE-2000', quantity: 5 }],
+      }))
+      .mockResolvedValueOnce({ text: 'Zahtjev NAB-2026-0051 je kreiran.', tool_calls: null });
+    getActiveProvider.mockResolvedValue({ chat });
+
+    await runAssistantChat({ messages: [{ role: 'user', content: 'Trebam adaptere.' }], userId: 2 });
+
+    expect(createRequest).toHaveBeenCalledWith(expect.objectContaining({
+      justification: 'Zahtjev je hitan jer su uvjeti rada loši.',
+      comment: 'Dobavljač traži plaćanje prije isporuke.',
+      items: [{ fk_item_category: 7, item_name: 'Adapter PRE-2000', quantity: 5 }],
+    }));
+  });
+
+  test('propose_request: sažetak za potvrdu ide kroz isti ispravak (korisnik potvrđuje isti tekst koji će se upisati)', async () => {
+    mockReferenceContext();
+    proposeRequest.mockResolvedValue({ department_name: 'Računovodstvo', items: [] });
+
+    const chat = jest.fn()
+      .mockResolvedValueOnce(proposeCallMessage({
+        ...VALID_ARGS,
+        justification: 'Zahtev za nabavu tonera.',
+      }))
+      .mockResolvedValueOnce({ text: 'Potvrđujete li kreiranje?', tool_calls: null });
+    getActiveProvider.mockResolvedValue({ chat });
+
+    await runAssistantChat({ messages: [{ role: 'user', content: 'Trebam tonere.' }], userId: 2 });
+
+    expect(proposeRequest).toHaveBeenCalledWith(expect.objectContaining({
+      justification: 'Zahtjev za nabavu tonera.',
+    }));
+  });
+
+  test('nedostajuća/ne-string polja ne ruše poziv (model izostavi comment)', async () => {
+    mockReferenceContext();
+    createRequest.mockResolvedValue({
+      id_purchase_request: 52,
+      request_number: 'NAB-2026-0052',
+      fk_request_status: 1,
+    });
+
+    const chat = jest.fn()
+      .mockResolvedValueOnce(toolCallMessage({ ...VALID_ARGS, comment: undefined }))
+      .mockResolvedValueOnce({ text: 'Gotovo.', tool_calls: null });
+    getActiveProvider.mockResolvedValue({ chat });
+
+    await runAssistantChat({ messages: [{ role: 'user', content: 'Trebam tonere.' }], userId: 2 });
+
+    expect(createRequest).toHaveBeenCalledWith(expect.objectContaining({ comment: undefined }));
+  });
+});
