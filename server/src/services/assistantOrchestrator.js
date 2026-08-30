@@ -21,6 +21,7 @@ const db = require('../config/db');
 const { getActiveProvider } = require('./llm/providerSelector');
 const { createRequest, proposeRequest, RequestValidationError } = require('./requestService');
 const { fixEkavica } = require('./croatianTextFixer');
+const { putAttachments, getAttachments, dropAttachments } = require('./assistantAttachmentStore');
 
 const MAX_ITERATIONS = 6;
 
@@ -29,57 +30,67 @@ const MAX_ITERATIONS = 6;
 // vidi conversationInvolvesAttachment().
 const QUOTE_MARKER = '[ai-asistent:priložena-ponuda]';
 
-// Nosi IZVORNE bajtove priloga (base64) kroz razgovor preko istog echo
-// mehanizma kao QUOTE_MARKER — potrebno jer create_request (koji originalnu
-// datoteku sprema kao formalni prilog uz zahtjev, requestService.js) često
-// stiže tek nekoliko poteza NAKON uploada, kad attachments param više nije
-// postavljen (multipart upload ide samo uz PRVU poruku razgovora). Ova
-// poruka je NAMJERNO isključena iz onoga što se šalje modelu (vidi
-// runAssistantChat) — model ne treba i ne smije "čitati" sirovi base64,
-// samo bi trošio kontekst bez ikakve koristi.
+// Nosi REFERENCU (neprozirni ID) na izvorne bajtove priloga kroz razgovor,
+// preko istog echo mehanizma kao QUOTE_MARKER — potrebno jer create_request
+// (koji originalnu datoteku sprema kao formalni prilog uz zahtjev,
+// requestService.js) često stiže tek nekoliko poteza NAKON uploada, kad
+// attachments param više nije postavljen (multipart upload ide samo uz PRVU
+// poruku razgovora). Sami bajtovi ostaju SERVER-SIDE
+// (assistantAttachmentStore.js) i nikad ne putuju kroz klijenta — vidi
+// obrazloženje na vrhu tog modula. Ova poruka je uz to NAMJERNO isključena iz
+// onoga što se šalje modelu (vidi runAssistantChat): model nema što raditi s
+// internim ID-em, samo bi trošio kontekst.
 const ATTACHMENT_DATA_MARKER = '[ai-asistent:prilog-podaci]';
 
 function isAttachmentDataCarrier(message) {
   return message?.role === 'system' && typeof message.content === 'string' && message.content.startsWith(ATTACHMENT_DATA_MARKER);
 }
 
-/** Gradi skrivenu system poruku koja nosi base64 SVIH priloga ovog poteza — ide u tool_trace, NIKAD u convo. */
-function buildAttachmentDataCarrier(attachments) {
-  const payload = attachments.map((a) => ({
-    filename: a.filename,
-    mimeType: a.kind === 'pdf' ? 'application/pdf' : a.mimeType,
-    base64: a.base64,
-  }));
-  return { role: 'system', content: `${ATTACHMENT_DATA_MARKER}${JSON.stringify(payload)}` };
+/** Kanonski oblik priloga za spremanje uz zahtjev (attachmentService.saveAttachmentBuffer). */
+function toStorableFiles(attachments) {
+  return attachments
+    .filter((a) => a.base64)
+    .map((a) => ({
+      fileName: a.filename,
+      mimeType: a.kind === 'pdf' ? 'application/pdf' : a.mimeType,
+      buffer: Buffer.from(a.base64, 'base64'),
+    }));
+}
+
+/**
+ * Sprema bajtove priloga ovog poteza server-side i gradi skrivenu system
+ * poruku koja nosi SAMO njihov ID — ide u tool_trace, NIKAD u convo.
+ * @returns {{ message: object, storeId: string }|null} null ako nema što spremiti
+ */
+function buildAttachmentDataCarrier(attachments, userId) {
+  const storeId = putAttachments(userId, toStorableFiles(attachments));
+  if (!storeId) return null;
+  return { message: { role: 'system', content: `${ATTACHMENT_DATA_MARKER}${storeId}` }, storeId };
+}
+
+/** ID iz carrier poruke koju je klijent echoedao iz ranijeg poteza (ili null). */
+function findCarrierStoreId(clientMessages) {
+  const carrier = clientMessages.find(isAttachmentDataCarrier);
+  if (!carrier) return null;
+  return carrier.content.slice(ATTACHMENT_DATA_MARKER.length).trim() || null;
 }
 
 /**
  * Razrješava izvorne bajtove priloga za spremanje uz create_request: prvo
  * pokuša OVAJ potez (attachments param, svježe uploadano), pa tek onda
- * potraži carrier poruku echoedanu iz ranijeg poteza u clientMessages.
- * @returns {Array<{buffer: Buffer, fileName: string, mimeType: string}>}
+ * spremište po ID-u iz carrier poruke echoedane iz ranijeg poteza.
+ *
+ * Nepoznat, istekao ili tuđi ID daje prazan niz (getAttachments) — zahtjev se
+ * kreira bez priloga umjesto da padne ili, još gore, priloži tuđi dokument.
+ *
+ * @returns {{ files: Array<{buffer: Buffer, fileName: string, mimeType: string}>, storeId: string|null }}
  */
-function resolveAttachmentsForSave(attachments, clientMessages) {
-  let source;
+function resolveAttachmentsForSave(attachments, clientMessages, userId) {
   if (attachments && attachments.length > 0) {
-    source = attachments.map((a) => ({
-      filename: a.filename,
-      mimeType: a.kind === 'pdf' ? 'application/pdf' : a.mimeType,
-      base64: a.base64,
-    }));
-  } else {
-    const carrier = clientMessages.find(isAttachmentDataCarrier);
-    if (!carrier) return [];
-    try {
-      source = JSON.parse(carrier.content.slice(ATTACHMENT_DATA_MARKER.length));
-    } catch {
-      return [];
-    }
+    return { files: toStorableFiles(attachments), storeId: null };
   }
-
-  return source
-    .filter((a) => a.base64)
-    .map((a) => ({ fileName: a.filename, mimeType: a.mimeType, buffer: Buffer.from(a.base64, 'base64') }));
+  const storeId = findCarrierStoreId(clientMessages);
+  return { files: getAttachments(storeId, userId), storeId };
 }
 
 const REQUEST_PARAMETERS_SCHEMA = {
@@ -432,6 +443,9 @@ async function runAssistantChat({ messages, userId, attachments = [] }) {
 
   const convo = [{ role: 'system', content: systemPrompt }];
   const toolTrace = [];
+  // ID pod kojim su bajtovi priloga OVOG poteza spremljeni server-side —
+  // treba ga se osloboditi čim je prilog stvarno spremljen uz zahtjev.
+  let currentTurnStoreId = null;
 
   if (attachments.length > 0) {
     const quoteMsg = { role: 'system', content: buildAttachmentInstruction(attachments) };
@@ -440,7 +454,11 @@ async function runAssistantChat({ messages, userId, attachments = [] }) {
 
     // Ide SAMO u tool_trace (za echo natrag klijentu), NIKAD u convo — vidi
     // napomenu uz ATTACHMENT_DATA_MARKER gore.
-    toolTrace.push(buildAttachmentDataCarrier(attachments));
+    const carrier = buildAttachmentDataCarrier(attachments, userId);
+    if (carrier) {
+      toolTrace.push(carrier.message);
+      currentTurnStoreId = carrier.storeId;
+    }
   }
 
   // Slike idu kao dio POSLJEDNJE korisnikove poruke (onoj uz koju su stigle),
@@ -535,13 +553,18 @@ async function runAssistantChat({ messages, userId, attachments = [] }) {
           };
         } else {
           try {
-            const attachmentsForSave = resolveAttachmentsForSave(attachments, messages);
-            toolResultPayload = await executeCreateRequestTool(call.arguments, userId, attachmentsForSave);
+            const resolved = resolveAttachmentsForSave(attachments, messages, userId);
+            toolResultPayload = await executeCreateRequestTool(call.arguments, userId, resolved.files);
             createdRequest = {
               id_purchase_request: toolResultPayload.id_purchase_request,
               request_number: toolResultPayload.request_number,
               fk_request_status: toolResultPayload.fk_request_status,
             };
+            // Prilog je sad trajno na disku uz zahtjev — privremena kopija u
+            // memoriji više nema svrhu (inače bi ležala do isteka TTL-a).
+            dropAttachments(resolved.storeId);
+            dropAttachments(currentTurnStoreId);
+            currentTurnStoreId = null;
           } catch (error) {
             if (error instanceof RequestValidationError) {
               // Očekivana poslovna greška — vraća se modelu, ne korisniku kao HTTP error,

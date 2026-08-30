@@ -20,7 +20,7 @@ razgovorom, umjesto ručnog popunjavanja `NewRequestPage.vue` wizarda.
 | Orkestracija | `server/src/services/assistantOrchestrator.js` | Tool-calling petlja, `MAX_ITERATIONS = 6`. |
 | Provideri | `server/src/services/llm/{ollamaProvider,geminiProvider,providerSelector}.js` | Runtime toggle iz tablice `AppSetting`, bez restarta. |
 | Poslovna logika | `server/src/services/requestService.js` | `createRequest` / `proposeRequest`, dijeljeni s `POST /api/requests`. |
-| Prilozi | `server/src/services/{quoteExtractionService,pdfExtractWorker,attachmentService}.js` | PDF tekst u zasebnom procesu; slika ide izravno vision modelu; izvorna datoteka se sprema kao formalni "Ponuda" prilog. |
+| Prilozi | `server/src/services/{quoteExtractionService,pdfExtractWorker,attachmentService,assistantAttachmentStore}.js` | PDF tekst u zasebnom procesu; slika ide izravno vision modelu; izvorna datoteka se sprema kao formalni "Ponuda" prilog. Bajtovi priloga čekaju potvrdu u privremenom server-side spremištu (TTL 60 min, vezano uz korisnika), kroz razgovor putuje samo referenca. |
 | Hrvatski safety net | `server/src/services/croatianTextFixer.js` | Determinstički ispravak ekavice nad tekstom odgovora **i** nad `justification`/`comment` prije upisa u bazu. |
 | Evaluacija | `server/scripts/{evalHarness,evalScenarios,aggregateEvalResults,scoreEvalResults}.js`, `docs/EVAL_SCENARIOS.md`, `docs/eval-runs/` | 10 kanonskih scenarija, sirovi JSONL rezultati, agregat (RQ2) i radni list za bodovanje točnosti (RQ1). |
 
@@ -47,12 +47,21 @@ razgovorom, umjesto ručnog popunjavanja `NewRequestPage.vue` wizarda.
 - **Nema streaminga (SSE).** `POST /api/assistant/chat` vraća jedan JSON odgovor kad je potez
   gotov. Uz latencije lokalnog modela (medijani 100-900 s, `docs/eval-runs/`) ovo je najveći
   preostali UX nedostatak.
-- **Stanje razgovora živi na klijentu.** Server ne pamti razgovore; klijent vraća cijelu povijest
-  plus `tool_trace` u svakom zahtjevu. To znači da su brave (dvofazna potvrda, zabrana duplog
-  `create_request`) provedene **na serveru, ali nad stanjem koje šalje klijent** — dovoljno protiv
-  pogrešaka modela, nije granica povjerenja protiv namjerno krivotvorenog klijenta. Sama
-  poslovna validacija to ne ovisi: `create_request` uvijek prolazi `requestService.js` i uvijek
-  u kontekstu prijavljenog korisnika.
+- **Povijest razgovora živi na klijentu, bajtovi priloga ne.** Server ne pamti razgovore; klijent
+  vraća cijelu povijest plus `tool_trace` u svakom zahtjevu. To znači da su brave (dvofazna
+  potvrda, zabrana duplog `create_request`) provedene **na serveru, ali nad stanjem koje šalje
+  klijent** — dovoljno protiv pogrešaka modela, nije granica povjerenja protiv namjerno
+  krivotvorenog klijenta. Sama poslovna validacija o tome ne ovisi: `create_request` uvijek
+  prolazi `requestService.js` i uvijek u kontekstu prijavljenog korisnika.
+
+  Izvorni bajtovi priloga su iz tog toka **izuzeti**: prije su putovali kroz klijenta kao base64 u
+  skrivenoj carrier poruci, što je imalo dvije posljedice — ~33 MB po zahtjevu kod 5 priloga
+  (iznad `express.json` limita, pa je drugi potez razgovora s dvije veće ponude padao) i mogućnost
+  da krivotvorena carrier poruka podmetne proizvoljan sadržaj u formalni prilog, zaobilazeći
+  magic-bytes provjeru rute. Danas bajtovi ostaju u `assistantAttachmentStore.js` (u memoriji, TTL
+  60 min, vezani uz korisnika koji ih je uploadao, oslobađaju se čim je prilog spremljen uz
+  zahtjev), a kroz razgovor putuje samo neprozirni ID koji se pri dohvatu provjerava na
+  vlasništvo. Draft i dalje ne dira bazu dok korisnik ne potvrdi.
 - **Ollamin `/api/chat`, ne OpenAI-kompatibilna ruta.** Tool-calling se šalje kroz Ollamin
   nativni format (`ollamaProvider.js`), a ne kroz `/v1/chat/completions` kako je prijedlog
   pretpostavljao.

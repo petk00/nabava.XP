@@ -62,7 +62,9 @@ const requireAdmin = (req, res, next) => {
  *
  * Odgovor sadrži i "tool_trace" (nove assistant/tool poruke iz ovog poteza,
  * npr. propose_request poziv i rezultat) — klijent ih MORA dodati u svoju
- * povijest poruka prije sljedećeg zahtjeva. Bez toga server u idućem
+ * povijest poruka prije sljedećeg zahtjeva. Te poruke su male: bajtovi
+ * priloga NE putuju kroz njih, nego ostaju server-side i kroz razgovor ide
+ * samo referenca (assistantAttachmentStore.js). Bez toga server u idućem
  * zahtjevu ne može provjeriti da je korisnik stvarno vidio i potvrdio
  * prijedlog prije create_request kad razgovor kreće od priloga.
  */
@@ -114,7 +116,9 @@ router.post('/chat', authenticateToken, uploadQuote.array('file', MAX_QUOTE_FILE
         const text = await extractQuoteText(file.buffer);
         // base64 (uz već-izvučeni text) čuva se da bi se izvorna datoteka
         // mogla spremiti kao formalni prilog uz zahtjev kad create_request
-        // stvarno izvrši — vidi assistantOrchestrator.js
+        // stvarno izvrši. Same bajtove orkestrator odmah premješta u
+        // server-side spremište (assistantAttachmentStore.js) i kroz razgovor
+        // dalje putuje samo njihov ID — vidi assistantOrchestrator.js
         // (buildAttachmentDataCarrier/resolveAttachmentsForSave).
         attachments.push({
           filename: file.originalname,

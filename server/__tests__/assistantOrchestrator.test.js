@@ -21,6 +21,10 @@ const db = require('../src/config/db');
 const { getActiveProvider } = require('../src/services/llm/providerSelector');
 const { createRequest, proposeRequest, RequestValidationError } = require('../src/services/requestService');
 const { runAssistantChat } = require('../src/services/assistantOrchestrator');
+const {
+  getAttachments: getStoredAttachments,
+  _resetForTests: resetAttachmentStore,
+} = require('../src/services/assistantAttachmentStore');
 
 const FY_ROW = [[{ id_fiscal_year: 1, year: 2026 }], []];
 const DEPT_ROWS = [[{ id_department: 3, name: 'Računovodstvo' }], []];
@@ -848,12 +852,32 @@ describe('runAssistantChat — formalni prilog uz zahtjev pri create_request (do
   const QUOTE_ATTACHMENT = { filename: 'ponuda.pdf', kind: 'pdf', text: 'Toner x5', mimeType: 'application/pdf', base64: Buffer.from('%PDF-1.4 ponuda').toString('base64') };
   const PROPOSAL_FOR_MATCH = { fk_fiscal_year: VALID_ARGS.fk_fiscal_year, fk_department: VALID_ARGS.fk_department, items: VALID_ARGS.items };
 
-  const attachmentDataCarrierMessage = (attachments) => ({
-    role: 'system',
-    content: `${ATTACHMENT_DATA_MARKER}${JSON.stringify(attachments.map((a) => ({ filename: a.filename, mimeType: a.mimeType, base64: a.base64 })))}`,
+  /** Povijest kakvu klijent vrati u POTVRDNOM potezu, s carrier porukom iz prvog poteza. */
+  const historyWithCarrier = (carrierMessage) => [
+    { role: 'system', content: `${QUOTE_MARKER}\n...` },
+    carrierMessage,
+    { role: 'user', content: 'Evo ponude.' },
+    priorProposalToolMessage(PROPOSAL_FOR_MATCH, 'propose_1'),
+    { role: 'user', content: 'Da, potvrđujem.' },
+  ];
+
+  /** Odradi prvi potez (upload) i vrati carrier poruku koju bi klijent echoedao. */
+  async function uploadTurn(userId = 2, attachments = [QUOTE_ATTACHMENT]) {
+    mockReferenceContext();
+    getActiveProvider.mockResolvedValue({ chat: jest.fn().mockResolvedValue({ text: 'Evo sažetka...', tool_calls: null }) });
+    const result = await runAssistantChat({
+      messages: [{ role: 'user', content: 'Evo ponude.' }],
+      userId,
+      attachments,
+    });
+    return result.tool_trace.find((m) => m.role === 'system' && m.content.startsWith(ATTACHMENT_DATA_MARKER));
+  }
+
+  beforeEach(() => {
+    resetAttachmentStore();
   });
 
-  test('prvi potez (upload) — carrier poruka s base64 ide u tool_trace, ali NIKAD modelu (provider.chat)', async () => {
+  test('prvi potez (upload) — carrier nosi SAMO referencu (bez base64) i NIKAD ne ide modelu', async () => {
     mockReferenceContext();
     const chat = jest.fn().mockResolvedValue({ text: 'Evo sažetka...', tool_calls: null });
     getActiveProvider.mockResolvedValue({ chat });
@@ -866,18 +890,23 @@ describe('runAssistantChat — formalni prilog uz zahtjev pri create_request (do
 
     const carrierInTrace = result.tool_trace.find((m) => m.role === 'system' && m.content.startsWith(ATTACHMENT_DATA_MARKER));
     expect(carrierInTrace).toBeDefined();
-    expect(JSON.parse(carrierInTrace.content.slice(ATTACHMENT_DATA_MARKER.length))).toEqual([
-      { filename: 'ponuda.pdf', mimeType: 'application/pdf', base64: QUOTE_ATTACHMENT.base64 },
-    ]);
+
+    // Bajtovi ostaju server-side — kroz klijenta putuje samo neprozirni ID
+    // (inače bi 5 priloga x 5 MB = ~33 MB base64 probijalo express.json limit
+    // u svakom sljedećem potezu razgovora).
+    const payload = carrierInTrace.content.slice(ATTACHMENT_DATA_MARKER.length);
+    expect(payload).not.toContain(QUOTE_ATTACHMENT.base64);
+    expect(payload).toMatch(/^[0-9a-f-]{36}$/);
 
     const sentToModel = chat.mock.calls[0][0];
     expect(sentToModel.some((m) => typeof m.content === 'string' && m.content.startsWith(ATTACHMENT_DATA_MARKER))).toBe(false);
   });
 
-  test('create_request u KASNIJEM potezu (bez ponovnog uploada) — prilog se ipak sprema, dekodiran iz carrier poruke echoedane od klijenta', async () => {
+  test('create_request u KASNIJEM potezu (bez ponovnog uploada) — prilog se sprema iz server-side spremišta, po ID-u iz carrier poruke', async () => {
+    const carrier = await uploadTurn();
+
     mockReferenceContext();
     createRequest.mockResolvedValue({ id_purchase_request: 90, request_number: 'NAB-2026-0090', fk_request_status: 1 });
-
     const chat = jest.fn()
       .mockResolvedValueOnce(toolCallMessage(VALID_ARGS, 'create_att'))
       .mockResolvedValueOnce({ text: 'Zahtjev NAB-2026-0090 je kreiran.', tool_calls: null });
@@ -887,13 +916,7 @@ describe('runAssistantChat — formalni prilog uz zahtjev pri create_request (do
     // PRVOG poteza (uz ostatak povijesti) — attachments param OVDJE je []
     // jer se datoteka ne šalje ponovno preko multipart-a.
     await runAssistantChat({
-      messages: [
-        { role: 'system', content: `${QUOTE_MARKER}\n...` },
-        attachmentDataCarrierMessage([QUOTE_ATTACHMENT]),
-        { role: 'user', content: 'Evo ponude.' },
-        priorProposalToolMessage(PROPOSAL_FOR_MATCH, 'propose_1'),
-        { role: 'user', content: 'Da, potvrđujem.' },
-      ],
+      messages: historyWithCarrier(carrier),
       userId: 2,
       attachments: [],
     });
@@ -905,6 +928,62 @@ describe('runAssistantChat — formalni prilog uz zahtjev pri create_request (do
         buffer: Buffer.from(QUOTE_ATTACHMENT.base64, 'base64'),
       }],
     }));
+  });
+
+  test('carrier s TUĐIM ID-em ne priloži tuđi dokument — zahtjev se kreira bez priloga', async () => {
+    // Carrier prolazi kroz klijenta, pa ga korisnik može prepisati; spremište
+    // provjerava vlasništvo (assistantAttachmentStore.getAttachments).
+    const carrierOfUser2 = await uploadTurn(2);
+
+    mockReferenceContext();
+    createRequest.mockResolvedValue({ id_purchase_request: 93, request_number: 'NAB-2026-0093', fk_request_status: 1 });
+    getActiveProvider.mockResolvedValue({
+      chat: jest.fn()
+        .mockResolvedValueOnce(toolCallMessage(VALID_ARGS, 'create_att'))
+        .mockResolvedValueOnce({ text: 'Kreirano.', tool_calls: null }),
+    });
+
+    await runAssistantChat({
+      messages: historyWithCarrier(carrierOfUser2),
+      userId: 7, // DRUGI korisnik podmeće ID iz tuđeg razgovora
+      attachments: [],
+    });
+
+    expect(createRequest).toHaveBeenCalledWith(expect.objectContaining({ attachments: [] }));
+  });
+
+  test('izmišljen/istekao ID u carrieru — zahtjev se kreira bez priloga, bez pada', async () => {
+    mockReferenceContext();
+    createRequest.mockResolvedValue({ id_purchase_request: 94, request_number: 'NAB-2026-0094', fk_request_status: 1 });
+    getActiveProvider.mockResolvedValue({
+      chat: jest.fn()
+        .mockResolvedValueOnce(toolCallMessage(VALID_ARGS, 'create_att'))
+        .mockResolvedValueOnce({ text: 'Kreirano.', tool_calls: null }),
+    });
+
+    await runAssistantChat({
+      messages: historyWithCarrier({ role: 'system', content: `${ATTACHMENT_DATA_MARKER}ne-postoji` }),
+      userId: 2,
+      attachments: [],
+    });
+
+    expect(createRequest).toHaveBeenCalledWith(expect.objectContaining({ attachments: [] }));
+  });
+
+  test('nakon uspješnog create_request spremište se oslobađa (isti ID više ne vraća prilog)', async () => {
+    const carrier = await uploadTurn();
+
+    mockReferenceContext();
+    createRequest.mockResolvedValue({ id_purchase_request: 95, request_number: 'NAB-2026-0095', fk_request_status: 1 });
+    getActiveProvider.mockResolvedValue({
+      chat: jest.fn()
+        .mockResolvedValueOnce(toolCallMessage(VALID_ARGS, 'create_att'))
+        .mockResolvedValueOnce({ text: 'Kreirano.', tool_calls: null }),
+    });
+    await runAssistantChat({ messages: historyWithCarrier(carrier), userId: 2, attachments: [] });
+
+    const storeId = carrier.content.slice(ATTACHMENT_DATA_MARKER.length);
+    expect(getStoredAttachments(storeId, 2)).toEqual([]);
   });
 
   test('tekstualni tok bez priloga — attachments prosljeđen u createRequest je uvijek prazan niz', async () => {
