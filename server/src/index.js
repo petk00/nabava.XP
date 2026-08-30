@@ -97,6 +97,10 @@ app.use(cors({
   },
   credentials: true,
 }));
+// 10mb je ostatak iz vremena kad su bajtovi priloga putovali kroz klijenta kao
+// base64 u carrier poruci; danas ostaju server-side (assistantAttachmentStore.js)
+// pa su JSON tijela razgovora ponovno mala. Limit je zadržan kao rezerva —
+// upload priloga ionako ide kroz multer (multipart), ne kroz ovaj parser.
 app.use(express.json({ limit: '10mb' }));
 app.use(cookieParser());
 
