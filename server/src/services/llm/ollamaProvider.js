@@ -116,7 +116,8 @@ function normalizeToolCalls(rawToolCalls) {
 // slučaj ~40 min bez ikakvog napretka), ne protiv normalne spore generacije.
 const REQUEST_TIMEOUT_MS = 10 * 60 * 1000;
 
-// Stvarnim eval runom (docs/eval-runs/2026-08-26-ollama-5x.md) potvrđeno u
+// Stvarnim eval runom (gemma4:12b, 50 pokušaja, 2026-08-26 — sirovi podaci
+// obrisani 2026-08-31 kad je katalog sveden na gemma4:e4b) potvrđeno u
 // Ollaminim vlastitim logovima: scheduler zna usred rada REloadati model pod
 // memorijskim pritiskom (npr. -c 8192 -> 4096 pa natrag), prekidajući baš
 // zahtjev koji je tad u tijeku — vidljivo kod nas kao mrežna greška (ne HTTP

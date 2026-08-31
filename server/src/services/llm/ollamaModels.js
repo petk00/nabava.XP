@@ -23,7 +23,7 @@
 //   - qwen3.5:9b  — alate ima, ali NEDOSLJEDNO preskače propose_request
 //     (1 od 2 mjerena pokušaja), čime je razgovor znao zapeti.
 //   - gemma4:12b  — pouzdan, ali ~3× sporiji od e4b uz isti ishod na eval
-//     scenarijima; zadržan samo kao referenca u dokumentaciji.
+//     scenarijima. Sirovi podaci njegovih runova obrisani su 2026-08-31.
 const OLLAMA_MODELS = [
   {
     value: 'gemma4:e4b',
