@@ -7,7 +7,7 @@
 // (stopa uspjeha, medijan/prosjek latencije, prosjek tokena) KROZ SVE
 // uključene runove, PLUS raščlambu po pojedinom run fileu — namjerno, jer
 // ako se ponašanje promijenilo između runova (npr. popravak bug-a, docs/
-// eval-runs/2026-08-26-ollama-5x-scenario2-7-retest.md), slijepo miješanje
+// eval runova nakon popravka bug-a), slijepo miješanje
 // starih i novih brojeva u jedan prosjek bi zavaralo. Raščlamba po runu čini
 // takvu promjenu vidljivom, umjesto da je sakrije — odluka koje runove
 // citirati u konačnim rezultatima ostaje na autoru (ne automatski bodovano,

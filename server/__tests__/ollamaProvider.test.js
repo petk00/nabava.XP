@@ -187,7 +187,7 @@ describe('OllamaProvider.chat', () => {
   });
 
   test('mrežna greška na PRVOM pokušaju, uspjeh na retry-u — vraća rezultat, ne baca grešku', async () => {
-    // Stvarnim eval runom (docs/eval-runs/2026-08-26-ollama-5x.md) potvrđeno:
+    // Stvarnim eval runom (gemma4:12b, 2026-08-26; sirovi podaci obrisani) potvrđeno:
     // Ollamin scheduler zna usred rada reloadati model pod memorijskim
     // pritiskom, prekidajući baš zahtjev koji je tad u tijeku — reload traje
     // par sekundi, pa retry nakon kratke pauze uobičajeno uspije.

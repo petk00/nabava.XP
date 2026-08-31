@@ -330,7 +330,7 @@ mjerenja (docs/eval-runs/). Uklonjeni su:
 |---|---|
 | `qwen2.5vl:7b` | Nema `tools` — zahtjev ne može kreirati. Uz to je količine s ponude čitao krivo (`126,40` kao „12 × 6,40"). |
 | `qwen3.5:9b` | Alate ima, ali **nedosljedno** preskače `propose_request` (1 od 2 mjerena pokušaja), čime je razgovor znao zapeti. |
-| `gemma4:12b` | Pouzdan i dugo zadani, ali ~3× sporiji od `e4b` uz isti ishod na eval scenarijima. Ostaje referentna vrijednost u docs/eval-runs/. |
+| `gemma4:12b` | Pouzdan i dugo zadani, ali ~3× sporiji od `e4b` uz isti ishod na eval scenarijima. Sirovi podaci njegovih runova obrisani su pri svođenju kataloga. |
 
 Mehanizam za modele bez alata (`supportsTools: false` → orchestrator ne šalje
 `tools` + `NO_TOOLS_NOTE`) **namjerno je zadržan** iako ga trenutni katalog ne

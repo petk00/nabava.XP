@@ -35,7 +35,8 @@ deseti, koji očekuje odbijanje, odbio je. Nijedna HTTP greška.
 | #2 | + `num_ctx`, kraći prompt, `keep_alive`, 2 pravila | 8 ✅ / 2 ❌ | 21,0 min |
 | #3 | + rani izlaz iz petlje | **10 ✅** | 18,6 min |
 
-Referenca: `gemma4:12b`, zadnji puni 5× run — **68%**, scenariji 2 i 9 na **0/5**.
+Referenca: `gemma4:12b`, zadnji puni 5× run — 68%, scenariji 2 i 9 na 0/5.
+*(vidi napomenu o usporedbi na dnu)*
 
 ## Primijenjeni popravci
 
@@ -85,3 +86,8 @@ krivo čita količinu koju s defaultom čita točno. Oba su zapisana u komentaru
   trajno ostaje uz zahtjev.
 - **Hrvatski u chatu.** Opaženo „nabavku", „da li", „predloga", „Razloženje".
   `croatianTextFixer.js` te oblike ne hvata.
+
+> **Napomena o usporedbi.** Sirovi podaci mjerenja za gemma4:12b i ostale isprobane
+> modele obrisani su 2026-08-31 kad je katalog sveden na gemma4:e4b. Brojke tog
+> modela koje se ovdje spominju zabilježene su iz tadašnjih runova, ali **više nisu
+> provjerljive** — navode se samo kao kontekst, ne kao mjerenje.

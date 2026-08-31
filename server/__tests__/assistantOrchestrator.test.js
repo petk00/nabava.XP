@@ -1320,7 +1320,7 @@ describe('runAssistantChat — formalni prilog uz zahtjev pri create_request (do
 });
 
 describe('runAssistantChat — cross-turn kočnica protiv dvostrukog create_request (bez update tool-a)', () => {
-  // Stvarnim eval testiranjem (docs/eval-runs/2026-08-26-ollama-5x.md) otkriveno:
+  // Stvarnim eval testiranjem (gemma4:12b, 2026-08-26; sirovi podaci obrisani) otkriveno:
   // korisnikova poruka "promijenite količinu..." nakon što je zahtjev VEĆ
   // kreiran u ranijem potezu znala je navesti model da pozove create_request
   // PO DRUGI PUT, praveći pravi duplikat u bazi (createdRequest lokalna
