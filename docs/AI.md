@@ -19,6 +19,7 @@ razgovorom, umjesto ručnog popunjavanja `NewRequestPage.vue` wizarda.
 | API | `server/src/routes/assistantRoutes.js` | `POST /api/assistant/chat`, `GET`/`PUT /api/assistant/settings` (admin). Rate limit u `index.js`. |
 | Orkestracija | `server/src/services/assistantOrchestrator.js` | Tool-calling petlja, `MAX_ITERATIONS = 6`. |
 | Provideri | `server/src/services/llm/{ollamaProvider,geminiProvider,providerSelector}.js` | Runtime toggle iz tablice `AppSetting`, bez restarta. |
+| Katalog lokalnih modela | `server/src/services/llm/ollamaModels.js` | Dozvoljeni Ollama modeli i njihova `supportsTools` zastavica. |
 | Poslovna logika | `server/src/services/requestService.js` | `createRequest` / `proposeRequest`, dijeljeni s `POST /api/requests`. |
 | Prilozi | `server/src/services/{quoteExtractionService,pdfExtractWorker,attachmentService,assistantAttachmentStore}.js` | PDF tekst u zasebnom procesu; slika ide izravno vision modelu; izvorna datoteka se sprema kao formalni "Ponuda" prilog. Bajtovi priloga čekaju potvrdu u privremenom server-side spremištu (TTL 60 min, vezano uz korisnika), kroz razgovor putuje samo referenca. |
 | Hrvatski safety net | `server/src/services/croatianTextFixer.js` | Determinstički ispravak ekavice nad tekstom odgovora **i** nad `justification`/`comment` prije upisa u bazu. |
@@ -104,7 +105,7 @@ ne samo kroz env varijablu koju treba restartati server:
 
 | Provider | Kako radi | Prednost | Mana |
 |---|---|---|---|
-| **Lokalni Gemma (Ollama)** | Poziva lokalni `POST http://localhost:11434/api/chat`, model `gemma4:12b`. (Implementirano kroz Ollamin **nativni** `/api/chat` tool-calling format, ne kroz OpenAI-kompatibilnu rutu kako je prijedlog pretpostavljao.) | Podaci ne napuštaju server, nema troška po pozivu. | Treba GPU/RAM na serveru, sporiji i slabiji od cloud modela pri manjim varijantama. |
+| **Lokalni Gemma (Ollama)** | Poziva lokalni `POST http://localhost:11434/api/chat`, model `gemma4:e4b`. (Implementirano kroz Ollamin **nativni** `/api/chat` tool-calling format, ne kroz OpenAI-kompatibilnu rutu kako je prijedlog pretpostavljao.) | Podaci ne napuštaju server, nema troška po pozivu. | Treba GPU/RAM na serveru, sporiji i slabiji od cloud modela pri manjim varijantama. |
 | **Gemini Flash API** | Cloud poziv na Google-ov API, function-calling podržan nativno. | Brže, kvalitetnije zaključivanje. | Podaci idu na Google servere, trošak po pozivu, treba API ključ. |
 
 Toggle bi trebao biti runtime postavka (npr. admin postavka spremljena u bazi ili konfiguracijskoj
@@ -283,14 +284,70 @@ Prioritet: **Visoko**
 Status: ✅ **Napravljeno.** Toggle je postavka `ai_provider` u tablici `AppSetting`, mijenja se kroz `PUT /api/assistant/settings` (admin). Ollama je testirana uživo kroz sve eval runove; **Gemini provider još nije potvrđen stvarnim pozivom** — vidi napomenu na vrhu `geminiProvider.js`.
 
 - Zajedničko sučelje: `chat(messages, tools) -> { text?, tool_calls? }`, s podrškom za streaming.
-- `OllamaProvider` — poziva lokalni `POST http://localhost:11434/api/chat` s `gemma4:12b`
-  modelom, podržava tool-calling preko Ollamine OpenAI-kompatibilne rute.
+- `OllamaProvider` — poziva lokalni `POST http://localhost:11434/api/chat`, podržava tool-calling
+  preko Ollamine OpenAI-kompatibilne rute. Model se bira u runtimeu (postavka `ollama_model`,
+  vidi *Odabir lokalnog modela* niže); zadani je `gemma4:e4b`.
 - `GeminiProvider` — poziva Gemini Flash API, isto s function-calling podrškom.
 - Toggle: pošto treba biti runtime postavka (ne samo env var), izbor providera spremiti kao
   postavku (npr. u bazi, sličan pattern kao fiskalne godine/postavke), izložiti je kroz admin ili
   per-user UI switch u chat overlayu.
 - Fallback ponašanje ako lokalni Ollama nije dostupan (npr. jasna poruka korisniku, ne silent
   fail).
+
+#### Zaštita od lažne tvrdnje o kreiranju (`guardFalseCreationClaim`)
+
+Uz strukturnu bravu postoji i **tekstualna** sigurnosna mreža. Eval run
+2026-08-31 (`gemma4:e4b`, scenarij 2) uhvatio je model koji nije pozvao
+nijedan alat, ali je korisniku javio *„Vaš zahtjev za nabavu je uspješno
+kreiran. Vaš broj zahtjeva je **N/A**."* — ništa nije nastalo.
+
+Brava to ne hvata jer presreće *poziv* `create_request`, a ovdje poziva nije
+bilo. Zato se finalni tekst provjerava protiv `FALSE_CREATION_PATTERNS` i, ako
+tvrdi kreiranje dok `created_request` ne postoji, zamjenjuje jasnom porukom da
+zahtjev NIJE kreiran. Vrijedi za **sve** modele (`NO_TOOLS_NOTE` štiti samo one
+bez alata). Uzorci hvataju samo svršene oblike — najave („kreirat ću", „želite
+li da kreiram") su legitimne i ne diraju se.
+
+#### Odabir lokalnog modela (`AppSetting.ollama_model`)
+
+Uz `ai_provider` (ollama/gemini) postoji i druga runtime postavka — **koji lokalni model** Ollama
+provider koristi. Mijenja se istom rutom `PUT /api/assistant/settings` (admin, bez restarta), a u UI-u
+je u istom izborniku kao i provider toggle: lokalni modeli su stavke pod zaglavljem "Ollama (lokalno)",
+pa klik na model ujedno prebacuje `ai_provider` na `ollama`.
+
+Dozvoljeni modeli su isključivo oni iz kataloga `server/src/services/llm/ollamaModels.js` (nepoznat
+model → 400). Katalog `GET /api/assistant/settings` šalje klijentu kao `ollama_models`, pa UI ne drži
+vlastitu kopiju popisa.
+
+| Model | `supportsTools` | Što može |
+|---|---|---|
+| `gemma4:e4b` (zadani, jedini) | ✅ | Cijeli tijek, uključujući `propose_request`/`create_request`, te čitanje PDF i slikovnih ponuda. **10/10 na eval scenarijima** (docs/eval-runs/2026-08-31-e4b-1x-nakon-popravaka.md). |
+
+**Zašto samo jedan model.** Katalog je 2026-08-31 sveden na `gemma4:e4b` nakon
+mjerenja (docs/eval-runs/). Uklonjeni su:
+
+| Model | Razlog uklanjanja |
+|---|---|
+| `qwen2.5vl:7b` | Nema `tools` — zahtjev ne može kreirati. Uz to je količine s ponude čitao krivo (`126,40` kao „12 × 6,40"). |
+| `qwen3.5:9b` | Alate ima, ali **nedosljedno** preskače `propose_request` (1 od 2 mjerena pokušaja), čime je razgovor znao zapeti. |
+| `gemma4:12b` | Pouzdan i dugo zadani, ali ~3× sporiji od `e4b` uz isti ishod na eval scenarijima. Ostaje referentna vrijednost u docs/eval-runs/. |
+
+Mehanizam za modele bez alata (`supportsTools: false` → orchestrator ne šalje
+`tools` + `NO_TOOLS_NOTE`) **namjerno je zadržan** iako ga trenutni katalog ne
+koristi: to je jedina brana protiv Ollaminog tvrdog HTTP 400
+(`"<model> does not support tools"`) ako se takav model ikad vrati u katalog.
+
+`supportsTools` nije kozmetika: Ollama na `/api/chat` vraća tvrd **HTTP 400**
+(`"<model> does not support tools"`) ako se `tools` pošalje modelu bez te sposobnosti. Zato:
+
+1. Provider javlja sposobnosti aktivnog modela kroz `getCapabilities()` (dio LlmProvider sučelja —
+   `geminiProvider` vraća uvijek `supportsTools: true`).
+2. `assistantOrchestrator` kod modela bez alata **ne šalje `tools`** i u system prompt dodaje
+   `NO_TOOLS_NOTE` — bez toga model nema načina saznati da alata nema, pa zna "potvrditi" kreiranje
+   zahtjeva koje se nikad nije dogodilo.
+3. `ollamaProvider.chat()` istu provjeru ponavlja kao drugu branu.
+4. U chat overlayu administrator vidi žuto upozorenje dok je takav model aktivan, da izostanak
+   kreiranja zahtjeva ne izgleda kao kvar.
 
 ### Faza 2 — Domenski "tools" (function-calling shema)
 
@@ -385,7 +442,7 @@ Status: 🔀 **Djelomično.** Prompt injection pokriven scenarijem 8; ključ je 
 - Prompt injection otpornost — potvrditi da `create_request()` ne može zaobići provjeru
   proračuna/poslovne godine bez obzira što model "kaže".
 - Gemini API ključ isključivo u `server/.env`, nikad izložen frontendu.
-- Evaluacija `gemma4:12b` vs. Gemini Flash: brzina, točnost, broj koraka do dovršetka — materijal
+- Evaluacija lokalnog modela vs. Gemini Flash: brzina, točnost, broj koraka do dovršetka — materijal
   za diplomski rad.
 
 ## Otvorena pitanja

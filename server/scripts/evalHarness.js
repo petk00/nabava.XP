@@ -13,6 +13,7 @@
 //   node scripts/evalHarness.js --provider=ollama
 //   node scripts/evalHarness.js --provider=ollama --only=scenario1_pdf_tekst,scenario5_sve_u_jednoj_recenici
 //   node scripts/evalHarness.js --provider=gemini --repeat=3
+//   node scripts/evalHarness.js --provider=ollama --model=qwen3.5:9b
 //
 // CLI/env parametri (svi opcionalni):
 //   --provider=ollama|gemini   koji provider runner OČEKUJE da je aktivan
@@ -21,6 +22,13 @@
 //                              runner GA I POSTAVI preko PUT /api/assistant/settings
 //                              prije pokretanja — inače samo pretpostavlja
 //                              da je već ručno postavljen i bilježi ga kao takvog.
+//   --model=naziv              koji LOKALNI Ollama model evaluirati
+//                              (AppSetting.ollama_model, katalog u
+//                              llm/ollamaModels.js). Postavlja se istim
+//                              settings API-jem kao provider, pa vrijedi ista
+//                              ovisnost o EVAL_ADMIN_EMAIL/PASSWORD. Bez
+//                              ovoga se evaluira model koji je trenutno
+//                              zapisan u bazi.
 //   --only=id1,id2             pokreni samo navedene scenario ID-jeve (pila
 //                              za brzu provjeru prije punog runa)
 //   --repeat=N                 override repeatCount za SVE scenarije u ovom runu
@@ -38,7 +46,10 @@ const USER_PASSWORD = process.env.EVAL_USER_PASSWORD || '12345678';
 const ADMIN_EMAIL = process.env.EVAL_ADMIN_EMAIL || null;
 const ADMIN_PASSWORD = process.env.EVAL_ADMIN_PASSWORD || null;
 const OLLAMA_BASE_URL = process.env.OLLAMA_BASE_URL || 'http://localhost:11434';
-const OLLAMA_MODEL_NAME = 'gemma4:12b'; // vidi ollamaProvider.js OLLAMA_MODEL
+// Model NIJE više konstanta — bira se runtime postavkom AppSetting.ollama_model
+// (vidi llm/ollamaModels.js). Ovo je samo fallback za /api/show kad run ne
+// navede --model, pa ga runner popuni stvarnom vrijednošću iz settings API-ja.
+let ollamaModelName = 'gemma4:12b';
 
 // Node-ov fetch (undici) ima tvrdi default headersTimeout/bodyTimeout od
 // 300000ms (5 min), kraći od backendova VLASTITOG 10-min budžeta za čekanje
@@ -87,10 +98,21 @@ function postChat({ headers, bodyBuffer }) {
 }
 
 function parseArgs() {
-  const args = { provider: process.env.EVAL_PROVIDER || 'ollama', only: null, repeat: null };
+  const args = {
+    provider: process.env.EVAL_PROVIDER || 'ollama',
+    model: process.env.EVAL_OLLAMA_MODEL || null,
+    only: null,
+    repeat: null,
+  };
   for (const arg of process.argv.slice(2)) {
-    const [key, value] = arg.replace(/^--/, '').split('=');
+    // split('=') bi na "qwen3.5:9b" bio bezopasan, ali naziv modela smije
+    // sadržavati '=' u principu — uzmi sve iza prvog znaka jednakosti.
+    const raw = arg.replace(/^--/, '');
+    const eq = raw.indexOf('=');
+    const key = eq === -1 ? raw : raw.slice(0, eq);
+    const value = eq === -1 ? '' : raw.slice(eq + 1);
     if (key === 'provider') args.provider = value;
+    if (key === 'model') args.model = value;
     if (key === 'only') args.only = value.split(',').map((s) => s.trim());
     if (key === 'repeat') args.repeat = Number(value);
   }
@@ -116,24 +138,34 @@ async function login(email, password) {
   return match[1];
 }
 
-/** Ako su admin kredencijali dostupni, stvarno postavlja provider preko settings API-ja. */
-async function ensureProvider(providerArg) {
+/**
+ * Ako su admin kredencijali dostupni, stvarno postavlja provider (i, kad je
+ * zadan, lokalni Ollama model) preko settings API-ja. Bez kredencijala samo
+ * ČITA što je zapisano, da run metapodaci nose stvarno evaluirani model, a ne
+ * pretpostavku — inače se rezultati ne mogu pripisati modelu.
+ */
+async function ensureProvider(providerArg, modelArg) {
   if (!ADMIN_EMAIL || !ADMIN_PASSWORD) {
     console.log(`[evalHarness] EVAL_ADMIN_EMAIL/PASSWORD nisu postavljeni — pretpostavljam da je provider "${providerArg}" već ručno postavljen.`);
-    return { provider: providerArg, autoSet: false };
+    if (modelArg) {
+      throw new Error('--model zahtijeva EVAL_ADMIN_EMAIL/EVAL_ADMIN_PASSWORD (model se mijenja admin rutom).');
+    }
+    return { provider: providerArg, model: null, autoSet: false };
   }
   const adminToken = await login(ADMIN_EMAIL, ADMIN_PASSWORD);
+  const body = { provider: providerArg };
+  if (modelArg) body.ollama_model = modelArg;
   const res = await fetch(`${BASE_URL}/api/assistant/settings`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${adminToken}` },
-    body: JSON.stringify({ provider: providerArg }),
+    body: JSON.stringify(body),
   });
   if (!res.ok) {
-    throw new Error(`Postavljanje providera na "${providerArg}" neuspješno (${res.status}): ${await res.text()}`);
+    throw new Error(`Postavljanje providera na "${providerArg}"${modelArg ? ` / modela "${modelArg}"` : ''} neuspješno (${res.status}): ${await res.text()}`);
   }
   const data = await res.json();
-  console.log(`[evalHarness] Provider postavljen preko settings API-ja: ${data.provider}`);
-  return { provider: data.provider, autoSet: true };
+  console.log(`[evalHarness] Provider postavljen preko settings API-ja: ${data.provider}, lokalni model: ${data.ollama_model}`);
+  return { provider: data.provider, model: data.ollama_model, autoSet: true };
 }
 
 /**
@@ -148,7 +180,7 @@ async function getOllamaTemperatureNote() {
     const res = await fetch(`${OLLAMA_BASE_URL}/api/show`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ model: OLLAMA_MODEL_NAME }),
+      body: JSON.stringify({ model: ollamaModelName }),
     });
     if (!res.ok) return { source: 'unavailable', temperature: null };
     const data = await res.json();
@@ -380,10 +412,13 @@ async function main() {
   console.log(`[evalHarness] Prijava kao ${USER_EMAIL}...`);
   const token = await login(USER_EMAIL, USER_PASSWORD);
 
-  const { provider, autoSet } = await ensureProvider(args.provider);
+  const { provider, model, autoSet } = await ensureProvider(args.provider, args.model);
+  // /api/show i metapodaci moraju gledati STVARNO aktivan model.
+  if (provider === 'ollama' && model) ollamaModelName = model;
 
   const temperatureNote = provider === 'ollama' ? await getOllamaTemperatureNote() : { source: 'n/a (provider nije ollama)', temperature: null };
   console.log(`[evalHarness] Provider: ${provider} (auto-postavljen preko API-ja: ${autoSet})`);
+  if (provider === 'ollama') console.log(`[evalHarness] Lokalni model: ${ollamaModelName}`);
   console.log(`[evalHarness] Temperature napomena: ${JSON.stringify(temperatureNote)}`);
 
   const totalAttempts = scenarios.reduce((sum, s) => sum + s.repeatCount, 0);
@@ -395,6 +430,9 @@ async function main() {
     run_started_at: runStartedAt,
     provider,
     provider_auto_set: autoSet,
+    // Bez ovoga se JSONL redovi ne mogu pripisati konkretnom lokalnom modelu
+    // (od uvođenja AppSetting.ollama_model provider više ne implicira model).
+    ollama_model: provider === 'ollama' ? ollamaModelName : null,
     ollama_temperature_note: temperatureNote,
     scenarios: scenarios.map((s) => ({ id: s.id, description: s.description, repeat_count: s.repeatCount, turns: s.turns.length, attachments: s.attachments.length })),
     total_attempts: totalAttempts,

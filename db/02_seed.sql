@@ -41,12 +41,14 @@ INSERT INTO `AppUser` (`id_user`, `fk_role`, `first_name`, `last_name`, `email`,
 
 -- ------------------------------------------------------------
 -- AppSetting — zadane runtime postavke AI asistenta (docs/AI.md).
--- Aktivni provider i Gemini model se mijenjaju kroz admin API,
--- ovo su samo početne vrijednosti.
+-- Aktivni provider te Gemini i Ollama model mijenjaju se kroz admin API,
+-- ovo su samo početne vrijednosti. Dozvoljene vrijednosti za 'ollama_model'
+-- su iz kataloga OLLAMA_MODELS (server/src/services/llm/ollamaProvider.js).
 -- ------------------------------------------------------------
 INSERT INTO `AppSetting` (`setting_key`, `setting_value`) VALUES
 ('ai_provider', 'ollama'),
-('gemini_model', 'gemini-2.5-flash');
+('gemini_model', 'gemini-2.5-flash'),
+('ollama_model', 'gemma4:e4b');
 
 -- ============================================================
 -- Kraj seed.sql

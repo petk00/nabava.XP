@@ -35,9 +35,32 @@
             {{ providerLabel }}
             <q-icon name="expand_more" size="16px" />
             <q-menu>
-              <q-list style="min-width: 180px">
+              <q-list style="min-width: 260px">
+                <!-- Lokalni modeli: klik bira model I prebacuje na Ollamu -->
+                <q-item-label header class="ask-bar__menu-header">Ollama (lokalno)</q-item-label>
                 <q-item
-                  v-for="opt in providerOptions"
+                  v-for="model in ollamaModels"
+                  :key="model.value"
+                  clickable
+                  v-close-popup
+                  @click="changeOllamaModel(model.value)"
+                >
+                  <q-item-section>
+                    <q-item-label>{{ model.label }}</q-item-label>
+                    <q-item-label v-if="model.supportsTools === false" caption>
+                      Bez alata — ne može kreirati zahtjev
+                    </q-item-label>
+                  </q-item-section>
+                  <q-item-section v-if="isOllamaActive && model.value === currentOllamaModel" side>
+                    <q-icon name="check" color="primary" size="16px" />
+                  </q-item-section>
+                </q-item>
+
+                <q-separator class="q-my-xs" />
+
+                <!-- Ostali provideri (Gemini) — model im se ne bira ovdje -->
+                <q-item
+                  v-for="opt in otherProviderOptions"
                   :key="opt.value"
                   clickable
                   v-close-popup
@@ -158,6 +181,14 @@
         </button>
       </div>
 
+      <!-- Vidljivo samo administratoru koji je odabrao lokalni model bez
+           function-callinga — inače bi izostanak kreiranja zahtjeva izgledao
+           kao kvar asistenta. -->
+      <div v-if="ollamaModelWarning" class="assistant-overlay__notice">
+        <q-icon name="info" size="16px" />
+        <span>{{ ollamaModelWarning }}</span>
+      </div>
+
       <div ref="assistantBodyEl" class="assistant-overlay__body">
         <div
           v-for="(msg, idx) in chatMessages"
@@ -240,7 +271,12 @@ const {
   isAdmin: isAssistantAdmin,
   currentProvider,
   providerLabel,
-  providerOptions,
+  otherProviderOptions,
+  currentOllamaModel,
+  ollamaModels,
+  isOllamaActive,
+  ollamaModelWarning,
+  changeOllamaModel,
   loadProviderSettings,
   changeProvider,
   submitAsk,
@@ -438,6 +474,18 @@ onMounted(async () => {
 
 .ask-bar__model:hover {
   background: #f0fbfe;
+}
+
+/* Zaglavlje sekcije lokalnih modela u izborniku providera */
+.ask-bar__menu-header {
+  padding: 8px 16px 4px;
+  color: #6b7a90;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  line-height: 1.2;
+  min-height: 0;
 }
 
 /* ── Prilozi uz poruku (do MAX_QUOTE_FILES odjednom, nov element, ne mijenja
@@ -789,6 +837,21 @@ onMounted(async () => {
 .assistant-overlay__close:hover {
   background: #f3f4f6;
   color: #111827;
+}
+
+/* Upozorenje o modelu bez alata (vidi ollamaModelWarning) */
+.assistant-overlay__notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 0 16px 8px;
+  padding: 8px 12px;
+  border: 1px solid #f5d99a;
+  border-radius: 10px;
+  background: #fff8e8;
+  color: #7a5a12;
+  font-size: 0.75rem;
+  line-height: 1.35;
 }
 
 .assistant-overlay__body {

@@ -6,12 +6,17 @@ const { runAssistantChat } = require('../services/assistantOrchestrator');
 const { extractQuoteText, QuoteExtractionError } = require('../services/quoteExtractionService');
 const { detectMimeTypeFromBuffer } = require('../services/fileTypeService');
 const { getSetting, setSetting, SETTING_KEYS } = require('../config/appSettings');
+const { OLLAMA_MODELS } = require('../services/llm/ollamaModels');
 
 // Slika ponude ide izravno modelu (vision), PDF se i dalje čita server-side
 // (quoteExtractionService) — vidi assistantOrchestrator.js.
 const IMAGE_MIME_TYPES = ['image/jpeg', 'image/png'];
 
 const ALLOWED_PROVIDERS = ['ollama', 'gemini'];
+// Katalog lokalnih modela je jedini izvor istine u ollamaModels.js — ovdje se
+// samo validira, a cijeli se popis šalje klijentu (GET /settings) da UI ne
+// mora držati vlastitu, koja bi se s vremenom razišla.
+const ALLOWED_OLLAMA_MODELS = OLLAMA_MODELS.map((m) => m.value);
 // 'tool' i assistant-s-tool_calls poruke se pojavljuju kad klijent ponovno
 // šalje tool_trace iz prijašnjeg odgovora (vidi assistantOrchestrator.js) —
 // bez toga se strukturna potvrda za priloge (propose_request -> create_request)
@@ -165,7 +170,13 @@ router.get('/settings', authenticateToken, requireAdmin, async (req, res) => {
   try {
     const provider = await getSetting(SETTING_KEYS.AI_PROVIDER);
     const geminiModel = await getSetting(SETTING_KEYS.GEMINI_MODEL);
-    return res.json({ provider, gemini_model: geminiModel });
+    const ollamaModel = await getSetting(SETTING_KEYS.OLLAMA_MODEL);
+    return res.json({
+      provider,
+      gemini_model: geminiModel,
+      ollama_model: ollamaModel,
+      ollama_models: OLLAMA_MODELS,
+    });
   } catch (error) {
     console.error('GET /api/assistant/settings error:', error);
     return res.status(500).json({ message: 'Greška pri dohvaćanju AI postavki.' });
@@ -174,15 +185,15 @@ router.get('/settings', authenticateToken, requireAdmin, async (req, res) => {
 
 /**
  * PUT /api/assistant/settings
- * Mijenja aktivni provider i/ili Gemini model — runtime, bez restarta
+ * Mijenja aktivni provider i/ili model (Gemini ili Ollama) — runtime, bez restarta
  * servera (samo administrator).
  */
 router.put('/settings', authenticateToken, requireAdmin, async (req, res) => {
-  const { provider, gemini_model: geminiModel } = req.body;
+  const { provider, gemini_model: geminiModel, ollama_model: ollamaModel } = req.body;
 
-  if (provider === undefined && geminiModel === undefined) {
+  if (provider === undefined && geminiModel === undefined && ollamaModel === undefined) {
     return res.status(400).json({
-      message: 'Barem jedno polje ("provider" ili "gemini_model") mora biti poslano.',
+      message: 'Barem jedno polje ("provider", "gemini_model" ili "ollama_model") mora biti poslano.',
     });
   }
 
@@ -198,6 +209,16 @@ router.put('/settings', authenticateToken, requireAdmin, async (req, res) => {
     });
   }
 
+  // Za razliku od Gemini modela (slobodan niz — Google ih dodaje bez našeg
+  // znanja), lokalni model mora biti IZ kataloga: svaki nosi supportsTools
+  // zastavicu o kojoj ovisi šalje li orchestrator alate, a nepoznat model bi
+  // tu zastavicu pogodio krivo i srušio svaki poziv na Ollamin HTTP 400.
+  if (ollamaModel !== undefined && !ALLOWED_OLLAMA_MODELS.includes(ollamaModel)) {
+    return res.status(400).json({
+      message: `Nepoznat Ollama model. Dozvoljeno: ${ALLOWED_OLLAMA_MODELS.join(', ')}.`,
+    });
+  }
+
   try {
     if (provider !== undefined) {
       await setSetting(SETTING_KEYS.AI_PROVIDER, provider);
@@ -205,11 +226,15 @@ router.put('/settings', authenticateToken, requireAdmin, async (req, res) => {
     if (geminiModel !== undefined) {
       await setSetting(SETTING_KEYS.GEMINI_MODEL, geminiModel.trim());
     }
+    if (ollamaModel !== undefined) {
+      await setSetting(SETTING_KEYS.OLLAMA_MODEL, ollamaModel);
+    }
 
     return res.json({
       message: 'AI postavke ažurirane.',
       provider: await getSetting(SETTING_KEYS.AI_PROVIDER),
       gemini_model: await getSetting(SETTING_KEYS.GEMINI_MODEL),
+      ollama_model: await getSetting(SETTING_KEYS.OLLAMA_MODEL),
     });
   } catch (error) {
     console.error('PUT /api/assistant/settings error:', error);

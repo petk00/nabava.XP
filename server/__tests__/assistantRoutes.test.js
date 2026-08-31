@@ -34,6 +34,8 @@ app.use('/api/assistant', require('../src/routes/assistantRoutes'));
 const ADMIN = { id_user: 1, role_name: 'Administrator' };
 const EMPLOYEE = { id_user: 2, role_name: 'Zaposlenik' };
 
+const { OLLAMA_MODELS } = require('../src/services/llm/ollamaModels');
+
 // getSetting čita jedan red preko db.query -> [rows, fields]
 const settingRow = (value) => [[{ setting_value: value }], []];
 
@@ -389,16 +391,23 @@ describe('GET /api/assistant/settings — samo administrator', () => {
     expect(db.query).not.toHaveBeenCalled();
   });
 
-  test('administrator dobiva trenutni toggle', async () => {
+  test('administrator dobiva trenutni toggle i katalog lokalnih modela', async () => {
     global.__testUser__ = ADMIN;
     db.query
       .mockResolvedValueOnce(settingRow('gemini'))
-      .mockResolvedValueOnce(settingRow('gemini-2.5-flash'));
+      .mockResolvedValueOnce(settingRow('gemini-2.5-flash'))
+      .mockResolvedValueOnce(settingRow('gemma4:e4b'));
 
     const res = await supertest(app).get('/api/assistant/settings');
 
     expect(res.status).toBe(200);
-    expect(res.body).toEqual({ provider: 'gemini', gemini_model: 'gemini-2.5-flash' });
+    expect(res.body).toEqual({
+      provider: 'gemini',
+      gemini_model: 'gemini-2.5-flash',
+      ollama_model: 'gemma4:e4b',
+      // Katalog ide iz ollamaModels.js — UI ga ne smije držati zasebno.
+      ollama_models: OLLAMA_MODELS,
+    });
   });
 });
 
@@ -416,10 +425,20 @@ describe('PUT /api/assistant/settings — samo administrator', () => {
     expect(res.status).toBe(400);
   });
 
-  test('prazno tijelo (ni provider ni gemini_model) vraća 400', async () => {
+  test('prazno tijelo (ni provider ni gemini_model ni ollama_model) vraća 400', async () => {
     global.__testUser__ = ADMIN;
     const res = await supertest(app).put('/api/assistant/settings').send({});
     expect(res.status).toBe(400);
+  });
+
+  // Lokalni model se, za razliku od Gemini modela, validira protiv kataloga:
+  // supportsTools zastavica postoji samo za modele iz njega, a bez nje bi
+  // orchestrator poslao alate modelu koji ih ne podržava (Ollamin HTTP 400).
+  test('Ollama model izvan kataloga vraća 400 i ne dira bazu', async () => {
+    global.__testUser__ = ADMIN;
+    const res = await supertest(app).put('/api/assistant/settings').send({ ollama_model: 'mistral:7b' });
+    expect(res.status).toBe(400);
+    expect(db.query).not.toHaveBeenCalled();
   });
 
   test('uspješna izmjena providera upisuje u bazu i vraća ažurirane vrijednosti', async () => {
@@ -427,7 +446,8 @@ describe('PUT /api/assistant/settings — samo administrator', () => {
     db.query
       .mockResolvedValueOnce([{ affectedRows: 1 }, []]) // setSetting: INSERT ... ON DUPLICATE KEY UPDATE
       .mockResolvedValueOnce(settingRow('gemini'))        // getSetting ai_provider
-      .mockResolvedValueOnce(settingRow('gemini-2.5-flash')); // getSetting gemini_model
+      .mockResolvedValueOnce(settingRow('gemini-2.5-flash')) // getSetting gemini_model
+      .mockResolvedValueOnce(settingRow('gemma4:e4b'));      // getSetting ollama_model
 
     const res = await supertest(app).put('/api/assistant/settings').send({ provider: 'gemini' });
 
@@ -436,6 +456,25 @@ describe('PUT /api/assistant/settings — samo administrator', () => {
       message: 'AI postavke ažurirane.',
       provider: 'gemini',
       gemini_model: 'gemini-2.5-flash',
+      ollama_model: 'gemma4:e4b',
     });
+  });
+
+  test('uspješna izmjena lokalnog modela na model iz kataloga', async () => {
+    global.__testUser__ = ADMIN;
+    const target = OLLAMA_MODELS[0].value;
+    db.query
+      .mockResolvedValueOnce([{ affectedRows: 1 }, []]) // setSetting ai_provider
+      .mockResolvedValueOnce([{ affectedRows: 1 }, []]) // setSetting ollama_model
+      .mockResolvedValueOnce(settingRow('ollama'))
+      .mockResolvedValueOnce(settingRow('gemini-2.5-flash'))
+      .mockResolvedValueOnce(settingRow(target));
+
+    const res = await supertest(app)
+      .put('/api/assistant/settings')
+      .send({ provider: 'ollama', ollama_model: target });
+
+    expect(res.status).toBe(200);
+    expect(res.body).toMatchObject({ provider: 'ollama', ollama_model: target });
   });
 });

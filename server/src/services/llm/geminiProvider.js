@@ -177,4 +177,13 @@ async function chat(messages, tools = []) {
   return parseResponse(data);
 }
 
-module.exports = { chat };
+/**
+ * Dio LlmProvider sučelja (docs/AI.md) — parnjak istoimene funkcije u
+ * ollamaProvider.js. Svi Gemini modeli iz toggle-a podržavaju function
+ * calling, pa je odgovor konstanta.
+ */
+async function getCapabilities() {
+  return { model: await getSetting(SETTING_KEYS.GEMINI_MODEL), supportsTools: true };
+}
+
+module.exports = { chat, getCapabilities };

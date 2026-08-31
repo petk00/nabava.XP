@@ -55,10 +55,39 @@ export function useAssistantChat() {
 
   // ── AI provider toggle (admin-only na backendu) ──
   const currentProvider = ref(null);
-  const providerLabel = computed(() =>
-    currentProvider.value ? (PROVIDER_LABELS[currentProvider.value] || currentProvider.value) : 'Asistent'
+
+  // ── Odabir lokalnog Ollama modela (samo kad je Ollama aktivan provider) ──
+  // Popis NE dolazi odavde nego iz GET /assistant/settings — katalog modela
+  // (sa supportsTools zastavicom) živi u llm/ollamaModels.js, pa se UI ne može
+  // razići s onim što backend stvarno dopušta.
+  const currentOllamaModel = ref(null);
+  const ollamaModels = ref([]);
+  const isOllamaActive = computed(() => currentProvider.value === 'ollama');
+  const activeOllamaModel = computed(
+    () => ollamaModels.value.find((m) => m.value === currentOllamaModel.value) || null
   );
+  // Upozorenje uz model bez function-callinga (npr. qwen2.5vl:7b): takav
+  // model razgovara i čita priloge, ali zahtjev ne može kreirati.
+  const ollamaModelWarning = computed(() =>
+    isOllamaActive.value && activeOllamaModel.value && activeOllamaModel.value.supportsTools === false
+      ? 'Ovaj model ne podržava alate — može čitati ponude i razgovarati, ali ne može kreirati zahtjev.'
+      : null
+  );
+
+  const providerLabel = computed(() => {
+    if (!currentProvider.value) return 'Asistent';
+    const base = PROVIDER_LABELS[currentProvider.value] || currentProvider.value;
+    // Kod Ollame je odabrani model bitniji od same riječi "Ollama" — dvije
+    // stavke u istom gumbu bile bi predugačke, pa model zamjenjuje sufiks.
+    if (isOllamaActive.value && currentOllamaModel.value) {
+      return `Ollama · ${currentOllamaModel.value}`;
+    }
+    return base;
+  });
   const providerOptions = PROVIDER_OPTIONS;
+  // Ollama u izborniku nije jedna stavka nego zaglavlje nad popisom svojih
+  // modela, pa je ovdje nema — ostaju provideri kojima se model ne bira.
+  const otherProviderOptions = PROVIDER_OPTIONS.filter((o) => o.value !== 'ollama');
 
   // ── Povijest poruka u backend obliku (messages + tool_trace) ──
   const conversationHistory = ref([]); // { role, content, tool_calls?, tool_call_id?, name? }[]
@@ -173,6 +202,8 @@ export function useAssistantChat() {
     try {
       const { data } = await api.get('/assistant/settings');
       currentProvider.value = data.provider;
+      currentOllamaModel.value = data.ollama_model ?? null;
+      ollamaModels.value = data.ollama_models ?? [];
     } catch (error) {
       console.error('[assistant] Greška pri dohvaćanju AI postavki:', error);
     }
@@ -185,6 +216,25 @@ export function useAssistantChat() {
       currentProvider.value = data.provider;
     } catch (error) {
       console.error('[assistant] Greška pri promjeni AI providera:', error);
+    }
+  }
+
+  // Odabir lokalnog modela je ujedno i prebacivanje na Ollamu: sve stavke su
+  // u istom izborniku, pa klik na model dok je aktivan Gemini inače ne bi imao
+  // nikakav vidljiv učinak. Zato i guard gleda OBOJE — kad je Gemini aktivan,
+  // klik na već zapisani model je i dalje smislena promjena.
+  async function changeOllamaModel(value) {
+    if (!isAdmin) return;
+    if (isOllamaActive.value && value === currentOllamaModel.value) return;
+    try {
+      const { data } = await api.put('/assistant/settings', {
+        provider: 'ollama',
+        ollama_model: value,
+      });
+      currentProvider.value = data.provider;
+      currentOllamaModel.value = data.ollama_model;
+    } catch (error) {
+      console.error('[assistant] Greška pri promjeni Ollama modela:', error);
     }
   }
 
@@ -208,8 +258,15 @@ export function useAssistantChat() {
     currentProvider,
     providerLabel,
     providerOptions,
+    otherProviderOptions,
     loadProviderSettings,
     changeProvider,
+    // odabir lokalnog Ollama modela
+    currentOllamaModel,
+    ollamaModels,
+    isOllamaActive,
+    ollamaModelWarning,
+    changeOllamaModel,
     // razgovor
     conversationHistory,
     submitAsk,

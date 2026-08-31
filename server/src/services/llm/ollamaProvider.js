@@ -9,15 +9,41 @@
 
 const http = require('node:http');
 const https = require('node:https');
-
-const OLLAMA_MODEL = 'gemma4:12b';
+const { getSetting, SETTING_KEYS } = require('../../config/appSettings');
+const { OLLAMA_MODELS, DEFAULT_OLLAMA_MODEL } = require('./ollamaModels');
 
 // Ollamin runtime default num_ctx (obično 2048-4096) je premalen za ovaj
 // slučaj — referentni kontekst (odjeli/kategorije) + tekst priložene ponude
-// + gemma4:12b-ov opširan "thinking" izlaz znaju zajedno prijeći default,
-// pa generacija zna stati usred rečenice (done_reason: "length") bez ijednog
+// + modelov opširan "thinking" izlaz znaju zajedno prijeći default, pa
+// generacija zna stati usred rečenice (done_reason: "length") bez ijednog
 // znaka konačnog odgovora. Potvrđeno stvarnim testom s mikrotron_M.pdf.
-const OLLAMA_NUM_CTX = 8192;
+//
+// 2026-08-31: podignuto s 8192 na 32768. Eval run gemma4:e4b (scenarij 9,
+// dvije ponude odjednom) izmjerio je prompt od 24.203 tokena — TROSTRUKO
+// iznad tadašnjih 8192 — i jedini je od 10 scenarija stao bez ijednog znaka
+// odgovora ("Model nije uspio dovršiti odgovor"). Isti scenarij je i
+// povijesno najslabiji (0/5 kod gemma4:12b, docs/eval-runs/), pa uzrok
+// očito nije bio model nego premalen kontekst. 32768 pokriva izmjereni
+// maksimum s dvostrukom rezervom, a ispod je nativnog konteksta modela u
+// katalogu (gemma4 obitelj: 262k).
+const OLLAMA_NUM_CTX = 32768;
+
+// Koliko Ollama drži model u memoriji nakon zadnjeg poziva. Njezin default je
+// 5 min, a jedan razgovorni potez zna trajati dulje (tool-calling petlja +
+// korisnik koji čita prijedlog pa odgovara), pa je model znao ispasti iz
+// memorije usred razgovora i sljedeći poziv je plaćao ponovno učitavanje
+// (~9.6 GB kod gemma4:e4b — desetci sekundi).
+//
+// NAMJERNO se ne dira `temperature` ni `think`: mjereno 2026-08-31 na
+// scenariju 1 (vidi docs/eval-runs/), oboje su izgledali kao velika ušteda,
+// a oboje kvare rezultat —
+//   think:false     -> 15.5s umjesto 58.8s, ali model NE POZOVE nijedan alat
+//                      (bez razmišljanja nema tool callinga => nema zahtjeva)
+//   temperature:0.2 -> 37.0s, ali krivo pročitana količina ([1,2,3,2] umjesto
+//                      [1,2,2,2]) na ponudi koju s defaultom pročita točno
+// Ollamini Modelfile defaulti su jedina izmjerena kombinacija koja daje i
+// poziv alata i točne količine.
+const OLLAMA_KEEP_ALIVE = '30m';
 
 /** Kanonski tools (docs/AI.md) -> Ollamin OpenAI-kompatibilni format. */
 function toOllamaTools(tools) {
@@ -153,16 +179,42 @@ async function performChatRequest(baseUrl, body) {
   });
 }
 
+/** Aktivan model iz AppSetting.ollama_model, uvijek kao zapis iz kataloga. */
+async function getActiveModel() {
+  const name = await getSetting(SETTING_KEYS.OLLAMA_MODEL);
+  const model = OLLAMA_MODELS.find((m) => m.value === name);
+  if (!model) {
+    console.warn(`[ollamaProvider] nepoznat model u postavkama: "${name}" — koristim ${DEFAULT_OLLAMA_MODEL}.`);
+    return OLLAMA_MODELS.find((m) => m.value === DEFAULT_OLLAMA_MODEL);
+  }
+  return model;
+}
+
+/**
+ * Dio LlmProvider sučelja (docs/AI.md) — što aktivni model uopće može.
+ * assistantOrchestrator ovime odlučuje hoće li slati alate i kakav system
+ * prompt složiti. Gemini ima svoju, uvijek-true inačicu.
+ */
+async function getCapabilities() {
+  const model = await getActiveModel();
+  return { model: model.value, supportsTools: model.supportsTools };
+}
+
 async function chat(messages, tools = []) {
   const baseUrl = process.env.OLLAMA_BASE_URL || 'http://localhost:11434';
+  const model = await getActiveModel();
 
   const body = {
-    model: OLLAMA_MODEL,
+    model: model.value,
     messages: toOllamaMessages(messages),
     stream: false,
+    keep_alive: OLLAMA_KEEP_ALIVE,
     options: { num_ctx: OLLAMA_NUM_CTX },
   };
-  if (tools.length > 0) {
+  // Orchestrator kod modela bez alata šalje prazan `tools`, ali provjera
+  // ostaje i ovdje: `tools` poslan takvom modelu je tvrdi HTTP 400 iz Ollame,
+  // a ne nešto što bi se degradiralo samo od sebe.
+  if (tools.length > 0 && model.supportsTools) {
     body.tools = toOllamaTools(tools);
   }
 
@@ -204,4 +256,4 @@ async function chat(messages, tools = []) {
   };
 }
 
-module.exports = { chat };
+module.exports = { chat, getCapabilities };

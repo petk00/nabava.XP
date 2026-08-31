@@ -427,12 +427,46 @@ describe('AI asistent (integracija) — docs/AI.md', () => {
     expect(put.status).toBe(403);
   });
 
-  itDb('admin čita zadani toggle iz seeda (ollama / gemini-2.5-flash)', async () => {
+  itDb('admin čita zadani toggle iz seeda (ollama / gemini-2.5-flash / gemma4:e4b)', async () => {
     const agent = await loginAgent(ADMIN);
     const res = await agent.get('/api/assistant/settings');
 
     expect(res.status).toBe(200);
-    expect(res.body).toEqual({ provider: 'ollama', gemini_model: 'gemini-2.5-flash' });
+    expect(res.body).toMatchObject({
+      provider: 'ollama',
+      gemini_model: 'gemini-2.5-flash',
+      ollama_model: 'gemma4:e4b',
+    });
+    // Katalog lokalnih modela (ollamaModels.js) ide klijentu da UI ne drži
+    // vlastitu kopiju popisa — mora nositi i supportsTools zastavicu.
+    expect(res.body.ollama_models).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ value: 'gemma4:e4b', supportsTools: true }),
+      ])
+    );
+  });
+
+  itDb('admin postavlja lokalni model iz kataloga', async () => {
+    const agent = await loginAgent(ADMIN);
+
+    const put = await agent
+      .put('/api/assistant/settings')
+      .send({ provider: 'ollama', ollama_model: 'gemma4:e4b' });
+    expect(put.status).toBe(200);
+    expect(put.body).toMatchObject({ provider: 'ollama', ollama_model: 'gemma4:e4b' });
+
+    const check = await agent.get('/api/assistant/settings');
+    expect(check.body.ollama_model).toBe('gemma4:e4b');
+  });
+
+  itDb('admin šalje Ollama model izvan kataloga — 400, postavka ostaje netaknuta', async () => {
+    const agent = await loginAgent(ADMIN);
+    // Model koji stvarno postoji u Ollami, ali NIJE u našem katalogu.
+    const res = await agent.put('/api/assistant/settings').send({ ollama_model: 'llama3.2-vision:11b' });
+    expect(res.status).toBe(400);
+
+    const check = await agent.get('/api/assistant/settings');
+    expect(check.body.ollama_model).toBe('gemma4:e4b');
   });
 
   itDb('admin mijenja toggle na gemini — bez restarta idući chat poziv dispatch-a na GeminiProvider', async () => {
