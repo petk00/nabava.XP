@@ -300,3 +300,120 @@ describe('AI provider toggle — vidljivost i ponašanje po roli', () => {
     expect(chat.currentProvider.value).toBe('gemini');
   });
 });
+
+/** Odgovor GET /assistant/settings s katalogom lokalnih modela. */
+const SETTINGS_RESPONSE = (ollamaModel = 'gemma4:e4b', provider = 'ollama') => ({
+  data: {
+    provider,
+    gemini_model: 'gemini-2.5-flash',
+    ollama_model: ollamaModel,
+    // Zrcali katalog iz server/src/services/llm/ollamaModels.js. Drugi unos
+    // NIJE u stvarnom katalogu — namjerno, da testovi pokrivaju i prikaz
+    // modela bez alata ako se takav ikad vrati.
+    ollama_models: [
+      { value: 'gemma4:e4b', label: 'gemma4:e4b', supportsTools: true },
+      { value: 'test-bez-alata:1b', label: 'test-bez-alata:1b (bez alata)', supportsTools: false },
+    ],
+  },
+});
+
+describe('useAssistantChat — odabir lokalnog Ollama modela', () => {
+  beforeEach(() => {
+    vi.mocked(getStoredUser).mockReturnValue(ADMIN);
+  });
+
+  test('loadProviderSettings preuzima model i katalog s backenda', async () => {
+    api.get.mockResolvedValue(SETTINGS_RESPONSE());
+
+    const chat = useAssistantChat();
+    await chat.loadProviderSettings();
+
+    expect(chat.currentOllamaModel.value).toBe('gemma4:e4b');
+    expect(chat.ollamaModels.value).toHaveLength(2);
+    expect(chat.isOllamaActive.value).toBe(true);
+    // Model podržava alate — nema upozorenja.
+    expect(chat.ollamaModelWarning.value).toBeNull();
+  });
+
+  test('gumb pokazuje aktivni lokalni model, ne samo ime providera', async () => {
+    api.get.mockResolvedValue(SETTINGS_RESPONSE('test-bez-alata:1b'));
+
+    const chat = useAssistantChat();
+    await chat.loadProviderSettings();
+
+    expect(chat.providerLabel.value).toBe('Ollama · test-bez-alata:1b');
+  });
+
+  test('model bez alata podiže upozorenje da zahtjev ne može biti kreiran', async () => {
+    api.get.mockResolvedValue(SETTINGS_RESPONSE('test-bez-alata:1b'));
+
+    const chat = useAssistantChat();
+    await chat.loadProviderSettings();
+
+    expect(chat.ollamaModelWarning.value).toMatch(/ne može kreirati zahtjev/);
+  });
+
+  test('upozorenja nema dok je aktivan Gemini, makar je zapisan model bez alata', async () => {
+    api.get.mockResolvedValue(SETTINGS_RESPONSE('test-bez-alata:1b', 'gemini'));
+
+    const chat = useAssistantChat();
+    await chat.loadProviderSettings();
+
+    expect(chat.isOllamaActive.value).toBe(false);
+    expect(chat.ollamaModelWarning.value).toBeNull();
+    expect(chat.providerLabel.value).toBe('Gemini');
+  });
+
+  test('changeOllamaModel šalje i provider — odabir modela prebacuje na Ollamu', async () => {
+    api.get.mockResolvedValue(SETTINGS_RESPONSE('gemma4:e4b', 'gemini'));
+    api.put.mockResolvedValue({
+      data: { message: 'ok', provider: 'ollama', gemini_model: 'gemini-2.5-flash', ollama_model: 'test-bez-alata:1b' },
+    });
+
+    const chat = useAssistantChat();
+    await chat.loadProviderSettings();
+    await chat.changeOllamaModel('test-bez-alata:1b');
+
+    expect(api.put).toHaveBeenCalledWith('/assistant/settings', {
+      provider: 'ollama',
+      ollama_model: 'test-bez-alata:1b',
+    });
+    expect(chat.currentProvider.value).toBe('ollama');
+    expect(chat.currentOllamaModel.value).toBe('test-bez-alata:1b');
+  });
+
+  // Kad je aktivan Gemini, klik na već zapisani lokalni model NIJE no-op —
+  // to je jedini način da se korisnik vrati na Ollamu iz istog izbornika.
+  test('klik na već zapisani model dok je aktivan Gemini ipak prebacuje na Ollamu', async () => {
+    api.get.mockResolvedValue(SETTINGS_RESPONSE('gemma4:e4b', 'gemini'));
+    api.put.mockResolvedValue({
+      data: { message: 'ok', provider: 'ollama', gemini_model: 'gemini-2.5-flash', ollama_model: 'gemma4:e4b' },
+    });
+
+    const chat = useAssistantChat();
+    await chat.loadProviderSettings();
+    await chat.changeOllamaModel('gemma4:e4b');
+
+    expect(api.put).toHaveBeenCalled();
+    expect(chat.currentProvider.value).toBe('ollama');
+  });
+
+  test('klik na već aktivan model dok je Ollama aktivna ne šalje ništa', async () => {
+    api.get.mockResolvedValue(SETTINGS_RESPONSE('gemma4:e4b'));
+
+    const chat = useAssistantChat();
+    await chat.loadProviderSettings();
+    await chat.changeOllamaModel('gemma4:e4b');
+
+    expect(api.put).not.toHaveBeenCalled();
+  });
+
+  test('zaposlenik ne mijenja model', async () => {
+    vi.mocked(getStoredUser).mockReturnValue({ role_name: 'Zaposlenik' });
+
+    const chat = useAssistantChat();
+    await chat.changeOllamaModel('test-bez-alata:1b');
+
+    expect(api.put).not.toHaveBeenCalled();
+  });
+});

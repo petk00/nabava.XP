@@ -173,6 +173,14 @@ Pravila:
 - Ako nedostaje obavezan podatak (odjel, obrazloženje, naziv/količina stavke), postavi kratko pitanje
   korisniku umjesto da nagađaš ili pozivaš create_request s nepotpunim podacima.
 - Alat create_request pozovi TEK KADA imaš sve obavezne podatke.
+- OBAVEZNA polja su SAMO: odjel, obrazloženje i stavke (naziv + količina + kategorija). Iznos
+  ("estimated_amount") je NEOBAVEZAN — ako ga korisnik nije naveo, jednostavno ga izostavi i nastavi.
+  NIKAD ne traži iznos kao uvjet za prijedlog ili kreiranje zahtjeva, i nikad ne zaustavljaj razgovor
+  zbog njega.
+- BEZ PRILOGA (korisnik je podatke naveo sam, u razgovoru): kad imaš sva obavezna polja, pozovi
+  create_request IZRAVNO. NE pozivaj propose_request i NE traži dodatnu potvrdu — korisnik je upravo
+  sam izdiktirao te podatke i vidi ih u svojoj poruci. Dvostruka potvrda je obavezna SAMO kad je
+  priložena ponuda, jer su tada podaci pročitani iz dokumenta i korisnik ih nije sam potvrdio.
 - Kad alat vrati grešku, objasni korisniku problem jednostavnim riječima i zatraži ispravan podatak —
   ne odustaj od razgovora.
 - Kad alat uspije, potvrdi korisniku broj kreiranog zahtjeva kratkom rečenicom.`;
@@ -206,7 +214,24 @@ async function loadReferenceContext() {
   return { fiscalYear, departments, categories };
 }
 
-function buildSystemPrompt({ fiscalYear, departments, categories }) {
+// Dodaje se u system prompt kad aktivni model uopće ne podržava pozivanje
+// alata (npr. Ollamin qwen2.5vl:7b — vidi OLLAMA_MODELS u llm/ollamaModels.js).
+// Bez ove upute model nema načina saznati da alata nema, pa zna "potvrditi"
+// kreiranje zahtjeva koje se nikad nije dogodilo.
+const NO_TOOLS_NOTE = `NAPOMENA O OGRANIČENJU: trenutno odabrani model ne podržava pozivanje alata, pa u
+ovom razgovoru zahtjev za nabavu NE MOŽE biti kreiran. Možeš i dalje pročitati priložene ponude,
+objasniti ih, izračunati iznose i pomoći korisniku pripremiti podatke. Ali NIKAD ne tvrdi da si zahtjev
+kreirao niti izmišljaj njegov broj — ako korisnik traži kreiranje, reci mu da administrator za to mora
+prebaciti model asistenta na onaj koji podržava alate (gemma4:12b) ili na Gemini.`;
+
+function buildSystemPrompt({ fiscalYear, departments, categories }, { toolsSupported = true } = {}) {
+  if (!toolsSupported) {
+    // Ide PRIJE provjere poslovne godine: bez alata je nemogućnost kreiranja
+    // ista i kad godina postoji, a kontekst odjela/kategorija modelu i dalje
+    // koristi za objašnjavanje ponuda.
+    return `${buildSystemPrompt({ fiscalYear, departments, categories })}\n\n${NO_TOOLS_NOTE}`;
+  }
+
   if (!fiscalYear) {
     return `${BASE_SYSTEM_PROMPT}\n\nNAPOMENA: Trenutno ne postoji aktivna (otvorena) poslovna godina — ` +
       'zahtjevi se ne mogu kreirati. Ako korisnik traži kreiranje zahtjeva, objasni mu ovo umjesto ' +
@@ -255,49 +280,33 @@ function buildAttachmentInstruction(attachments) {
   }).join('\n\n');
 
   return `${QUOTE_MARKER}
-Korisnik je uz poruku priložio ${multiple ? `${attachments.length} dokumenta` : 'dokument'} i navodi da ${multiple ? 'su to ponude' : 'je to ponuda'} dobavljača — ali to PRVO provjeri za svaki dokument zasebno, ne uzimaj zdravo za gotovo.
+Korisnik je priložio ${multiple ? `${attachments.length} dokumenta` : 'dokument'} i tvrdi da ${multiple ? 'su to ponude' : 'je to ponuda'} dobavljača — provjeri to sam, za svaki dokument zasebno.
 
 ${labeledBlocks}
 
-Koristi ih kao jedini izvor podataka: ne izmišljaj stavke, količine ni iznose kojih u njima nema.
+Priloženo je JEDINI izvor podataka: ne izmišljaj stavke, količine ni iznose kojih u njemu nema.
 
-Na temelju ovoga:
-1. Za SVAKI dokument zasebno provjeri je li uistinu ponuda/predračun dobavljača (ima dobavljača i
-   konkretne artikle s količinama i/ili cijenama, u komercijalnom formatu). Ako neki dokument NIJE ponuda
-   (npr. ugovor, dopis, obavijest, zapisnik ili bilo koji tekst bez konkretnih artikala i cijena) — NE
-   pretvaraj njegov sadržaj (rečenice, članke ugovora, odlomke dopisa) u izmišljene "stavke". Umjesto
-   toga, jasno reci korisniku koji dokument ne izgleda kao ponuda (po mogućnosti navedi što jest, npr.
-   "dokument 2 izgleda kao ugovor, ne ponuda") i pitaj što želi dalje za taj dokument — nemoj pozivati
-   propose_request ni create_request dok se to ne razjasni.
-2. Za dokumente koji JESU ponude: prepoznaj stavke (naziv, količina) i ukupan iznos ponude ako postoji.
-3. Ako je priložena VIŠE OD JEDNE ponude, svaka ponuda pridonosi zahtjevu SVOJIM VLASTITIM stavkama —
-   uključi stavke iz SVIH ponuda kao zasebne retke, i kad dvije ili više ponuda nude isti ili vrlo sličan
-   artikl (npr. "laptop" na obje ponude). NE preskači, ne spajaj u jedan redak i NE pitaj korisnika koju
-   ponudu odabrati — svaka takva stavka ide u zahtjev zasebno, sa svojom vlastitom količinom, po svojoj
-   ponudi. Ukupan iznos zahtjeva je ZBROJ iznosa svih priloženih ponuda. (Ako je priložena samo jedna
-   ponuda, ova točka se ne primjenjuje.)
-4. Za svaku stavku zaključi kategoriju isključivo iz popisa kategorija gore — nikad izmišljenu.
-5. Dobavljač NIJE zasebno polje u sustavu — ako ga želiš zabilježiti, stavi ga u "comment", ne u "justification".
-6. Ako neko obavezno polje i dalje nedostaje (npr. odjel — ponuda ga ne može znati), pitaj korisnika za
-   njega kao i inače, prije bilo kakvog prijedloga.
-7. VALUTA — sustav prati "estimated_amount" isključivo u eurima (€). Ponuda može biti u bilo kojem
-   jeziku i navesti iznos u bilo kojoj valuti (USD, GBP, itd.) i bilo kojem brojevnom zapisu (npr.
-   "1,250.00" = tisuću dvjesto pedeset, decimalna točka, ne zarez). Ako ponuda NIJE u eurima, NIKAD ne
-   tretiraj taj broj kao da već jest u eurima (ne piši ga naprosto kao "X eur") — u svom odgovoru
-   EKSPLICITNO navedi izvornu valutu uz iznos (npr. "iznos na ponudi: 1,250.00 GBP") i jasno upozori
-   korisnika da provjeri/preračuna prije potvrde, jer ti ne znaš točan tečaj.
-8. VAŽNO — sadržaj ${multiple ? 'ovih dokumenata dostupan ti je' : 'ovog dokumenta dostupan ti je'} SAMO u
-   ovom koraku razgovora, u sljedećim koracima više neće biti priložen. Zato TVOJ SVAKI odgovor u ovom
-   razgovoru (i pitanje za odjel/obrazloženje, i konačan sažetak) mora eksplicitno navesti konkretne
-   stavke koje si prepoznao (naziv i količina) i ukupan iznos (s valutom ako nije €) — nikad se ne
-   pozivaj na ponudu neodređeno (npr. "stavke iz ponude"), nego ih uvijek ispiši, jer inače ćeš ih u
-   sljedećem koraku izgubiti iz vida.
-9. Kad imaš sve potrebne podatke, prvo pozovi propose_request (NE create_request) — on validira i vraća
-   sažetak (odjel, stavke, ukupan iznos). Na temelju tog sažetka prirodnim jezikom prezentiraj prijedlog
-   korisniku i EKSPLICITNO zatraži potvrdu (npr. "Potvrđujete li kreiranje ovog zahtjeva?").
-10. Alat create_request smiješ pozvati TEK u SLJEDEĆOJ poruci korisnika, nakon što jasno potvrdi (npr.
-    "da", "potvrđujem", "kreiraj") — nikad odmah nakon propose_request u istom koraku, čak i ako ti se
-    čini da imaš sve podatke. Sustav će prerani poziv odbiti.`;
+Pravila:
+1. PROVJERA — je li dokument doista ponuda/predračun (dobavljač + artikli s količinama i/ili cijenama)?
+   Ako nije (ugovor, dopis, obavijest, zapisnik…), NE pretvaraj njegov tekst u izmišljene stavke. Reci
+   korisniku koji dokument nije ponuda i što izgleda da jest, pa pitaj što dalje — bez propose_request
+   i create_request dok se ne razjasni.
+2. STAVKE — iz svake prave ponude izvuci naziv, količinu i ukupan iznos ako postoji.
+3. VIŠE PONUDA — svaka ponuda daje SVOJE stavke kao zasebne retke, čak i kad nude isti artikl. Ne
+   preskači, ne spajaj i NE pitaj korisnika koju ponudu odabrati. Ukupan iznos = zbroj svih ponuda.
+4. KATEGORIJA — isključivo iz popisa kategorija gore, nikad izmišljena.
+5. DOBAVLJAČ — nije polje u sustavu; ako ga bilježiš, ide u "comment", nikad u "justification".
+6. NEDOSTAJE PODATAK — obavezan podatak koji ponuda ne može znati (npr. odjel) zatraži od korisnika
+   prije prijedloga. Iznos NIJE obavezan i zbog njega nikad ne zastaj.
+7. VALUTA — "estimated_amount" je uvijek u eurima. Ako ponuda nije u eurima, NIKAD ne prepiši broj kao
+   da jest: navedi izvornu valutu uz iznos (npr. "1,250.00 GBP") i upozori korisnika da provjeri tečaj.
+   Pazi na zapis: "1,250.00" je tisuću dvjesto pedeset, decimalna točka.
+8. PAMĆENJE — sadržaj ${multiple ? 'dokumenata' : 'dokumenta'} imaš SAMO u ovom koraku, dalje ga nemaš.
+   Zato u SVAKOM svom odgovoru ispiši konkretne stavke (naziv i količinu) i ukupan iznos s valutom —
+   nikad neodređeno "stavke iz ponude", jer ćeš ih inače izgubiti.
+9. REDOSLIJED — kad imaš sve, pozovi propose_request (NE create_request), prezentiraj vraćeni sažetak
+   svojim riječima i izričito pitaj za potvrdu. create_request smiješ pozvati TEK nakon što korisnik
+   potvrdi u SLJEDEĆOJ poruci ("da", "potvrđujem", "kreiraj") — nikad u istom koraku, sustav to odbija.`;
 }
 
 /**
@@ -382,7 +391,12 @@ function proposalMatchesArgs(proposal, args) {
  */
 function hasMatchingEarlierProposal(clientMessages, args) {
   return clientMessages
-    .filter((m) => m.role === 'tool' && m.name === 'propose_request')
+    // Prijedlog je mogao nastati na dva načina: model je uredno pozvao
+    // propose_request, ILI je preskočio taj korak pa je brava njegov
+    // create_request pretvorila u prijedlog (ok:false + awaiting_confirmation
+    // + proposal). Oba su ravnopravna — u oba slučaja je korisnik vidio
+    // VALIDIRAN sažetak i potvrđuje ga tek u sljedećoj poruci.
+    .filter((m) => m.role === 'tool' && (m.name === 'propose_request' || m.name === 'create_request'))
     .some((m) => {
       let parsed;
       try {
@@ -390,7 +404,11 @@ function hasMatchingEarlierProposal(clientMessages, args) {
       } catch {
         return false;
       }
-      return parsed?.ok && proposalMatchesArgs(parsed.proposal, args);
+      if (!parsed?.proposal) return false;
+      // propose_request: ok === true. Pretvoreni create_request: ok === false
+      // uz awaiting_confirmation (nikad nije pisao u bazu).
+      const isProposal = parsed.ok === true || parsed.awaiting_confirmation === true;
+      return isProposal && proposalMatchesArgs(parsed.proposal, args);
     });
 }
 
@@ -419,6 +437,42 @@ function findEarlierSuccessfulCreate(clientMessages) {
   return null;
 }
 
+// Obrasci kojima model TVRDI da je zahtjev nastao. Namjerno samo SVRŠENI
+// oblici ("kreiran je", "uspješno kreiran", "broj zahtjeva je") — buduće i
+// uvjetne najave ("kreirat ću", "mogu kreirati", "želite li da kreiram")
+// su legitimne i ne smiju se dirati.
+const FALSE_CREATION_PATTERNS = [
+  /zahtjev\s+(je\s+)?(uspješno\s+)?kreiran/i,
+  /(uspješno\s+)?(sam\s+)?kreirao\s+(sam\s+)?zahtjev/i,
+  /zahtjev\s+za\s+nabavu\s+je\s+(uspješno\s+)?(kreiran|zaprimljen|poslan)/i,
+  /broj\s+(vašeg\s+)?zahtjeva\s+je/i,
+];
+
+/**
+ * Sigurnosna mreža protiv LAŽNE potvrde kreiranja.
+ *
+ * Stvarno opaženo (eval run 2026-08-31, gemma4:e4b, scenarij 2): model nije
+ * pozvao NIJEDAN alat, ali je korisniku javio "Vaš zahtjev za nabavu je
+ * uspješno kreiran. Vaš broj zahtjeva je **N/A**." Ništa nije nastalo —
+ * korisnik bi otišao uvjeren da ima zahtjev.
+ *
+ * Strukturna brava to ne hvata: ona presreće POZIV create_request bez
+ * prijedloga, a ovdje poziva uopće nije bilo — samo rečenica. Zato se
+ * provjerava sam tekst odgovora, i to za SVE modele (dosadašnji NO_TOOLS_NOTE
+ * štiti samo modele bez alata, a e4b alate ima).
+ *
+ * Kad createdRequest postoji, tekst se NE dira — tad je tvrdnja istinita.
+ */
+function guardFalseCreationClaim(text, createdRequest) {
+  if (createdRequest || !text) return text;
+  if (!FALSE_CREATION_PATTERNS.some((re) => re.test(text))) return text;
+
+  console.warn('[assistant] model je tvrdio da je zahtjev kreiran, a nije — odgovor zamijenjen.');
+  return 'Zahtjev NIJE kreiran — u prethodnom odgovoru je došlo do pogreške. ' +
+    'Nijedan zahtjev nije spremljen u sustav. Molim ponovite zahtjev ili ga ' +
+    'kreirajte kroz obrazac "Novi zahtjev".';
+}
+
 /**
  * Vodi cijeli tool-calling razgovor (model -> tool -> model -> ...) unutar
  * jednog HTTP zahtjeva, do konačnog tekstualnog odgovora ili MAX_ITERATIONS.
@@ -437,8 +491,14 @@ function findEarlierSuccessfulCreate(clientMessages) {
 async function runAssistantChat({ messages, userId, attachments = [] }) {
   const provider = await getActiveProvider();
   const referenceContext = await loadReferenceContext();
-  const systemPrompt = buildSystemPrompt(referenceContext);
-  const tools = referenceContext.fiscalYear ? [CREATE_REQUEST_TOOL, PROPOSE_REQUEST_TOOL] : [];
+  // Provider javlja može li aktivni model uopće pozivati alate (Ollamin
+  // toggle modela zna birati i model bez te sposobnosti). Stariji/mockani
+  // provideri bez getCapabilities() tretiraju se kao da mogu — to je bilo
+  // jedino ponašanje prije ovog toggle-a.
+  const capabilities = provider.getCapabilities ? await provider.getCapabilities() : { supportsTools: true };
+  const toolsSupported = capabilities.supportsTools !== false;
+  const systemPrompt = buildSystemPrompt(referenceContext, { toolsSupported });
+  const tools = referenceContext.fiscalYear && toolsSupported ? [CREATE_REQUEST_TOOL, PROPOSE_REQUEST_TOOL] : [];
   const attachmentInvolved = conversationInvolvesAttachment(messages, attachments);
 
   const convo = [{ role: 'system', content: systemPrompt }];
@@ -483,6 +543,13 @@ async function runAssistantChat({ messages, userId, attachments = [] }) {
   // (tool-calling petlja: propose_request pa nastavak, itd.) — zbrajamo token
   // usage kroz sve te pozive, ne samo zadnji, za RQ1/RQ2 eval harness
   // (docs/AI.md, evalHarness.js).
+  // Je li propose_request već uspješno pozvan unutar OVOG HTTP poziva — vidi
+  // granu s pretvorbom create_request-a u prijedlog niže.
+  let proposedInThisTurn = false;
+  // Postavlja se čim modelu kažemo da mora pričekati korisnikovu potvrdu u
+  // NOVOJ poruci. Tad u ovom potezu više nema ništa smisleno za napraviti —
+  // vidi napomenu uz provjeru ispod petlje po tool pozivima.
+  let awaitingUserConfirmation = false;
   const usage = { promptTokens: 0, completionTokens: 0 };
   const addUsage = (u) => {
     usage.promptTokens += u?.promptTokens || 0;
@@ -495,7 +562,12 @@ async function runAssistantChat({ messages, userId, attachments = [] }) {
 
     if (!result.tool_calls || result.tool_calls.length === 0) {
       if (result.text && result.text.trim()) {
-        return { text: fixEkavica(result.text), created_request: createdRequest, tool_trace: toolTrace, usage };
+        return {
+          text: guardFalseCreationClaim(fixEkavica(result.text), createdRequest),
+          created_request: createdRequest,
+          tool_trace: toolTrace,
+          usage,
+        };
       }
       // Model nije vratio ni tekst ni tool_call (npr. generacija prekinuta
       // prije završetka — potvrđeno stvarnim testom s gemma4:12b i opsežnim
@@ -518,6 +590,9 @@ async function runAssistantChat({ messages, userId, attachments = [] }) {
       if (call.name === 'propose_request') {
         try {
           toolResultPayload = await executeProposeRequestTool(call.arguments);
+          // Model je prijedlog VEĆ dobio u ovom potezu — treba samo pričekati
+          // korisnikovu potvrdu, pa se create_request niže ne pretvara ponovno.
+          proposedInThisTurn = true;
         } catch (error) {
           if (error instanceof RequestValidationError) {
             toolResultPayload = { ok: false, message: error.message };
@@ -547,10 +622,50 @@ async function runAssistantChat({ messages, userId, attachments = [] }) {
           // propose_request iz RANIJEG zahtjeva ne postoji (ili se poklapa
           // samo propose_request unutar OVE iste petlje, što se namjerno ne
           // broji — vidi hasMatchingEarlierProposal).
-          toolResultPayload = {
-            ok: false,
-            message: 'Prvo prezentiraj prijedlog korisniku pozivom propose_request i pričekaj eksplicitnu potvrdu u novoj poruci.',
-          };
+          //
+          // Brava NE piše ništa u bazu, ali poziv se ne odbija ni golo: model
+          // koji preskoči propose_request (stvarno opaženo kod qwen3.5:9b —
+          // uvijek zove create_request izravno) tad je znao prijedlog samo
+          // PREPRIČATI u prozi. Kako proza nije tool rezultat, sljedeći potez
+          // opet nije imao poklapajući prijedlog i razgovor je ulazio u
+          // beskonačnu petlju "evo prijedloga, potvrdite?" bez ijednog
+          // kreiranog zahtjeva. Zato se poziv PRETVARA u prijedlog: ista
+          // validacija koju bi propose_request napravio, isti sažetak natrag
+          // modelu, i dalje bez upisa. Jamstvo ostaje netaknuto — zahtjev
+          // nastaje tek nakon korisnikove potvrde u SLJEDEĆOJ poruci, jer se
+          // ovaj rezultat u povijesti tad prepoznaje kao valjan prijedlog
+          // (vidi hasMatchingEarlierProposal).
+          if (proposedInThisTurn) {
+            // Prijedlog je već predan modelu ranije u ovom istom potezu —
+            // pretvorba bi bila suvišna druga validacija istih podataka.
+            // Ovdje fali SAMO korisnikova potvrda u novoj poruci.
+            toolResultPayload = {
+              ok: false,
+              message: 'Prijedlog si već prezentirao. Pričekaj izričitu potvrdu korisnika u NOVOJ poruci prije ponovnog poziva create_request.',
+            };
+            awaitingUserConfirmation = true;
+          } else {
+            try {
+              const converted = await executeProposeRequestTool(call.arguments);
+              toolResultPayload = {
+                ok: false,
+                awaiting_confirmation: true,
+                proposal: converted.proposal,
+                message: 'Zahtjev NIJE kreiran. Prijedlog je provjeren i nalazi se u "proposal" — prezentiraj ga korisniku i zatraži izričitu potvrdu. Tek kad korisnik potvrdi u SLJEDEĆOJ poruci, ponovno pozovi create_request s ISTIM podacima.',
+              };
+              awaitingUserConfirmation = true;
+            } catch (error) {
+              if (error instanceof RequestValidationError) {
+                toolResultPayload = { ok: false, message: error.message };
+              } else {
+                console.error('[assistant] konverzija create_request -> prijedlog nije uspjela:', error);
+                toolResultPayload = {
+                  ok: false,
+                  message: 'Prvo prezentiraj prijedlog korisniku pozivom propose_request i pričekaj eksplicitnu potvrdu u novoj poruci.',
+                };
+              }
+            }
+          }
         } else {
           try {
             const resolved = resolveAttachmentsForSave(attachments, messages, userId);
@@ -588,6 +703,29 @@ async function runAssistantChat({ messages, userId, attachments = [] }) {
       };
       convo.push(toolMsg);
       toolTrace.push(toolMsg);
+    }
+
+    // Modelu je rečeno da čeka korisnikovu potvrdu — u OVOM potezu više nema
+    // što napraviti, preostaje mu samo prezentirati prijedlog riječima.
+    // Bez ovog izlaza model zna uporno ponavljati create_request dok ne
+    // potroši MAX_ITERATIONS (stvarno opaženo, eval run 2026-08-31: scenariji
+    // 1 i 9 pali su upravo tako — "propose ×2, create ×4" — pa je potez
+    // završio bez ijednog odgovora, a model je zatim izmislio potvrdu koju je
+    // morao presresti guardFalseCreationClaim). Dopušta se TOČNO JEDAN
+    // dodatni poziv, samo da model sroči tekst; eventualne nove tool pozive
+    // u njemu namjerno ignoriramo.
+    if (awaitingUserConfirmation) {
+      const closing = await provider.chat(convo, tools);
+      addUsage(closing.usage);
+      const closingText = closing.text && closing.text.trim()
+        ? closing.text
+        : 'Prijedlog zahtjeva je pripremljen, ali ga nisam uspio sažeti. Potvrdite kreiranje ili ponovite podatke.';
+      return {
+        text: guardFalseCreationClaim(fixEkavica(closingText), createdRequest),
+        created_request: createdRequest,
+        tool_trace: toolTrace,
+        usage,
+      };
     }
   }
 

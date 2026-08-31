@@ -105,6 +105,58 @@ describe('runAssistantChat — bez tool-calla', () => {
   });
 });
 
+// Ollamin toggle lokalnih modela (AppSetting.ollama_model) zna izabrati model
+// bez function-callinga (qwen2.5vl:7b). Provider to javlja preko
+// getCapabilities(), a orchestrator tad NE smije slati alate — Ollama na
+// `tools` takvom modelu vraća tvrd HTTP 400.
+describe('runAssistantChat — model bez podrške za alate (getCapabilities)', () => {
+  test('ne šalje alate i upozorava model da zahtjev ne može kreirati', async () => {
+    mockReferenceContext();
+    const chat = jest.fn().mockResolvedValue({ text: 'Ponuda je na 1.200 €.', tool_calls: null });
+    getActiveProvider.mockResolvedValue({
+      chat,
+      getCapabilities: jest.fn().mockResolvedValue({ model: 'qwen2.5vl:7b', supportsTools: false }),
+    });
+
+    const result = await runAssistantChat({
+      messages: [{ role: 'user', content: 'Koliko je na ponudi?' }],
+      userId: 2,
+    });
+
+    expect(result.text).toBe('Ponuda je na 1.200 €.');
+    const [convo, tools] = chat.mock.calls[0];
+    expect(tools).toEqual([]);
+    expect(convo[0].content).toContain('ne podržava pozivanje alata');
+    // Kontekst odjela/kategorija ostaje — model i dalje objašnjava ponude.
+    expect(convo[0].content).toContain('Odjeli:');
+  });
+
+  test('provider koji javlja supportsTools: true dobiva alate kao i prije', async () => {
+    mockReferenceContext();
+    const chat = jest.fn().mockResolvedValue({ text: 'Bok!', tool_calls: null });
+    getActiveProvider.mockResolvedValue({
+      chat,
+      getCapabilities: jest.fn().mockResolvedValue({ model: 'gemma4:12b', supportsTools: true }),
+    });
+
+    await runAssistantChat({ messages: [{ role: 'user', content: 'Bok' }], userId: 2 });
+
+    const [convo, tools] = chat.mock.calls[0];
+    expect(tools.map((t) => t.name).sort()).toEqual(['create_request', 'propose_request']);
+    expect(convo[0].content).not.toContain('ne podržava pozivanje alata');
+  });
+
+  test('provider bez getCapabilities() ponaša se kao prije toggle-a (alati se šalju)', async () => {
+    mockReferenceContext();
+    const chat = jest.fn().mockResolvedValue({ text: 'Bok!', tool_calls: null });
+    getActiveProvider.mockResolvedValue({ chat });
+
+    await runAssistantChat({ messages: [{ role: 'user', content: 'Bok' }], userId: 2 });
+
+    expect(chat.mock.calls[0][1]).toHaveLength(2);
+  });
+});
+
 describe('runAssistantChat — usage (token brojanje za RQ1/RQ2 eval harness)', () => {
   test('jedan poziv modelu — usage se izravno vraća', async () => {
     mockReferenceContext();
@@ -354,7 +406,9 @@ describe('runAssistantChat — priložena ponuda (attachments, PDF)', () => {
     expect(sentMessages[0].role).toBe('system'); // referentni kontekst (odjeli/kategorije)
     expect(sentMessages[1].role).toBe('system'); // uputa o ponudi
     expect(sentMessages[1].content).toContain(QUOTE_TEXT);
-    expect(sentMessages[1].content).toMatch(/EKSPLICITNO zatraži potvrdu/);
+    // Pravilo 9: propose_request prije create_request + izričita potvrda.
+    expect(sentMessages[1].content).toMatch(/pozovi propose_request \(NE create_request\)/);
+    expect(sentMessages[1].content).toMatch(/izričito pitaj za potvrdu/);
     expect(sentMessages[2]).toEqual({ role: 'user', content: 'Evo ponude, napravi zahtjev.' });
   });
 
@@ -445,6 +499,169 @@ describe('runAssistantChat — model ne vrati ni tekst ni tool_call', () => {
   });
 });
 
+// Sigurnosna mreža protiv LAŽNE potvrde kreiranja (guardFalseCreationClaim).
+// Stvarno opaženo: gemma4:e4b, eval run 2026-08-31, scenarij 2 — nijedan alat
+// nije pozvan, a model je javio "Vaš zahtjev za nabavu je uspješno kreiran.
+// Vaš broj zahtjeva je **N/A**." Strukturna brava to ne hvata jer poziva nije
+// ni bilo — samo rečenica.
+// Rani izlaz kad je modelu rečeno da čeka potvrdu (awaitingUserConfirmation).
+// Eval run 2026-08-31: scenariji 1 i 9 pali su jer je model nakon odbijenog
+// create_request isti poziv ponavljao dok nije potrošio MAX_ITERATIONS —
+// potez je završio bez odgovora, a model je zatim izmislio potvrdu.
+describe('runAssistantChat — potez staje čim se čeka korisnikova potvrda', () => {
+  const PROPOSAL_X = {
+    fk_fiscal_year: 1, year: 2026, fk_department: 3, department_name: 'Računovodstvo',
+    justification: 'Zalihe pri kraju.', estimated_amount: null, comment: null,
+    items: [{ fk_item_category: 7, category_name: 'Uredski pribor', item_name: 'Toner za pisač', quantity: 5 }],
+  };
+
+  test('nakon propose+create u istom potezu model dobiva TOČNO jedan poziv za tekst, pa se staje', async () => {
+    mockReferenceContext();
+    proposeRequest.mockResolvedValue(PROPOSAL_X);
+
+    // Model tvrdoglavo zove create_request; da nema ranog izlaza, petlja bi
+    // ga puštala do MAX_ITERATIONS.
+    const chat = jest.fn()
+      .mockResolvedValueOnce(proposeCallMessage(VALID_ARGS, 'p1'))
+      .mockResolvedValueOnce(toolCallMessage(VALID_ARGS, 'c1'))
+      .mockResolvedValue({ text: 'Evo prijedloga, potvrđujete li?', tool_calls: null });
+    getActiveProvider.mockResolvedValue({ chat });
+
+    const result = await runAssistantChat({
+      messages: [{ role: 'user', content: 'Evo ponude, kreiraj.' }],
+      userId: 2,
+      attachments: [{ filename: 'ponuda.pdf', kind: 'pdf', text: 'Toner x5' }],
+    });
+
+    // 3 poziva: propose, create (odbijen), zaključni tekst. Ni jedan više.
+    expect(chat).toHaveBeenCalledTimes(3);
+    expect(createRequest).not.toHaveBeenCalled();
+    expect(result.created_request).toBeNull();
+    expect(result.text).toMatch(/potvrđujete/i);
+  });
+
+  test('zaključni poziv koji opet vraća tool_call ne produžuje potez', async () => {
+    mockReferenceContext();
+    proposeRequest.mockResolvedValue(PROPOSAL_X);
+
+    // Model i u zaključnom pozivu pokušava alat — namjerno se ignorira.
+    const chat = jest.fn()
+      .mockResolvedValueOnce(proposeCallMessage(VALID_ARGS, 'p1'))
+      .mockResolvedValueOnce(toolCallMessage(VALID_ARGS, 'c1'))
+      .mockResolvedValue(toolCallMessage(VALID_ARGS, 'c2'));
+    getActiveProvider.mockResolvedValue({ chat });
+
+    const result = await runAssistantChat({
+      messages: [{ role: 'user', content: 'Evo ponude, kreiraj.' }],
+      userId: 2,
+      attachments: [{ filename: 'ponuda.pdf', kind: 'pdf', text: 'Toner x5' }],
+    });
+
+    expect(chat).toHaveBeenCalledTimes(3);
+    expect(createRequest).not.toHaveBeenCalled(); // KLJUČNO — ništa u bazu
+    expect(result.created_request).toBeNull();
+    expect(result.text).toMatch(/Potvrdite kreiranje|nisam uspio sažeti/i);
+  });
+
+  test('pretvoreni prijedlog (create bez propose) također zaustavlja potez', async () => {
+    mockReferenceContext();
+    proposeRequest.mockResolvedValue(PROPOSAL_X);
+
+    const chat = jest.fn()
+      .mockResolvedValueOnce(toolCallMessage(VALID_ARGS, 'c1'))
+      .mockResolvedValue({ text: 'Evo prijedloga, potvrđujete?', tool_calls: null });
+    getActiveProvider.mockResolvedValue({ chat });
+
+    const result = await runAssistantChat({
+      messages: [{ role: 'user', content: 'Evo ponude, kreiraj.' }],
+      userId: 2,
+      attachments: [{ filename: 'ponuda.pdf', kind: 'pdf', text: 'Toner x5' }],
+    });
+
+    // 2 poziva: create (pretvoren u prijedlog) + zaključni tekst.
+    expect(chat).toHaveBeenCalledTimes(2);
+    expect(createRequest).not.toHaveBeenCalled();
+    expect(result.created_request).toBeNull();
+  });
+
+  // Normalan tijek se NE smije skratiti: propose pa tekst, bez ranog izlaza.
+  test('uredan propose bez create_request ne aktivira rani izlaz', async () => {
+    mockReferenceContext();
+    proposeRequest.mockResolvedValue(PROPOSAL_X);
+
+    const chat = jest.fn()
+      .mockResolvedValueOnce(proposeCallMessage(VALID_ARGS, 'p1'))
+      .mockResolvedValueOnce({ text: 'Evo sažetka. Potvrđujete li?', tool_calls: null });
+    getActiveProvider.mockResolvedValue({ chat });
+
+    const result = await runAssistantChat({
+      messages: [{ role: 'user', content: 'Evo ponude.' }],
+      userId: 2,
+      attachments: [{ filename: 'ponuda.pdf', kind: 'pdf', text: 'Toner x5' }],
+    });
+
+    expect(chat).toHaveBeenCalledTimes(2);
+    expect(result.text).toBe('Evo sažetka. Potvrđujete li?');
+  });
+});
+
+describe('runAssistantChat — zaštita od lažne tvrdnje o kreiranju', () => {
+  const lazneTvrdnje = [
+    'Vaš zahtjev za nabavu je uspješno kreiran. Vaš broj zahtjeva je **N/A**.',
+    'Zahtjev je kreiran.',
+    'Uspješno sam kreirao zahtjev za vas.',
+    'Broj vašeg zahtjeva je NAB-2026-9999.',
+  ];
+
+  test.each(lazneTvrdnje)('zamjenjuje lažnu tvrdnju: %s', async (tekst) => {
+    mockReferenceContext();
+    const chat = jest.fn().mockResolvedValue({ text: tekst, tool_calls: null });
+    getActiveProvider.mockResolvedValue({ chat });
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
+
+    const result = await runAssistantChat({ messages: [{ role: 'user', content: 'Kreiraj.' }], userId: 2 });
+
+    expect(result.created_request).toBeNull();
+    expect(result.text).toMatch(/NIJE kreiran/);
+    expect(result.text).not.toMatch(/N\/A|NAB-2026-9999/);
+    warn.mockRestore();
+  });
+
+  // Najave i pitanja su legitimni — zaštita ih NE SMIJE dirati, inače bi
+  // pokvarila normalan tijek u kojem model traži potvrdu prije kreiranja.
+  const legitimni = [
+    'Kreirat ću zahtjev čim potvrdite podatke.',
+    'Mogu kreirati zahtjev za vas — želite li da nastavim?',
+    'Prije nego kreiram zahtjev, trebam znati odjel.',
+    'Želite li da kreiram zahtjev s ovim stavkama?',
+  ];
+
+  test.each(legitimni)('ne dira legitiman odgovor: %s', async (tekst) => {
+    mockReferenceContext();
+    const chat = jest.fn().mockResolvedValue({ text: tekst, tool_calls: null });
+    getActiveProvider.mockResolvedValue({ chat });
+
+    const result = await runAssistantChat({ messages: [{ role: 'user', content: 'Trebam nešto.' }], userId: 2 });
+
+    expect(result.text).toBe(tekst);
+  });
+
+  test('NE dira tvrdnju kad je zahtjev STVARNO kreiran', async () => {
+    mockReferenceContext();
+    createRequest.mockResolvedValue({ id_purchase_request: 7, request_number: 'NAB-2026-007', fk_request_status: 1 });
+    const chat = jest.fn()
+      .mockResolvedValueOnce(toolCallMessage(VALID_ARGS, 'c1'))
+      .mockResolvedValueOnce({ text: 'Zahtjev je uspješno kreiran. Broj vašeg zahtjeva je NAB-2026-007.', tool_calls: null });
+    getActiveProvider.mockResolvedValue({ chat });
+
+    const result = await runAssistantChat({ messages: [{ role: 'user', content: 'Kreiraj.' }], userId: 2 });
+
+    expect(result.created_request).toMatchObject({ request_number: 'NAB-2026-007' });
+    expect(result.text).toMatch(/NAB-2026-007/);
+    expect(result.text).not.toMatch(/NIJE kreiran/);
+  });
+});
+
 describe('runAssistantChat — strukturna dvofazna potvrda (propose_request -> create_request)', () => {
   const PROPOSAL = {
     fk_fiscal_year: 1,
@@ -485,6 +702,95 @@ describe('runAssistantChat — strukturna dvofazna potvrda (propose_request -> c
     expect(result.text).toMatch(/Potvrđujete li/);
   });
 
+  // Model koji PRESKAČE propose_request (stvarno opaženo kod qwen3.5:9b —
+  // eval run 2026-08-31, scenarij 1: pokušaj 1 zvao create_request izravno).
+  // Prije popravka brava je takav poziv golo odbijala, model bi prijedlog
+  // prepričao u prozi, a proza nije tool rezultat — sljedeći potez opet nije
+  // imao poklapajući prijedlog i razgovor se vrtio u krug bez ijednog
+  // kreiranog zahtjeva. Sad se poziv PRETVARA u prijedlog.
+  test('(a0) create_request bez ranijeg propose_request → pretvoren u prijedlog, ništa u bazu', async () => {
+    mockReferenceContext();
+    proposeRequest.mockResolvedValue(PROPOSAL);
+
+    const chat = jest.fn()
+      .mockResolvedValueOnce(toolCallMessage(VALID_ARGS, 'create_1'))
+      .mockResolvedValueOnce({ text: 'Evo prijedloga, potvrđujete?', tool_calls: null });
+    getActiveProvider.mockResolvedValue({ chat });
+
+    const result = await runAssistantChat({
+      messages: [{ role: 'user', content: 'Evo ponude, kreiraj zahtjev.' }],
+      userId: 2,
+      attachments: [{ filename: 'ponuda.pdf', kind: 'pdf', text: 'Toner za pisač x5' }],
+    });
+
+    // Validacija je odrađena, ali NIŠTA nije zapisano.
+    expect(proposeRequest).toHaveBeenCalledTimes(1);
+    expect(createRequest).not.toHaveBeenCalled();
+    expect(result.created_request).toBeNull();
+
+    // Model je dobio strukturiran prijedlog (ne samo tekst greške) i uputu.
+    const toolMsg = result.tool_trace.find((m) => m.role === 'tool' && m.name === 'create_request');
+    const payload = JSON.parse(toolMsg.content);
+    expect(payload.ok).toBe(false);
+    expect(payload.awaiting_confirmation).toBe(true);
+    expect(payload.proposal).toEqual(PROPOSAL);
+  });
+
+  test('(a1) pretvoreni prijedlog iz RANIJEG poteza vrijedi kao potvrda → create_request prolazi', async () => {
+    mockReferenceContext();
+    createRequest.mockResolvedValue({ id_purchase_request: 42, request_number: 'NAB-2026-042', fk_request_status: 1 });
+
+    // Povijest koju klijent vraća: pretvoreni prijedlog iz prošlog poteza.
+    const convertedProposalMsg = {
+      role: 'tool',
+      tool_call_id: 'create_prev',
+      name: 'create_request',
+      content: JSON.stringify({ ok: false, awaiting_confirmation: true, proposal: PROPOSAL }),
+    };
+
+    const chat = jest.fn()
+      .mockResolvedValueOnce(toolCallMessage(VALID_ARGS, 'create_2'))
+      .mockResolvedValueOnce({ text: 'Zahtjev NAB-2026-042 je kreiran.', tool_calls: null });
+    getActiveProvider.mockResolvedValue({ chat });
+
+    const result = await runAssistantChat({
+      messages: [
+        { role: 'system', content: `${QUOTE_MARKER}\nPonuda...` },
+        { role: 'user', content: 'Evo ponude.' },
+        convertedProposalMsg,
+        { role: 'assistant', content: 'Evo prijedloga, potvrđujete?' },
+        { role: 'user', content: 'Da, potvrđujem.' },
+      ],
+      userId: 2,
+      attachments: [],
+    });
+
+    expect(createRequest).toHaveBeenCalledTimes(1);
+    expect(result.created_request).toMatchObject({ request_number: 'NAB-2026-042' });
+  });
+
+  // Najvažnije jamstvo: pretvorba NE smije otvoriti vrata kreiranju unutar
+  // istog HTTP poziva — potvrda mora doći kao NOVA korisnikova poruka.
+  test('(a2) pretvoreni prijedlog NE vrijedi kao potvrda u ISTOM potezu', async () => {
+    mockReferenceContext();
+    proposeRequest.mockResolvedValue(PROPOSAL);
+
+    const chat = jest.fn()
+      .mockResolvedValueOnce(toolCallMessage(VALID_ARGS, 'create_a'))
+      .mockResolvedValueOnce(toolCallMessage(VALID_ARGS, 'create_b')) // odmah opet, bez nove poruke
+      .mockResolvedValueOnce({ text: 'Pričekat ću vašu potvrdu.', tool_calls: null });
+    getActiveProvider.mockResolvedValue({ chat });
+
+    const result = await runAssistantChat({
+      messages: [{ role: 'user', content: 'Evo ponude, kreiraj odmah.' }],
+      userId: 2,
+      attachments: [{ filename: 'ponuda.pdf', kind: 'pdf', text: 'Toner za pisač x5' }],
+    });
+
+    expect(createRequest).not.toHaveBeenCalled(); // KLJUČNO — ništa u bazi
+    expect(result.created_request).toBeNull();
+  });
+
   test('(a) create_request odmah nakon propose_request U ISTOM requestu → odbijen, ništa se ne piše u bazu', async () => {
     mockReferenceContext();
     proposeRequest.mockResolvedValue(PROPOSAL);
@@ -510,7 +816,10 @@ describe('runAssistantChat — strukturna dvofazna potvrda (propose_request -> c
     const rejection = thirdCallMessages.find((m) => m.tool_call_id === 'create_1');
     const parsed = JSON.parse(rejection.content);
     expect(parsed.ok).toBe(false);
-    expect(parsed.message).toMatch(/propose_request/);
+    // Poruka više ne traži propose_request (model ga je upravo pozvao) nego
+    // izričito čekanje korisnikove potvrde u novoj poruci.
+    expect(parsed.message).toMatch(/Pričekaj izričitu potvrdu/);
+    expect(parsed.awaiting_confirmation).toBeUndefined(); // nije pretvorba, prijedlog već postoji
   });
 
   test('(b) create_request u NOVOM requestu nakon ranijeg propose_request s korisnikovom potvrdom → uspijeva', async () => {
@@ -562,8 +871,13 @@ describe('runAssistantChat — strukturna dvofazna potvrda (propose_request -> c
       attachments: [{ filename: 'ponuda.pdf', kind: 'pdf', text: 'Toner za pisač x5' }],
     });
 
+    // KLJUČNO i nepromijenjeno: ništa se ne piše u bazu.
     expect(createRequest).not.toHaveBeenCalled();
-    expect(proposeRequest).not.toHaveBeenCalled();
+    // PROMIJENJENO (popravak deadlocka kod modela koji preskaču propose_request):
+    // poziv se više ne odbija golo nego se PRETVARA u prijedlog — proposeRequest
+    // se zato zove, ali samo radi validacije i sažetka, bez upisa. Detaljna
+    // provjera payloada je u testu (a0) gore.
+    expect(proposeRequest).toHaveBeenCalledTimes(1);
   });
 
   test('create_request odbijen kad se raniji propose_request odnosi na DRUGAČIJE podatke (drugi odjel)', async () => {
@@ -781,8 +1095,9 @@ describe('runAssistantChat — VIŠE priloženih ponuda (usporedba dobavljača)'
     });
 
     const quoteSystemMsg = chat.mock.calls[0][0].find((m) => m.role === 'system' && m.content.includes(QUOTE_MARKER));
-    expect(quoteSystemMsg.content).toMatch(/NE preskači, ne spajaj u jedan redak i NE pitaj korisnika/);
-    expect(quoteSystemMsg.content).toMatch(/Ukupan iznos zahtjeva je ZBROJ iznosa svih priloženih ponuda/);
+    // Pravilo 3: svaka ponuda daje svoje stavke, bez spajanja i bez pitanja.
+    expect(quoteSystemMsg.content).toMatch(/Ne\s+preskači, ne spajaj i NE pitaj korisnika koju ponudu odabrati/);
+    expect(quoteSystemMsg.content).toMatch(/Ukupan iznos = zbroj svih ponuda/);
   });
 
   test('strukturna brava (propose prije create) i dalje vrijedi kad razgovor uključuje VIŠE priloga', async () => {
@@ -1076,16 +1391,20 @@ describe('runAssistantChat — finalni tekst prolazi kroz fixEkavica (safety net
     // Stvarnim testom opaženo: gemma4:12b zna proklizniti na ekavicu unatoč
     // eksplicitnoj uputi u system promptu (docs/AI.md) — ovo je determinstički
     // ispravak koji se primjenjuje na SVAKI finalni tekstualni odgovor.
+    //
+    // Uzorak NAMJERNO ne tvrdi da je zahtjev kreiran: takva bi tvrdnja bez
+    // stvarno kreiranog zahtjeva pala u guardFalseCreationClaim (vidi describe
+    // "zaštita od lažne tvrdnje"), pa bi ovaj test mjerio pogrešnu stvar.
     mockReferenceContext();
     const chat = jest.fn().mockResolvedValue({
-      text: 'Vaš zahtev za nabavu je uspješno kreiran. Broj zahtjeva je NAB-2026-0095.',
+      text: 'Za ovaj zahtev trebam još podatak o odjelu.',
       tool_calls: null,
     });
     getActiveProvider.mockResolvedValue({ chat });
 
     const result = await runAssistantChat({ messages: [{ role: 'user', content: 'Bok' }], userId: 2 });
 
-    expect(result.text).toBe('Vaš zahtjev za nabavu je uspješno kreiran. Broj zahtjeva je NAB-2026-0095.');
+    expect(result.text).toBe('Za ovaj zahtjev trebam još podatak o odjelu.');
   });
 });
 

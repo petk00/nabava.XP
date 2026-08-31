@@ -10,13 +10,24 @@ const http = require('node:http');
 
 jest.mock('node:http');
 
-const { chat } = require('../src/services/llm/ollamaProvider');
+// Model se od uvođenja toggle-a lokalnih modela čita iz AppSetting-a
+// (ollamaProvider.getActiveModel) — bez ovog mocka test bi otvarao pravu
+// MySQL vezu. Default je gemma4:12b, pojedini test si ga prepiše.
+jest.mock('../src/config/appSettings', () => ({
+  SETTING_KEYS: { OLLAMA_MODEL: 'ollama_model' },
+  getSetting: jest.fn().mockResolvedValue('gemma4:e4b'),
+}));
+
+const { getSetting } = require('../src/config/appSettings');
+const { chat, getCapabilities } = require('../src/services/llm/ollamaProvider');
+const { OLLAMA_MODELS, DEFAULT_OLLAMA_MODEL } = require('../src/services/llm/ollamaModels');
 
 const ORIGINAL_ENV = process.env;
 
 beforeEach(() => {
   process.env = { ...ORIGINAL_ENV };
   http.request.mockReset();
+  getSetting.mockResolvedValue('gemma4:e4b');
 });
 
 afterAll(() => {
@@ -127,7 +138,7 @@ describe('OllamaProvider.chat', () => {
     );
   });
 
-  test('poštuje OLLAMA_BASE_URL iz env-a i šalje model gemma4:12b', async () => {
+  test('poštuje OLLAMA_BASE_URL iz env-a i šalje aktivni model', async () => {
     process.env.OLLAMA_BASE_URL = 'http://ollama-host:11434';
     mockHttpSuccessOnce({ message: { content: 'ok' } });
 
@@ -136,7 +147,7 @@ describe('OllamaProvider.chat', () => {
     const options = lastRequestOptions();
     expect(options).toEqual(expect.objectContaining({ hostname: 'ollama-host', port: '11434', method: 'POST' }));
     const body = lastRequestBody();
-    expect(body.model).toBe('gemma4:12b');
+    expect(body.model).toBe('gemma4:e4b');
     expect(body.stream).toBe(false);
   });
 
@@ -207,6 +218,50 @@ describe('OllamaProvider.chat', () => {
     expect(http.request).toHaveBeenCalledTimes(1); // NEMA retryja na pravi timeout
     const options = lastRequestOptions();
     expect(options.timeout).toBe(10 * 60 * 1000); // pun budžet u JEDNOM pokušaju, ne 5 min
+  });
+});
+
+describe('OllamaProvider — odabir lokalnog modela (AppSetting.ollama_model)', () => {
+  test('šalje model zapisan u postavkama, ne hardkodiran default', async () => {
+    getSetting.mockResolvedValue('gemma4:e4b');
+    mockHttpSuccessOnce({ message: { content: 'ok' } });
+
+    await chat([{ role: 'user', content: 'test' }]);
+
+    expect(lastRequestBody().model).toBe('gemma4:e4b');
+  });
+
+  test('pada natrag na default kad je u postavkama model izvan kataloga', async () => {
+    getSetting.mockResolvedValue('model-koji-ne-postoji:1b');
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    mockHttpSuccessOnce({ message: { content: 'ok' } });
+
+    await chat([{ role: 'user', content: 'test' }]);
+
+    expect(lastRequestBody().model).toBe(DEFAULT_OLLAMA_MODEL);
+    warn.mockRestore();
+  });
+
+  test('getCapabilities javlja aktivni model i njegovu podršku za alate', async () => {
+    await expect(getCapabilities()).resolves.toEqual({ model: 'gemma4:e4b', supportsTools: true });
+  });
+
+  // Ollama na `tools` poslan modelu bez te sposobnosti vraća tvrd HTTP 400
+  // ("<model> does not support tools") — provjereno pravim pozivom na
+  // qwen2.5vl:7b prije nego je uklonjen iz kataloga (docs/eval-runs/).
+  // Katalog trenutno nema takav model, pa se grana provjerava privremenim
+  // unosom: mehanizam mora ostati ispravan ako se takav model opet doda.
+  test('NE šalje tools modelu bez podrške za alate', async () => {
+    OLLAMA_MODELS.push({ value: 'test-bez-alata:1b', label: 'test', supportsTools: false });
+    getSetting.mockResolvedValue('test-bez-alata:1b');
+    mockHttpSuccessOnce({ message: { content: 'ok' } });
+
+    await chat([{ role: 'user', content: 'test' }], [
+      { name: 'create_request', description: 'x', parameters: { type: 'object', properties: {} } },
+    ]);
+
+    expect(lastRequestBody().tools).toBeUndefined();
+    OLLAMA_MODELS.pop();
   });
 });
 

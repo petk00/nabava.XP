@@ -7,6 +7,7 @@ const db = require('./db');
 const SETTING_KEYS = {
   AI_PROVIDER: 'ai_provider',
   GEMINI_MODEL: 'gemini_model',
+  OLLAMA_MODEL: 'ollama_model',
 };
 
 // Koristi se samo ako ključ još nije zapisan u bazi (npr. postojeća baza
@@ -14,6 +15,7 @@ const SETTING_KEYS = {
 const DEFAULTS = {
   [SETTING_KEYS.AI_PROVIDER]: 'ollama',
   [SETTING_KEYS.GEMINI_MODEL]: 'gemini-2.5-flash',
+  [SETTING_KEYS.OLLAMA_MODEL]: 'gemma4:e4b',
 };
 
 async function getSetting(key) {
