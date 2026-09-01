@@ -63,7 +63,7 @@ describe('GeminiProvider.chat', () => {
 
     const result = await chat([{ role: 'user', content: 'Bok' }]);
 
-    expect(result).toEqual({
+    expect(result).toMatchObject({
       text: 'Bok! Kako mogu pomoći?',
       tool_calls: null,
       usage: { promptTokens: null, completionTokens: null },

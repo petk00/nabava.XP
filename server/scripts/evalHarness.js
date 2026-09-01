@@ -13,7 +13,7 @@
 //   node scripts/evalHarness.js --provider=ollama
 //   node scripts/evalHarness.js --provider=ollama --only=scenario1_pdf_tekst,scenario5_sve_u_jednoj_recenici
 //   node scripts/evalHarness.js --provider=gemini --repeat=3
-//   node scripts/evalHarness.js --provider=ollama --model=qwen3.5:9b
+//   node scripts/evalHarness.js --provider=ollama --model=gemma4:e2b
 //
 // CLI/env parametri (svi opcionalni):
 //   --provider=ollama|gemini   koji provider runner OČEKUJE da je aktivan
@@ -38,7 +38,7 @@ const fs = require('fs');
 const path = require('path');
 const http = require('node:http');
 const db = require('../src/config/db');
-const { SCENARIOS } = require('./evalScenarios');
+const { SCENARIOS, CLARIFICATIONS, MAX_CLARIFICATIONS } = require('./evalScenarios');
 
 const BASE_URL = process.env.EVAL_BASE_URL || 'http://localhost:3000';
 const USER_EMAIL = process.env.EVAL_USER_EMAIL || 'zaposlenik@veleri.hr';
@@ -105,7 +105,7 @@ function parseArgs() {
     repeat: null,
   };
   for (const arg of process.argv.slice(2)) {
-    // split('=') bi na "qwen3.5:9b" bio bezopasan, ali naziv modela smije
+    // split('=') bi na "gemma4:e4b" bio bezopasan, ali naziv modela smije
     // sadržavati '=' u principu — uzmi sve iza prvog znaka jednakosti.
     const raw = arg.replace(/^--/, '');
     const eq = raw.indexOf('=');
@@ -299,6 +299,66 @@ async function fetchCreatedRequest(requestNumber) {
   };
 }
 
+/**
+ * Traži pojašnjenje koje odgovara na modelovo pitanje (evalScenarios.js:
+ * CLARIFICATIONS). Vraća null ako model nije postavio pitanje ili ako se ni
+ * jedno pojašnjenje ne poklapa — tada se ide na sljedeći korak skripte.
+ */
+function resolveClarification(responseText, alreadyUsed) {
+  if (!responseText || !responseText.includes('?')) return null;
+  for (const c of CLARIFICATIONS) {
+    if (alreadyUsed.has(c.answer)) continue;
+    if (c.match.test(responseText)) return c.answer;
+  }
+  return null;
+}
+
+/** Multiset količina, za usporedbu neovisnu o redoslijedu stavki. */
+function quantitiesOf(items) {
+  return (items || []).map((i) => Number(i?.quantity)).sort((a, b) => a - b);
+}
+
+/**
+ * Mehanička provjera TOČNOSTI spremljenog zahtjeva (RQ1) — ono što harness
+ * dosad NIJE radio, pa je scenarij s izmišljenim stavkama prolazio kao uspjeh
+ * samo zato što je zahtjev nastao (stvarno opaženo: gemma4:e4b, scenarij 3,
+ * "Kartuže za tonere HP 205A" na ponudi za uredski materijal).
+ *
+ * Uspoređuje se SAMO ono što je mehanički provjerljivo — broj stavki, količine
+ * i odjel. Nazivi se NAMJERNO ne uspoređuju: model legitimno parafrazira
+ * ("ETIK.45,7x21,2mm" -> "etikete"), pa bi doslovna usporedba lažno prijavila
+ * greške. Nazivi ostaju na ručnoj provjeri (scoreEvalResults.js).
+ */
+function checkAccuracy(actual, expected) {
+  if (!expected) return null;
+  if (!actual) {
+    return { created: false, item_count_match: null, quantities_match: null, department_match: null };
+  }
+  const expectedQty = quantitiesOf(expected.items);
+  const actualQty = quantitiesOf(actual.items);
+  // Iznos: expectedResult.total_amount_acceptable je niz prihvatljivih
+  // vrijednosti (ponuda zna imati više iznosa), null kad iznos nije zadan.
+  let amountMatch = null;
+  if (Array.isArray(expected.total_amount_acceptable)) {
+    const actualAmount = actual.total_amount === null || actual.total_amount === undefined
+      ? null
+      : Number(actual.total_amount);
+    amountMatch = actualAmount !== null
+      && expected.total_amount_acceptable.some((a) => Math.abs(a - actualAmount) < 0.01);
+  }
+
+  return {
+    created: true,
+    item_count_match: (expected.items || []).length === (actual.items || []).length,
+    quantities_match: expectedQty.length === actualQty.length
+      && expectedQty.every((q, i) => q === actualQty[i]),
+    department_match: expected.department_name
+      ? String(actual.department_name || '').trim() === expected.department_name
+      : null,
+    amount_match: amountMatch,
+  };
+}
+
 /** Jedan pokušaj JEDNOG scenarija — može uključivati više turnova (echo tool_trace/povijesti). */
 async function runOneAttempt(scenario, token, provider, attemptNumber) {
   const startedAt = new Date().toISOString();
@@ -306,14 +366,23 @@ async function runOneAttempt(scenario, token, provider, attemptNumber) {
 
   let conversation = [];
   let allToolTrace = [];
-  const usage = { promptTokens: 0, completionTokens: 0 };
+  const usage = { promptTokens: 0, completionTokens: 0, modelLatencyMs: 0, modelCalls: 0 };
   let lastResponseText = null;
   let httpStatus = null;
   let errorMessage = null;
 
+  // Skripta scenarija + eventualna umetnuta pojašnjenja (vidi
+  // resolveClarification): red čekanja umjesto fiksne petlje, da se odgovor na
+  // modelovo pitanje može ubaciti IZMEĐU koraka.
+  const pending = [...scenario.turns];
+  const turnsSent = [];
+  const usedClarifications = new Set();
+  let clarificationsUsed = 0;
+
   try {
-    for (let turnIdx = 0; turnIdx < scenario.turns.length; turnIdx++) {
-      const turnText = scenario.turns[turnIdx];
+    for (let turnIdx = 0; pending.length > 0; turnIdx++) {
+      const turnText = pending.shift();
+      turnsSent.push(turnText);
       const isFirstTurn = turnIdx === 0;
       const hasAttachments = isFirstTurn && scenario.attachments.length > 0;
 
@@ -353,7 +422,30 @@ async function runOneAttempt(scenario, token, provider, attemptNumber) {
       allToolTrace.push(...(body.tool_trace || []));
       usage.promptTokens += body.usage?.promptTokens || 0;
       usage.completionTokens += body.usage?.completionTokens || 0;
+      usage.modelLatencyMs += body.usage?.modelLatencyMs || 0;
+      usage.modelCalls += body.usage?.modelCalls || 0;
       lastResponseText = body.text ?? null;
+
+      // Zahtjev je kreiran — preostali koraci skripte nemaju svrhu. Bez ovoga
+      // se nakon uspjeha slao još jedan "potvrđujem", što je trošilo poziv
+      // modelu i još ga poticalo da pokuša kreirati DRUGI zahtjev (sustav to
+      // odbija, vidi findEarlierSuccessfulCreate, ali vrijeme se potroši).
+      // Scenariji koji mjere ponašanje NAKON kreiranja (npr. traži li korisnik
+      // izmjenu pa model pokuša duplikat) moraju dobiti preostale korake —
+      // njima rani izlaz poništava upravo ono što testiraju.
+      if (!scenario.continueAfterCreate && extractCreatedRequestNumber(allToolTrace)) break;
+
+      // Model je postavio pitanje, a zahtjev još nije kreiran — umetni odgovor
+      // kao dodatni korak umjesto da se ide dalje po skripti (koja na to
+      // pitanje nema odgovor). Ograničeno MAX_CLARIFICATIONS-om.
+      if (clarificationsUsed < MAX_CLARIFICATIONS && !extractCreatedRequestNumber(allToolTrace)) {
+        const answer = resolveClarification(lastResponseText, usedClarifications);
+        if (answer) {
+          usedClarifications.add(answer);
+          clarificationsUsed += 1;
+          pending.unshift(answer);
+        }
+      }
     }
   } catch (networkError) {
     errorMessage = networkError.message;
@@ -375,7 +467,7 @@ async function runOneAttempt(scenario, token, provider, attemptNumber) {
     attempt: attemptNumber,
     provider,
     timestamp: startedAt,
-    turns_sent: scenario.turns,
+    turns_sent: turnsSent,
     attachments: scenario.attachments.map((p) => path.basename(p)),
     expects_propose_before_create: scenario.expectsProposeBeforeCreate,
     latency_ms: latencyMs,
@@ -384,9 +476,23 @@ async function runOneAttempt(scenario, token, provider, attemptNumber) {
     error: errorMessage,
     prompt_tokens: usage.promptTokens,
     completion_tokens: usage.completionTokens,
+    // latency_ms je trajanje CIJELOG scenarija (HTTP, PDF ekstrakcija, baza,
+    // svi turnovi). model_latency_ms je samo ono provedeno u modelu, a
+    // model_calls koliko je puta model pozvan — bez toga se ne zna je li
+    // scenarij spor zbog modela ili zbog broja koraka.
+    model_latency_ms: usage.modelLatencyMs,
+    model_calls: usage.modelCalls,
+    // Koliko je puta harness morao odgovoriti na modelovo pitanje. Model koji
+    // zadatak riješi bez ijednog pojašnjenja bolji je od onog kojem su trebala
+    // tri, iako oba završe s kreiranim zahtjevom.
+    clarifications_used: clarificationsUsed,
+    turns_total: turnsSent.length,
     propose_request_called,
     create_request_called,
     propose_before_create,
+    // Mehanička provjera točnosti spremljenog zahtjeva (checkAccuracy):
+    // razdvaja "zahtjev je nastao" od "zahtjev je ISPRAVAN".
+    accuracy: checkAccuracy(actualCreatedRequest, scenario.expectedResult),
     tool_trace_summary,
     final_response_text: lastResponseText,
     actual_created_request: actualCreatedRequest,
