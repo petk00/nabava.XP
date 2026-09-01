@@ -111,11 +111,13 @@ describe('OllamaProvider.chat', () => {
 
     const result = await chat([{ role: 'user', content: 'Bok' }]);
 
-    expect(result).toEqual({
+    expect(result).toMatchObject({
       text: 'Bok! Kako mogu pomoći?',
       tool_calls: null,
       usage: { promptTokens: null, completionTokens: null },
     });
+    // Trajanje SAMO ovog poziva modelu (evalHarness.js: model_latency_ms).
+    expect(typeof result.latencyMs).toBe('number');
   });
 
   test('vraća prompt/completion tokene iz prompt_eval_count/eval_count', async () => {
@@ -386,5 +388,44 @@ describe('OllamaProvider.chat — slika (vision, bez server-side OCR-a)', () => 
     const body = lastRequestBody();
     expect(body.messages[0]).toEqual({ role: 'user', content: 'Bok' });
     expect(body.messages[0].images).toBeUndefined();
+  });
+});
+
+// `think` je po modelu (llm/ollamaModels.js), ne globalno — kod gemma4:e4b
+// isključivanje razmišljanja ubija pozivanje alata, a kod gemma4:e2b ga
+// popravlja i ubrzava 4-7× (mjereno 2026-09-01).
+describe('OllamaProvider — `think` postavka po modelu', () => {
+  test('šalje think:false kad ga katalog tako definira', async () => {
+    OLLAMA_MODELS.push({ value: 'test-bez-misljenja:1b', label: 't', supportsTools: true, think: false });
+    getSetting.mockResolvedValue('test-bez-misljenja:1b');
+    mockHttpSuccessOnce({ message: { content: 'ok' } });
+
+    await chat([{ role: 'user', content: 'test' }]);
+
+    expect(lastRequestBody().think).toBe(false);
+    OLLAMA_MODELS.pop();
+  });
+
+  test('šalje think:true kad ga katalog tako definira', async () => {
+    OLLAMA_MODELS.push({ value: 'test-s-misljenjem:1b', label: 't', supportsTools: true, think: true });
+    getSetting.mockResolvedValue('test-s-misljenjem:1b');
+    mockHttpSuccessOnce({ message: { content: 'ok' } });
+
+    await chat([{ role: 'user', content: 'test' }]);
+
+    expect(lastRequestBody().think).toBe(true);
+    OLLAMA_MODELS.pop();
+  });
+
+  // Bez zapisa u katalogu ne diramo zadano ponašanje modela.
+  test('NE šalje think kad ga katalog ne definira', async () => {
+    OLLAMA_MODELS.push({ value: 'test-bez-postavke:1b', label: 't', supportsTools: true });
+    getSetting.mockResolvedValue('test-bez-postavke:1b');
+    mockHttpSuccessOnce({ message: { content: 'ok' } });
+
+    await chat([{ role: 'user', content: 'test' }]);
+
+    expect(lastRequestBody().think).toBeUndefined();
+    OLLAMA_MODELS.pop();
   });
 });

@@ -177,6 +177,13 @@ Pravila:
   ("estimated_amount") je NEOBAVEZAN — ako ga korisnik nije naveo, jednostavno ga izostavi i nastavi.
   NIKAD ne traži iznos kao uvjet za prijedlog ili kreiranje zahtjeva, i nikad ne zaustavljaj razgovor
   zbog njega.
+- IZNOS ("estimated_amount") je uvijek KONAČAN IZNOS ZA UPLATU — onaj koji ustanova stvarno plaća,
+  dakle nakon svih rabata i uključujući PDV. Ponuda često nudi više iznosa (osnovica, iznos nakon
+  rabata, PDV, ukupno za uplatu) — uzmi ISKLJUČIVO zadnji, onaj označen kao "za uplatu", "ukupno za
+  platiti" ili istoznačno. NIKAD osnovicu ni međuzbroj.
+- POPUST/RABAT NIJE STAVKA. Ako se u tablici pojavljuje kao redak s negativnim iznosom, NE upisuj ga
+  među stavke zahtjeva — on je već uračunat u konačan iznos. Stavke su samo artikli i usluge koji se
+  stvarno nabavljaju.
 - BEZ PRILOGA (korisnik je podatke naveo sam, u razgovoru): kad imaš sva obavezna polja, pozovi
   create_request IZRAVNO. NE pozivaj propose_request i NE traži dodatnu potvrdu — korisnik je upravo
   sam izdiktirao te podatke i vidi ih u svojoj poruci. Dvostruka potvrda je obavezna SAMO kad je
@@ -550,15 +557,22 @@ async function runAssistantChat({ messages, userId, attachments = [] }) {
   // NOVOJ poruci. Tad u ovom potezu više nema ništa smisleno za napraviti —
   // vidi napomenu uz provjeru ispod petlje po tool pozivima.
   let awaitingUserConfirmation = false;
-  const usage = { promptTokens: 0, completionTokens: 0 };
+  // Uz tokene se zbraja i vrijeme provedeno U MODELU te broj poziva modelu.
+  // Harness mjeri trajanje cijelog scenarija, u kojem su i HTTP put, PDF
+  // ekstrakcija i upis u bazu — bez ovoga se ne može reći koliko od te brojke
+  // otpada na sam model, što je nužno za poštenu usporedbu lokalnog i cloud
+  // providera (docs/AI.md, RQ2).
+  const usage = { promptTokens: 0, completionTokens: 0, modelLatencyMs: 0, modelCalls: 0 };
   const addUsage = (u) => {
     usage.promptTokens += u?.promptTokens || 0;
     usage.completionTokens += u?.completionTokens || 0;
+    usage.modelLatencyMs += u?.latencyMs || 0;
+    usage.modelCalls += 1;
   };
 
   for (let iteration = 0; iteration < MAX_ITERATIONS; iteration++) {
     const result = await provider.chat(convo, tools);
-    addUsage(result.usage);
+    addUsage({ ...result.usage, latencyMs: result.latencyMs });
 
     if (!result.tool_calls || result.tool_calls.length === 0) {
       if (result.text && result.text.trim()) {
@@ -716,7 +730,7 @@ async function runAssistantChat({ messages, userId, attachments = [] }) {
     // u njemu namjerno ignoriramo.
     if (awaitingUserConfirmation) {
       const closing = await provider.chat(convo, tools);
-      addUsage(closing.usage);
+      addUsage({ ...closing.usage, latencyMs: closing.latencyMs });
       const closingText = closing.text && closing.text.trim()
         ? closing.text
         : 'Prijedlog zahtjeva je pripremljen, ali ga nisam uspio sažeti. Potvrdite kreiranje ili ponovite podatke.';

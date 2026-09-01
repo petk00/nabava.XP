@@ -125,6 +125,10 @@ function parseResponse(data) {
 }
 
 async function chat(messages, tools = []) {
+  // Vrijeme SAMO ovog poziva modelu — parnjak istoimenog mjerenja u
+  // ollamaProvider.js, da su lokalni i cloud provider usporedivi po istoj
+  // veličini (vidi evalHarness.js: model_latency_ms).
+  const startedAt = process.hrtime.bigint();
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
     throw new Error('GEMINI_API_KEY nije postavljen. Postavi ga u server/.env da bi Gemini provider radio.');
@@ -174,7 +178,7 @@ async function chat(messages, tools = []) {
   }
 
   const data = await res.json();
-  return parseResponse(data);
+  return { ...parseResponse(data), latencyMs: Number((process.hrtime.bigint() - startedAt) / 1000000n) };
 }
 
 /**

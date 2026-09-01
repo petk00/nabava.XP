@@ -202,6 +202,11 @@ async function getCapabilities() {
 }
 
 async function chat(messages, tools = []) {
+  // Vrijeme SAMO ovog poziva modelu. Harness mjeri trajanje cijelog scenarija
+  // (evalHarness.js latency_ms), što uključuje i HTTP put, ekstrakciju PDF-a i
+  // upis u bazu — a za usporedbu providera treba znati koliko od toga otpada
+  // na sam model. Mjeri se monotonim satom, uključujući eventualni retry.
+  const startedAt = process.hrtime.bigint();
   const baseUrl = process.env.OLLAMA_BASE_URL || 'http://localhost:11434';
   const model = await getActiveModel();
 
@@ -212,6 +217,13 @@ async function chat(messages, tools = []) {
     keep_alive: OLLAMA_KEEP_ALIVE,
     options: { num_ctx: OLLAMA_NUM_CTX },
   };
+  // `think` je NAMJERNO po modelu (llm/ollamaModels.js), ne globalno: kod
+  // gemma4:e4b isključivanje razmišljanja ubija pozivanje alata, a kod
+  // gemma4:e2b ga popravlja i ubrzava 4-7×. Izostavlja se iz tijela zahtjeva
+  // kad katalog ne kaže ništa, da se ne mijenja zadano ponašanje modela.
+  if (typeof model.think === 'boolean') {
+    body.think = model.think;
+  }
   // Orchestrator kod modela bez alata šalje prazan `tools`, ali provjera
   // ostaje i ovdje: `tools` poslan takvom modelu je tvrdi HTTP 400 iz Ollame,
   // a ne nešto što bi se degradiralo samo od sebe.
@@ -247,6 +259,7 @@ async function chat(messages, tools = []) {
   return {
     text: data?.message?.content || null,
     tool_calls: normalizeToolCalls(data?.message?.tool_calls),
+    latencyMs: Number((process.hrtime.bigint() - startedAt) / 1000000n),
     // prompt_eval_count/eval_count su Ollamin naziv za prompt/completion
     // tokene (docs.ollama.ai/api) — koristi se za RQ1/RQ2 eval harness
     // (docs/AI.md, evalHarness.js), ne izravno u chat odgovoru korisniku.

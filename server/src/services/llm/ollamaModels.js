@@ -20,18 +20,57 @@
 // gemma4:12b, qwen3.5:9b i qwen2.5vl:7b. Uklonjeni 2026-08-31:
 //   - qwen2.5vl:7b — nema `tools`, zahtjev uopće ne može kreirati, a i
 //     količine s ponude čitao je krivo ("126,40" kao "12 × 6,40").
-//   - qwen3.5:9b  — alate ima, ali NEDOSLJEDNO preskače propose_request
-//     (1 od 2 mjerena pokušaja), čime je razgovor znao zapeti.
+//   - qwen3.5:9b  — alate ima, ali preskače propose_request i zove
+//     create_request izravno. Vraćen u katalog 2026-09-01 jer bi pretvorba
+//     create_request -> prijedlog taj kvar trebala pokriti; uklonjen nakon 2
+//     scenarija jer NE POMAŽE: pretvorba mu vrati prijedlog, a model tad kaže
+//     "Pozivam taj alat" i prijedlog samo ISPIŠE U PROZI umjesto da ga pozove,
+//     pa razgovor opet nigdje ne stigne. Uz to je najsporiji izmjereni (351 s
+//     i 319 s po scenariju, naspram 138-185 s kod e4b), a `vision` koji Ollama
+//     za njega deklarira ne radi — sam je odgovorio "nemam mogućnost čitanja
+//     slike".
 //   - gemma4:12b  — pouzdan, ali ~3× sporiji od e4b uz isti ishod na eval
 //     scenarijima. Sirovi podaci njegovih runova obrisani su 2026-08-31.
 const OLLAMA_MODELS = [
   {
     value: 'gemma4:e4b',
     label: 'gemma4:e4b',
+    // Razmišljanje MORA ostati uključeno: mjereno 2026-08-31 na scenariju 1 —
+    // s think:false model je bio 3,8× brži (15,5 s naspram 58,8 s), ali NIJE
+    // POZVAO NIJEDAN ALAT, dakle nikad ne bi kreirao zahtjev.
+    think: true,
     // Ollama za njega prijavljuje completion,tools,thinking — BEZ vision —
     // ali probni poziv sa slikom (2026-08-31) uredno ju je opisao, a i eval
     // scenariji sa slikovnim ponudama (3) su prošli, pa je deklaracija
     // nepotpuna, a ne model.
+    supportsTools: true,
+  },
+  {
+    value: 'gemma4:e2b',
+    label: 'gemma4:e2b (najmanji)',
+    // Razmišljanje ostaje uključeno, kao i kod e4b — ali iz DRUGOG razloga,
+    // pa je vrijedno zapisati oba načina kvara.
+    //
+    // Pojedinačna proba na scenariju 1 (2026-09-01) izgledala je uvjerljivo za
+    // think:false — 8,5 s i 4,6 s naspram 32,8 s, uz ISPRAVAN poziv
+    // propose_request i točne količine. Puni run je tu preporuku oborio:
+    //   scenarij 1 (4 stavke)   -> ✅ 45 s naspram 146 s
+    //   scenarij 2 (23 stavke)  -> ❌ napravi prijedlog pa tvrdi da "nedostaje
+    //                              aktivna poslovna godina", koja mu je u
+    //                              system promptu (fk_fiscal_year=1)
+    //   scenarij 3 (8 stavki)   -> ❌ isti kvar
+    //   scenarij 4 (dvije ponude) -> ⚠️ kreira, ali IZGUBI iznos koji s
+    //                              razmišljanjem pogađa
+    // Dakle bez razmišljanja model odradi PRVI korak pa izgubi nit — ne
+    // poveže podatak iz konteksta s pozivom alata u sljedećem koraku.
+    // Pouka o metodi: proba na najjednostavnijem scenariju pokazala je
+    // suprotno od punog seta.
+    think: true,
+    // Manja inačica iste obitelji: 5.1B naspram 8.0B kod e4b. Ollama i za
+    // njega prijavljuje samo completion,tools,thinking — bez vision — ali
+    // probni poziv (2026-09-01) pokazao je da i alate zove ispravno i sliku
+    // uredno opisuje, jednako kao kod e4b. Deklaracija je dakle nepotpuna za
+    // cijelu gemma4 obitelj, ne samo za jedan model.
     supportsTools: true,
   },
 ];

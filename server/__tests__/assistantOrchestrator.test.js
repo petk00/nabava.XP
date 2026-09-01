@@ -169,7 +169,10 @@ describe('runAssistantChat — usage (token brojanje za RQ1/RQ2 eval harness)', 
 
     const result = await runAssistantChat({ messages: [{ role: 'user', content: 'Bok' }], userId: 2 });
 
-    expect(result.usage).toEqual({ promptTokens: 100, completionTokens: 20 });
+    expect(result.usage).toMatchObject({ promptTokens: 100, completionTokens: 20 });
+    // Uz tokene se broji i koliko je puta model pozvan te koliko je vremena
+    // provedeno U MODELU (evalHarness.js: model_calls / model_latency_ms).
+    expect(result.usage.modelCalls).toBe(1);
   });
 
   test('VIŠE poziva modelu u istom potezu (propose_request pa nastavak) — usage se ZBRAJA, ne prepisuje', async () => {
@@ -190,7 +193,8 @@ describe('runAssistantChat — usage (token brojanje za RQ1/RQ2 eval harness)', 
     });
 
     expect(chat).toHaveBeenCalledTimes(2);
-    expect(result.usage).toEqual({ promptTokens: 450, completionTokens: 45 });
+    expect(result.usage).toMatchObject({ promptTokens: 450, completionTokens: 45 });
+    expect(result.usage.modelCalls).toBe(2); // propose pa nastavak
   });
 
   test('provider ne vrati usage (npr. star mock/greška providera) — tretira se kao 0, ne baca grešku', async () => {
@@ -200,7 +204,7 @@ describe('runAssistantChat — usage (token brojanje za RQ1/RQ2 eval harness)', 
 
     const result = await runAssistantChat({ messages: [{ role: 'user', content: 'Bok' }], userId: 2 });
 
-    expect(result.usage).toEqual({ promptTokens: 0, completionTokens: 0 });
+    expect(result.usage).toMatchObject({ promptTokens: 0, completionTokens: 0, modelLatencyMs: 0 });
   });
 });
 
