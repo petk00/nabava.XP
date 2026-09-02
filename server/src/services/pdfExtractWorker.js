@@ -65,8 +65,36 @@ function renderPageWithColumns(pageData) {
         lastEndX = x + (item.width || 0);
         lastY = y;
       }
-      return text;
+      return attachNumericCellsToRow(text);
     });
+}
+
+// Kad se naziv artikla prelomi kroz više redaka, brojčani stupci (količina,
+// cijena, ukupno, PDV) ostanu u ZASEBNOM retku ispod cijelog opisa, odvojeni
+// od artikla na koji se odnose. Stvarno opaženo na scenariju 6: opis počinje
+// s "Procesor AMD Ryzen 9 9950X3D (AM5) — 16 jezgri...", pa je model upisao
+// količinu 16 (broj koji stoji uz naziv) umjesto 2 iz retka "2 | 699.00 |
+// 1,398.00 | 25.00 %" šest redaka niže.
+//
+// Zato se redak koji se sastoji ISKLJUČIVO od brojčanih ćelija pripaja
+// prethodnom retku. Prag je namjerno uzak — traži se barem jedan separator
+// stupca i nijedno slovo — da se ne bi lijepili redovi teksta koji slučajno
+// počinju brojem (npr. "2 kom u kutiji").
+const NUMERIC_ROW = /^[\d\s.,%€$-]+(\s\|\s[\d\s.,%€$-]+)+$/;
+
+function attachNumericCellsToRow(text) {
+  const lines = text.split('\n');
+  const merged = [];
+  for (const line of lines) {
+    const trimmed = line.trim();
+    const previous = merged.length > 0 ? merged[merged.length - 1].trim() : '';
+    if (trimmed && previous && NUMERIC_ROW.test(trimmed) && !NUMERIC_ROW.test(previous)) {
+      merged[merged.length - 1] = `${merged[merged.length - 1].trimEnd()}${COLUMN_SEPARATOR}${trimmed}`;
+    } else {
+      merged.push(line);
+    }
+  }
+  return merged.join('\n');
 }
 
 function readStdin() {

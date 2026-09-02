@@ -29,22 +29,12 @@
 //     i 319 s po scenariju, naspram 138-185 s kod e4b), a `vision` koji Ollama
 //     za njega deklarira ne radi — sam je odgovorio "nemam mogućnost čitanja
 //     slike".
-//   - gemma4:12b  — pouzdan, ali ~3× sporiji od e4b uz isti ishod na eval
+//   - gemma4:12b  — pouzdan, ali osjetno sporiji uz isti ishod na eval
 //     scenarijima. Sirovi podaci njegovih runova obrisani su 2026-08-31.
+//   - gemma4:e4b  — uklonjen 2026-09-01 zajedno sa svim svojim mjerenjima,
+//     odlukom autora rada. Bio je zadani model; zamijenio ga je manji e2b iz
+//     iste obitelji.
 const OLLAMA_MODELS = [
-  {
-    value: 'gemma4:e4b',
-    label: 'gemma4:e4b',
-    // Razmišljanje MORA ostati uključeno: mjereno 2026-08-31 na scenariju 1 —
-    // s think:false model je bio 3,8× brži (15,5 s naspram 58,8 s), ali NIJE
-    // POZVAO NIJEDAN ALAT, dakle nikad ne bi kreirao zahtjev.
-    think: true,
-    // Ollama za njega prijavljuje completion,tools,thinking — BEZ vision —
-    // ali probni poziv sa slikom (2026-08-31) uredno ju je opisao, a i eval
-    // scenariji sa slikovnim ponudama (3) su prošli, pa je deklaracija
-    // nepotpuna, a ne model.
-    supportsTools: true,
-  },
   {
     value: 'gemma4:e2b',
     label: 'gemma4:e2b (najmanji)',
@@ -78,6 +68,6 @@ const OLLAMA_MODELS = [
 // Fallback kad je u AppSetting zapisan model kojeg nema u katalogu (npr.
 // ručno diran red u bazi ili uklonjen model) — bolje raditi s poznatim
 // modelom nego pucati na svakom pozivu.
-const DEFAULT_OLLAMA_MODEL = 'gemma4:e4b';
+const DEFAULT_OLLAMA_MODEL = 'gemma4:e2b';
 
 module.exports = { OLLAMA_MODELS, DEFAULT_OLLAMA_MODEL };

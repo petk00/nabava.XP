@@ -63,6 +63,13 @@ function toGeminiContents(messages) {
           role: 'model',
           parts: m.tool_calls.map((tc) => ({
             functionCall: { name: tc.name, args: tc.arguments },
+            // Gemini 3.x misaoni modeli uz svaki functionCall vraćaju
+            // thoughtSignature i traže ga NAZAD kad se povijest ponovno šalje.
+            // Bez njega drugi poziv u petlji pada s HTTP 400 ("Function call is
+            // missing a thought_signature in functionCall parts"). Stvarno
+            // opaženo 2026-09-02 na gemini-3.5-flash, scenarij 4: prvi poziv
+            // prođe, drugi (nakon tool rezultata) sruši cijeli razgovor.
+            ...(tc.thought_signature ? { thoughtSignature: tc.thought_signature } : {}),
           })),
         };
       }
@@ -109,6 +116,11 @@ function parseResponse(data) {
         id: `call_${idx}`,
         name: p.functionCall.name,
         arguments: p.functionCall.args || {},
+        // Nosi se kroz convo (assistantOrchestrator.js) da bi se mogao vratiti
+        // Geminiju u sljedećem pozivu — vidi toGeminiContents. Polje se ne
+        // emitira kad ga odgovor nema, da oblik tool_calls ostane nepromijenjen
+        // za modele koji ne vraćaju potpis.
+        ...(p.thoughtSignature ? { thought_signature: p.thoughtSignature } : {}),
       }))
     : null;
 
@@ -152,33 +164,67 @@ async function chat(messages, tools = []) {
   // Bez ovoga zahtjev koji Google nikad ne odgovori (opaženo stvarnim testom)
   // visi neograničeno i blokira cijeli tool-calling turn.
   const REQUEST_TIMEOUT_MS = 30000;
-  const abortController = new AbortController();
-  const timeoutId = setTimeout(() => abortController.abort(), REQUEST_TIMEOUT_MS);
-
+  const RETRY_MAX_ATTEMPTS = 5;
+  const RETRY_BASE_MS = 5000;
   let res;
-  try {
-    res = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-      signal: abortController.signal,
-    });
-  } catch (networkError) {
-    if (networkError.name === 'AbortError') {
-      throw new Error(`Gemini API nije odgovorio u ${REQUEST_TIMEOUT_MS / 1000}s.`);
+  let attempt = 0;
+  // Vrijeme provedeno u ČEKANJU na kvotu ne smije ući u latencyMs — inače
+  // mjera brzine modela mjeri Googleov rate limit, a ne model. Zbraja se
+  // zasebno i odbija na kraju.
+  let waitedMs = 0;
+  for (;;) {
+    // Kontroler i timeout se stvaraju PO POKUŠAJU: jedan zajednički bi nakon
+    // prvog isteka ostao trajno prekinut, pa bi svako ponavljanje odmah palo
+    // s AbortError umjesto da doista pokuša.
+    const abortController = new AbortController();
+    const timeoutId = setTimeout(() => abortController.abort(), REQUEST_TIMEOUT_MS);
+    try {
+      res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+        signal: abortController.signal,
+      });
+    } catch (networkError) {
+      if (networkError.name === 'AbortError') {
+        throw new Error(`Gemini API nije odgovorio u ${REQUEST_TIMEOUT_MS / 1000}s.`);
+      }
+      throw new Error(`Gemini API nije dostupan: ${networkError.message}`);
+    } finally {
+      clearTimeout(timeoutId);
     }
-    throw new Error(`Gemini API nije dostupan: ${networkError.message}`);
-  } finally {
-    clearTimeout(timeoutId);
-  }
 
-  if (!res.ok) {
+    if (res.ok) break;
+
     const errBody = await res.text().catch(() => '');
-    throw new Error(`Gemini API greška (${res.status}): ${errBody || res.statusText}`);
+    // 429 (prekoračena kvota) i 503 (preopterećenje) su PROLAZNI — besplatna
+    // razina gemini-3.5-flash dopušta samo 5 zahtjeva u minuti, a jedan
+    // razgovor s alatima ih troši 5. Bez čekanja cijeli eval run padne nakon
+    // prvog scenarija (stvarno opaženo 2026-09-02: 2/10, ostalo HTTP 502).
+    // Google u poruci sam javlja koliko treba čekati ("Please retry in 23.4s"),
+    // pa se ta vrijednost poštuje; inače se ide na eksponencijalni odmak.
+    const transient = res.status === 429 || res.status === 503;
+    if (!transient || attempt >= RETRY_MAX_ATTEMPTS) {
+      throw new Error(`Gemini API greška (${res.status}): ${errBody || res.statusText}`);
+    }
+    const hinted = /retry in ([\d.]+)s/i.exec(errBody);
+    const waitMs = hinted
+      ? Math.ceil(Number(hinted[1]) * 1000) + 1000
+      : RETRY_BASE_MS * 2 ** attempt;
+    attempt += 1;
+    console.warn(`[gemini] HTTP ${res.status} — čekam ${Math.round(waitMs / 1000)}s `
+      + `(pokušaj ${attempt}/${RETRY_MAX_ATTEMPTS})`);
+    waitedMs += waitMs;
+    await new Promise((r) => { setTimeout(r, waitMs); });
   }
 
   const data = await res.json();
-  return { ...parseResponse(data), latencyMs: Number((process.hrtime.bigint() - startedAt) / 1000000n) };
+  const elapsedMs = Number((process.hrtime.bigint() - startedAt) / 1000000n);
+  return {
+    ...parseResponse(data),
+    latencyMs: elapsedMs - waitedMs,
+    ...(waitedMs > 0 ? { rateLimitWaitMs: waitedMs } : {}),
+  };
 }
 
 /**

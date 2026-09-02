@@ -38,6 +38,7 @@ const fs = require('fs');
 const path = require('path');
 const http = require('node:http');
 const db = require('../src/config/db');
+const { DEFAULT_OLLAMA_MODEL } = require('../src/services/llm/ollamaModels');
 const { SCENARIOS, CLARIFICATIONS, MAX_CLARIFICATIONS } = require('./evalScenarios');
 
 const BASE_URL = process.env.EVAL_BASE_URL || 'http://localhost:3000';
@@ -47,9 +48,14 @@ const ADMIN_EMAIL = process.env.EVAL_ADMIN_EMAIL || null;
 const ADMIN_PASSWORD = process.env.EVAL_ADMIN_PASSWORD || null;
 const OLLAMA_BASE_URL = process.env.OLLAMA_BASE_URL || 'http://localhost:11434';
 // Model NIJE više konstanta — bira se runtime postavkom AppSetting.ollama_model
-// (vidi llm/ollamaModels.js). Ovo je samo fallback za /api/show kad run ne
-// navede --model, pa ga runner popuni stvarnom vrijednošću iz settings API-ja.
-let ollamaModelName = 'gemma4:12b';
+// (vidi llm/ollamaModels.js). Fallback je katalogov default, NE tvrdo upisano
+// ime: ranije je ovdje stajao 'gemma4:12b', model odavno izbačen iz kataloga,
+// pa su svi runovi bez --model bili u metapodacima označeni krivim modelom
+// (stvarno opaženo 2026-09-02 — mjerenja su bila ispravna, ali pripisana
+// pogrešnom modelu, što je za usporedbu modela gore od pada runa).
+// `ollamaModelSource` bilježi je li ime POTVRĐENO ili samo pretpostavljeno.
+let ollamaModelName = DEFAULT_OLLAMA_MODEL;
+let ollamaModelSource = `katalog default (pretpostavka — run nije proslijedio --model)`;
 
 // Node-ov fetch (undici) ima tvrdi default headersTimeout/bodyTimeout od
 // 300000ms (5 min), kraći od backendova VLASTITOG 10-min budžeta za čekanje
@@ -105,7 +111,7 @@ function parseArgs() {
     repeat: null,
   };
   for (const arg of process.argv.slice(2)) {
-    // split('=') bi na "gemma4:e4b" bio bezopasan, ali naziv modela smije
+    // split('=') bi na "gemma4:e2b" bio bezopasan, ali naziv modela smije
     // sadržavati '=' u principu — uzmi sve iza prvog znaka jednakosti.
     const raw = arg.replace(/^--/, '');
     const eq = raw.indexOf('=');
@@ -225,7 +231,12 @@ function summarizeToolTrace(toolTrace) {
   for (const msg of toolTrace) {
     if (msg.role === 'assistant' && Array.isArray(msg.tool_calls)) {
       for (const call of msg.tool_calls) {
-        summary.push({ role: 'assistant_tool_call', name: call.name });
+        // Argumenti se NAMJERNO spremaju uz ime poziva: rubrika bodovanja
+        // (docs kriterij_bodovanja.md, dimenzije A i E) razlikuje što je model
+        // POSLAO od onoga što je SPREMLJENO u bazi. Bez argumenata se ne može
+        // razlučiti je li model krivo pročitao ponudu ili je validacija/brava
+        // odbila ispravan poziv.
+        summary.push({ role: 'assistant_tool_call', name: call.name, arguments: call.arguments });
         if (call.name === 'propose_request') {
           if (!createCalled) proposeCalled = true;
         }
@@ -235,7 +246,29 @@ function summarizeToolTrace(toolTrace) {
         }
       }
     } else if (msg.role === 'tool') {
-      summary.push({ role: 'tool_result', name: msg.name });
+      // ISHOD poziva, ne samo činjenica da se dogodio. Bez ovoga se iz zapisa
+      // ne može razlikovati poziv koji je alat prihvatio od onoga koji je
+      // odbijen — a to je razlika između "model je pogriješio" i "brava je
+      // odradila svoje". Poruka se krati jer služi za razvrstavanje, ne za
+      // čitanje; puni tekst je i dalje u samom razgovoru.
+      let ok = null;
+      let awaiting = false;
+      let message = null;
+      try {
+        const payload = JSON.parse(msg.content);
+        if (typeof payload?.ok === 'boolean') ok = payload.ok;
+        awaiting = payload?.awaiting_confirmation === true;
+        if (typeof payload?.message === 'string') message = payload.message.slice(0, 120);
+      } catch {
+        // neparsabilan sadržaj ostaje bez ishoda
+      }
+      summary.push({
+        role: 'tool_result',
+        name: msg.name,
+        ok,
+        ...(awaiting ? { awaiting_confirmation: true } : {}),
+        ...(message ? { message } : {}),
+      });
     } else if (msg.role === 'system') {
       summary.push({ role: 'system', note: 'attachment_instruction' });
     }
@@ -321,7 +354,7 @@ function quantitiesOf(items) {
 /**
  * Mehanička provjera TOČNOSTI spremljenog zahtjeva (RQ1) — ono što harness
  * dosad NIJE radio, pa je scenarij s izmišljenim stavkama prolazio kao uspjeh
- * samo zato što je zahtjev nastao (stvarno opaženo: gemma4:e4b, scenarij 3,
+ * samo zato što je zahtjev nastao (stvarno opaženo: gemma4:e2b, scenarij 3,
  * "Kartuže za tonere HP 205A" na ponudi za uredski materijal).
  *
  * Uspoređuje se SAMO ono što je mehanički provjerljivo — broj stavki, količine
@@ -331,6 +364,24 @@ function quantitiesOf(items) {
  */
 function checkAccuracy(actual, expected) {
   if (!expected) return null;
+  // Scenariji s decision:'refuse' (npr. scenario7_nije_ponuda) su TOČNI upravo
+  // kad zahtjev NE nastane. Bez ove grane bilo je obratno: ispravno odbijanje
+  // bilježilo se kao created:false, dakle kao pad, a scenarij bi "prošao" samo
+  // da je sustav popustio i kreirao zahtjev iz dokumenta koji nije ponuda.
+  //
+  // `created` ostaje ČINJENICA (je li zahtjev nastao), a ocjena scenarija je
+  // `decision_match` — namjerno se ne preslikava uspjeh u `created`, jer bi
+  // "created: true" uz nepostojeći zahtjev krivo čitao svatko tko gleda JSONL.
+  // Zato zbrajanje točnih scenarija mora gledati decision_match kad postoji.
+  if (expected.decision === 'refuse') {
+    return {
+      created: Boolean(actual),
+      decision_match: !actual,
+      item_count_match: null,
+      quantities_match: null,
+      department_match: null,
+    };
+  }
   if (!actual) {
     return { created: false, item_count_match: null, quantities_match: null, department_match: null };
   }
@@ -520,7 +571,10 @@ async function main() {
 
   const { provider, model, autoSet } = await ensureProvider(args.provider, args.model);
   // /api/show i metapodaci moraju gledati STVARNO aktivan model.
-  if (provider === 'ollama' && model) ollamaModelName = model;
+  if (provider === 'ollama' && model) {
+    ollamaModelName = model;
+    ollamaModelSource = 'settings API (potvrđeno)';
+  }
 
   const temperatureNote = provider === 'ollama' ? await getOllamaTemperatureNote() : { source: 'n/a (provider nije ollama)', temperature: null };
   console.log(`[evalHarness] Provider: ${provider} (auto-postavljen preko API-ja: ${autoSet})`);
@@ -539,6 +593,7 @@ async function main() {
     // Bez ovoga se JSONL redovi ne mogu pripisati konkretnom lokalnom modelu
     // (od uvođenja AppSetting.ollama_model provider više ne implicira model).
     ollama_model: provider === 'ollama' ? ollamaModelName : null,
+    ollama_model_source: provider === 'ollama' ? ollamaModelSource : null,
     ollama_temperature_note: temperatureNote,
     scenarios: scenarios.map((s) => ({ id: s.id, description: s.description, repeat_count: s.repeatCount, turns: s.turns.length, attachments: s.attachments.length })),
     total_attempts: totalAttempts,

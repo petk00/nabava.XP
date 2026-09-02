@@ -396,7 +396,7 @@ describe('GET /api/assistant/settings — samo administrator', () => {
     db.query
       .mockResolvedValueOnce(settingRow('gemini'))
       .mockResolvedValueOnce(settingRow('gemini-2.5-flash'))
-      .mockResolvedValueOnce(settingRow('gemma4:e4b'));
+      .mockResolvedValueOnce(settingRow('gemma4:e2b'));
 
     const res = await supertest(app).get('/api/assistant/settings');
 
@@ -404,7 +404,7 @@ describe('GET /api/assistant/settings — samo administrator', () => {
     expect(res.body).toEqual({
       provider: 'gemini',
       gemini_model: 'gemini-2.5-flash',
-      ollama_model: 'gemma4:e4b',
+      ollama_model: 'gemma4:e2b',
       // Katalog ide iz ollamaModels.js — UI ga ne smije držati zasebno.
       ollama_models: OLLAMA_MODELS,
     });
@@ -447,7 +447,7 @@ describe('PUT /api/assistant/settings — samo administrator', () => {
       .mockResolvedValueOnce([{ affectedRows: 1 }, []]) // setSetting: INSERT ... ON DUPLICATE KEY UPDATE
       .mockResolvedValueOnce(settingRow('gemini'))        // getSetting ai_provider
       .mockResolvedValueOnce(settingRow('gemini-2.5-flash')) // getSetting gemini_model
-      .mockResolvedValueOnce(settingRow('gemma4:e4b'));      // getSetting ollama_model
+      .mockResolvedValueOnce(settingRow('gemma4:e2b'));      // getSetting ollama_model
 
     const res = await supertest(app).put('/api/assistant/settings').send({ provider: 'gemini' });
 
@@ -456,7 +456,7 @@ describe('PUT /api/assistant/settings — samo administrator', () => {
       message: 'AI postavke ažurirane.',
       provider: 'gemini',
       gemini_model: 'gemini-2.5-flash',
-      ollama_model: 'gemma4:e4b',
+      ollama_model: 'gemma4:e2b',
     });
   });
 

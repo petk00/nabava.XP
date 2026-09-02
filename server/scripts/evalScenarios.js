@@ -76,6 +76,18 @@ const CLARIFICATIONS = [
       + 'prema naravi svakog artikla.',
   },
   {
+    // "koju ponudu želite da koristim?", "odaberite Opciju 1 ili 2"
+    // Kod NADOPUNJUJUĆIH ponuda (različiti artikli, isti zahtjev) odgovor je
+    // "obje" — tako traži i BASE_SYSTEM_PROMPT. Pitanje je legitimno: bez
+    // konteksta model ne može znati jesu li ponude konkurentske (iste stavke
+    // od raznih dobavljača, bira se jedna) ili nadopunjujuće. Stvarno opaženo
+    // na scenariju 4: model je nabrojio obje s iznosima i pitao koju uzeti,
+    // skripta mu nije odgovorila i zahtjev nikad nije nastao.
+    match: /koju ponudu|koje ponude|opciju 1|odaberi/i,
+    answer: 'Obje ponude idu u ISTI zahtjev — nisu konkurentske, odnose se na '
+      + 'različite projekte istog dobavljača. Uključi stavke iz obje i zbroji iznose.',
+  },
+  {
     // NE govori modelu da iznos izostavi — BASE_SYSTEM_PROMPT traži da uzme
     // konačan iznos za uplatu S PONUDE. Raniji tekst ("ostavite ga praznim")
     // proturječio je tom pravilu i poništavao scenarij 3 (rabat), koji mjeri
@@ -108,6 +120,7 @@ const PRILOG_PRVI_KORAK = 'Evo ponude. Odjel: Informatička služba. '
 const POTVRDA = [
   'Da, potvrđujem kreiranje zahtjeva.',
   'Da, potvrđujem. Molim kreiraj zahtjev sada.',
+  'Potvrđujem. Kreiraj zahtjev s tim podacima.',
 ];
 
 const SCENARIOS = [
@@ -201,8 +214,9 @@ const SCENARIOS = [
     id: 'scenario4_dvije_ponude',
     description: 'Dvije ponude odjednom — spaja li model stavke iz obje i zbraja li iznose.',
     turns: [
-      'Prilažem dvije ponude za istu nabavu. Odjel: Informatička služba. '
-        + 'Obrazloženje: opremanje ureda. Kreirajte zahtjev na temelju obje.',
+      'Prilažem dvije ponude koje se nadopunjuju — različiti artikli, ista nabava. '
+        + 'Odjel: Informatička služba. Obrazloženje: opremanje ureda. '
+        + 'Kreirajte JEDAN zahtjev sa stavkama iz OBJE ponude.',
       ...POTVRDA,
     ],
     attachments: [
@@ -234,7 +248,13 @@ const SCENARIOS = [
       ],
       total_amount_acceptable: [619.32],
       notes: '11 stavki iz ponude A + 5 iz ponude B = 16. Iznos je ZBROJ obiju: '
-        + '95,32 € + 524,00 € = 619,32 €. Svaka ponuda pridonosi svojim stavkama, bez spajanja.',
+        + '95,32 € + 524,00 € = 619,32 €. Svaka ponuda pridonosi svojim stavkama, bez spajanja.\n'
+        + 'Ponude su NADOPUNJUJUĆE: isti dobavljač (Mikrotron d.o.o.), različiti projekti '
+        + '("Laser Light Show" i "Mind Racer"), pa je zbrajanje poslovno ispravno i usklađeno s '
+        + 'BASE_SYSTEM_PROMPT-om. Slučaj KONKURENTSKIH ponuda — iste stavke od različitih '
+        + 'dobavljača, gdje agent treba nabrojiti opcije i pustiti korisnika da bira — je DRUGI '
+        + 'scenarij, za koji trenutno nema dokumenta. (kriterij_bodovanja.md opisuje taj drugi '
+        + 'slučaj pod starom numeracijom; ne odnosi se na ovaj scenarij.)',
     },
   },
   {

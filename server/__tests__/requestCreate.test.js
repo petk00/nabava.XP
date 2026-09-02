@@ -97,3 +97,45 @@ describe('POST /api/requests — race condition na generiranju broja', () => {
   });
 
 });
+
+describe('POST /api/requests — duljina naziva stavke', () => {
+
+  // Regresija za eval scenarij 6 (2026-09-02): model je kao item_name poslao
+  // cijeli opis artikla iz ponude (232-251 znakova). Stupac je varchar(200),
+  // pa je INSERT padao s bazičnom greškom bez naznake što je krivo, a model
+  // je isti poziv slijepo ponovio četiri puta. Provjera mora doći PRIJE baze
+  // i reći što napraviti, jer je poruku čita LLM koji se sam ispravlja.
+  test('naziv duži od 200 znakova vraća 400 prije dodira s bazom', async () => {
+    const conn = makeConn();
+    db.getConnection.mockResolvedValue(conn);
+
+    const res = await supertest(app).post('/api/requests').send({
+      ...VALID_BODY,
+      items: [{ fk_item_category: 1, item_name: 'A'.repeat(201), quantity: 1 }],
+    });
+
+    expect(res.status).toBe(400);
+    expect(res.body.message).toMatch(/naziv je predug \(201 znakova, najviše 200\)/);
+    expect(conn.query).not.toHaveBeenCalled();
+  });
+
+  test('naziv od točno 200 znakova prolazi validaciju', async () => {
+    const conn = makeConn();
+    conn.query
+      .mockResolvedValueOnce([[{ year: 2026, is_closed: 0 }], []])
+      .mockResolvedValueOnce([[{ id_department: 1 }], []])
+      .mockResolvedValueOnce([[{ id_item_category: 1 }], []])
+      .mockResolvedValueOnce([[], []])
+      .mockResolvedValueOnce([{ insertId: 1 }, []])
+      .mockResolvedValueOnce([{ insertId: 1 }, []]);
+    db.getConnection.mockResolvedValue(conn);
+
+    const res = await supertest(app).post('/api/requests').send({
+      ...VALID_BODY,
+      items: [{ fk_item_category: 1, item_name: 'A'.repeat(200), quantity: 1 }],
+    });
+
+    expect(res.status).not.toBe(400);
+  });
+
+});

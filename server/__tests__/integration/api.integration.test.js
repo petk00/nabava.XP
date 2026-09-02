@@ -427,7 +427,7 @@ describe('AI asistent (integracija) — docs/AI.md', () => {
     expect(put.status).toBe(403);
   });
 
-  itDb('admin čita zadani toggle iz seeda (ollama / gemini-2.5-flash / gemma4:e4b)', async () => {
+  itDb('admin čita zadani toggle iz seeda (ollama / gemini-2.5-flash / gemma4:e2b)', async () => {
     const agent = await loginAgent(ADMIN);
     const res = await agent.get('/api/assistant/settings');
 
@@ -435,13 +435,13 @@ describe('AI asistent (integracija) — docs/AI.md', () => {
     expect(res.body).toMatchObject({
       provider: 'ollama',
       gemini_model: 'gemini-2.5-flash',
-      ollama_model: 'gemma4:e4b',
+      ollama_model: 'gemma4:e2b',
     });
     // Katalog lokalnih modela (ollamaModels.js) ide klijentu da UI ne drži
     // vlastitu kopiju popisa — mora nositi i supportsTools zastavicu.
     expect(res.body.ollama_models).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({ value: 'gemma4:e4b', supportsTools: true }),
+        expect.objectContaining({ value: 'gemma4:e2b', supportsTools: true }),
       ])
     );
   });
@@ -451,12 +451,12 @@ describe('AI asistent (integracija) — docs/AI.md', () => {
 
     const put = await agent
       .put('/api/assistant/settings')
-      .send({ provider: 'ollama', ollama_model: 'gemma4:e4b' });
+      .send({ provider: 'ollama', ollama_model: 'gemma4:e2b' });
     expect(put.status).toBe(200);
-    expect(put.body).toMatchObject({ provider: 'ollama', ollama_model: 'gemma4:e4b' });
+    expect(put.body).toMatchObject({ provider: 'ollama', ollama_model: 'gemma4:e2b' });
 
     const check = await agent.get('/api/assistant/settings');
-    expect(check.body.ollama_model).toBe('gemma4:e4b');
+    expect(check.body.ollama_model).toBe('gemma4:e2b');
   });
 
   itDb('admin šalje Ollama model izvan kataloga — 400, postavka ostaje netaknuta', async () => {
@@ -466,7 +466,7 @@ describe('AI asistent (integracija) — docs/AI.md', () => {
     expect(res.status).toBe(400);
 
     const check = await agent.get('/api/assistant/settings');
-    expect(check.body.ollama_model).toBe('gemma4:e4b');
+    expect(check.body.ollama_model).toBe('gemma4:e2b');
   });
 
   itDb('admin mijenja toggle na gemini — bez restarta idući chat poziv dispatch-a na GeminiProvider', async () => {

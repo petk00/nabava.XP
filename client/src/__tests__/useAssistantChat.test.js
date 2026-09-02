@@ -302,7 +302,7 @@ describe('AI provider toggle — vidljivost i ponašanje po roli', () => {
 });
 
 /** Odgovor GET /assistant/settings s katalogom lokalnih modela. */
-const SETTINGS_RESPONSE = (ollamaModel = 'gemma4:e4b', provider = 'ollama') => ({
+const SETTINGS_RESPONSE = (ollamaModel = 'gemma4:e2b', provider = 'ollama') => ({
   data: {
     provider,
     gemini_model: 'gemini-2.5-flash',
@@ -311,7 +311,7 @@ const SETTINGS_RESPONSE = (ollamaModel = 'gemma4:e4b', provider = 'ollama') => (
     // NIJE u stvarnom katalogu — namjerno, da testovi pokrivaju i prikaz
     // modela bez alata ako se takav ikad vrati.
     ollama_models: [
-      { value: 'gemma4:e4b', label: 'gemma4:e4b', supportsTools: true },
+      { value: 'gemma4:e2b', label: 'gemma4:e2b', supportsTools: true },
       { value: 'test-bez-alata:1b', label: 'test-bez-alata:1b (bez alata)', supportsTools: false },
     ],
   },
@@ -328,7 +328,7 @@ describe('useAssistantChat — odabir lokalnog Ollama modela', () => {
     const chat = useAssistantChat();
     await chat.loadProviderSettings();
 
-    expect(chat.currentOllamaModel.value).toBe('gemma4:e4b');
+    expect(chat.currentOllamaModel.value).toBe('gemma4:e2b');
     expect(chat.ollamaModels.value).toHaveLength(2);
     expect(chat.isOllamaActive.value).toBe(true);
     // Model podržava alate — nema upozorenja.
@@ -365,7 +365,7 @@ describe('useAssistantChat — odabir lokalnog Ollama modela', () => {
   });
 
   test('changeOllamaModel šalje i provider — odabir modela prebacuje na Ollamu', async () => {
-    api.get.mockResolvedValue(SETTINGS_RESPONSE('gemma4:e4b', 'gemini'));
+    api.get.mockResolvedValue(SETTINGS_RESPONSE('gemma4:e2b', 'gemini'));
     api.put.mockResolvedValue({
       data: { message: 'ok', provider: 'ollama', gemini_model: 'gemini-2.5-flash', ollama_model: 'test-bez-alata:1b' },
     });
@@ -385,25 +385,25 @@ describe('useAssistantChat — odabir lokalnog Ollama modela', () => {
   // Kad je aktivan Gemini, klik na već zapisani lokalni model NIJE no-op —
   // to je jedini način da se korisnik vrati na Ollamu iz istog izbornika.
   test('klik na već zapisani model dok je aktivan Gemini ipak prebacuje na Ollamu', async () => {
-    api.get.mockResolvedValue(SETTINGS_RESPONSE('gemma4:e4b', 'gemini'));
+    api.get.mockResolvedValue(SETTINGS_RESPONSE('gemma4:e2b', 'gemini'));
     api.put.mockResolvedValue({
-      data: { message: 'ok', provider: 'ollama', gemini_model: 'gemini-2.5-flash', ollama_model: 'gemma4:e4b' },
+      data: { message: 'ok', provider: 'ollama', gemini_model: 'gemini-2.5-flash', ollama_model: 'gemma4:e2b' },
     });
 
     const chat = useAssistantChat();
     await chat.loadProviderSettings();
-    await chat.changeOllamaModel('gemma4:e4b');
+    await chat.changeOllamaModel('gemma4:e2b');
 
     expect(api.put).toHaveBeenCalled();
     expect(chat.currentProvider.value).toBe('ollama');
   });
 
   test('klik na već aktivan model dok je Ollama aktivna ne šalje ništa', async () => {
-    api.get.mockResolvedValue(SETTINGS_RESPONSE('gemma4:e4b'));
+    api.get.mockResolvedValue(SETTINGS_RESPONSE('gemma4:e2b'));
 
     const chat = useAssistantChat();
     await chat.loadProviderSettings();
-    await chat.changeOllamaModel('gemma4:e4b');
+    await chat.changeOllamaModel('gemma4:e2b');
 
     expect(api.put).not.toHaveBeenCalled();
   });

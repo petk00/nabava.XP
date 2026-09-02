@@ -15,7 +15,7 @@ const SETTING_KEYS = {
 const DEFAULTS = {
   [SETTING_KEYS.AI_PROVIDER]: 'ollama',
   [SETTING_KEYS.GEMINI_MODEL]: 'gemini-2.5-flash',
-  [SETTING_KEYS.OLLAMA_MODEL]: 'gemma4:e4b',
+  [SETTING_KEYS.OLLAMA_MODEL]: 'gemma4:e2b',
 };
 
 async function getSetting(key) {
