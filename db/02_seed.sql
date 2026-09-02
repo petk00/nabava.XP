@@ -48,7 +48,7 @@ INSERT INTO `AppUser` (`id_user`, `fk_role`, `first_name`, `last_name`, `email`,
 INSERT INTO `AppSetting` (`setting_key`, `setting_value`) VALUES
 ('ai_provider', 'ollama'),
 ('gemini_model', 'gemini-2.5-flash'),
-('ollama_model', 'gemma4:e4b');
+('ollama_model', 'gemma4:e2b');
 
 -- ============================================================
 -- Kraj seed.sql

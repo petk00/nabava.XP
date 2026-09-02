@@ -10,6 +10,16 @@ const { saveAttachmentBuffer, cleanupAttachmentFile } = require('./attachmentSer
 
 const MAX_JUSTIFICATION_LEN = 1000;
 
+// Prati širinu stupca purchase_request_item.item_name (varchar(200)). Bez ove
+// provjere predugačak naziv prolazi validaciju i pada tek na INSERT-u, s
+// bazičnom greškom koju pozivatelj ne može protumačiti. Stvarno opaženo na
+// eval scenariju 6 (2026-09-02): model je kao naziv poslao cijeli opis artikla
+// iz ponude (232-251 znakova), create_request je pao bez razumljivog razloga,
+// pa je model isti poziv slijepo ponovio četiri puta i zahtjev nikad nije
+// nastao. Poruka zato izričito kaže ŠTO napraviti (skratiti na sam artikl),
+// jer je čita LLM koji se na temelju nje može sam ispraviti.
+const ITEM_NAME_MAX_LENGTH = 200;
+
 /** Očekivana (poslovna) greška — ruta je mapira na `status` bez logiranja. */
 class RequestValidationError extends Error {
   constructor(status, message) {
@@ -45,6 +55,13 @@ function validateCreateInput({ fk_fiscal_year, fk_department, justification, est
   for (const [idx, item] of items.entries()) {
     if (!item.fk_item_category || !item.item_name || !item.item_name.trim()) {
       throw new RequestValidationError(400, `Stavka #${idx + 1}: kategorija i naziv su obavezni.`);
+    }
+    if (item.item_name.trim().length > ITEM_NAME_MAX_LENGTH) {
+      throw new RequestValidationError(
+        400,
+        `Stavka #${idx + 1}: naziv je predug (${item.item_name.trim().length} znakova, `
+          + `najviše ${ITEM_NAME_MAX_LENGTH}). Skrati naziv na sam artikl, bez opisa i specifikacija.`,
+      );
     }
     if (!Number.isInteger(item.quantity) || item.quantity < 1) {
       throw new RequestValidationError(400, `Stavka #${idx + 1}: količina mora biti cijeli broj veći od 0.`);
@@ -286,4 +303,6 @@ async function proposeRequest({ fk_fiscal_year, fk_department, justification, es
   };
 }
 
-module.exports = { createRequest, proposeRequest, RequestValidationError, MAX_JUSTIFICATION_LEN };
+module.exports = { createRequest, proposeRequest, RequestValidationError, MAX_JUSTIFICATION_LEN,
+  ITEM_NAME_MAX_LENGTH,
+};

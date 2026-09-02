@@ -3,7 +3,9 @@ const router = express.Router();
 const db = require('../config/db');
 const authenticateToken = require('../middleware/authMiddleware');
 const { STATUS, STATUS_LABELS, LOCKED_STATUSES } = require('../constants/status');
-const { createRequest, RequestValidationError, MAX_JUSTIFICATION_LEN } = require('../services/requestService');
+const {
+  createRequest, RequestValidationError, MAX_JUSTIFICATION_LEN, ITEM_NAME_MAX_LENGTH,
+} = require('../services/requestService');
 
 /**
  * State machine.
@@ -728,6 +730,12 @@ router.put('/:id', authenticateToken, async (req, res) => {
     if (!item.fk_item_category || !item.item_name || !item.item_name.trim()) {
       return res.status(400).json({
         message: `Stavka #${idx + 1}: kategorija i naziv su obavezni.`,
+      });
+    }
+    if (item.item_name.trim().length > ITEM_NAME_MAX_LENGTH) {
+      return res.status(400).json({
+        message: `Stavka #${idx + 1}: naziv je predug (${item.item_name.trim().length} znakova, `
+          + `najviše ${ITEM_NAME_MAX_LENGTH}).`,
       });
     }
     if (!Number.isInteger(item.quantity) || item.quantity < 1) {

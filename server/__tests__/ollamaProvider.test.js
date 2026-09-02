@@ -15,7 +15,7 @@ jest.mock('node:http');
 // MySQL vezu. Default je gemma4:12b, pojedini test si ga prepiše.
 jest.mock('../src/config/appSettings', () => ({
   SETTING_KEYS: { OLLAMA_MODEL: 'ollama_model' },
-  getSetting: jest.fn().mockResolvedValue('gemma4:e4b'),
+  getSetting: jest.fn().mockResolvedValue('gemma4:e2b'),
 }));
 
 const { getSetting } = require('../src/config/appSettings');
@@ -27,7 +27,7 @@ const ORIGINAL_ENV = process.env;
 beforeEach(() => {
   process.env = { ...ORIGINAL_ENV };
   http.request.mockReset();
-  getSetting.mockResolvedValue('gemma4:e4b');
+  getSetting.mockResolvedValue('gemma4:e2b');
 });
 
 afterAll(() => {
@@ -149,7 +149,7 @@ describe('OllamaProvider.chat', () => {
     const options = lastRequestOptions();
     expect(options).toEqual(expect.objectContaining({ hostname: 'ollama-host', port: '11434', method: 'POST' }));
     const body = lastRequestBody();
-    expect(body.model).toBe('gemma4:e4b');
+    expect(body.model).toBe('gemma4:e2b');
     expect(body.stream).toBe(false);
   });
 
@@ -225,12 +225,12 @@ describe('OllamaProvider.chat', () => {
 
 describe('OllamaProvider — odabir lokalnog modela (AppSetting.ollama_model)', () => {
   test('šalje model zapisan u postavkama, ne hardkodiran default', async () => {
-    getSetting.mockResolvedValue('gemma4:e4b');
+    getSetting.mockResolvedValue('gemma4:e2b');
     mockHttpSuccessOnce({ message: { content: 'ok' } });
 
     await chat([{ role: 'user', content: 'test' }]);
 
-    expect(lastRequestBody().model).toBe('gemma4:e4b');
+    expect(lastRequestBody().model).toBe('gemma4:e2b');
   });
 
   test('pada natrag na default kad je u postavkama model izvan kataloga', async () => {
@@ -245,7 +245,7 @@ describe('OllamaProvider — odabir lokalnog modela (AppSetting.ollama_model)', 
   });
 
   test('getCapabilities javlja aktivni model i njegovu podršku za alate', async () => {
-    await expect(getCapabilities()).resolves.toEqual({ model: 'gemma4:e4b', supportsTools: true });
+    await expect(getCapabilities()).resolves.toEqual({ model: 'gemma4:e2b', supportsTools: true });
   });
 
   // Ollama na `tools` poslan modelu bez te sposobnosti vraća tvrd HTTP 400
@@ -391,7 +391,7 @@ describe('OllamaProvider.chat — slika (vision, bez server-side OCR-a)', () => 
   });
 });
 
-// `think` je po modelu (llm/ollamaModels.js), ne globalno — kod gemma4:e4b
+// `think` je po modelu (llm/ollamaModels.js), ne globalno — kod gemma4:e2b
 // isključivanje razmišljanja ubija pozivanje alata, a kod gemma4:e2b ga
 // popravlja i ubrzava 4-7× (mjereno 2026-09-01).
 describe('OllamaProvider — `think` postavka po modelu', () => {

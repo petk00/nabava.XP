@@ -424,13 +424,13 @@ za izbor aktivnog LLM providera te Gemini i lokalnog Ollama modela, bez potrebe 
 > INSERT INTO `AppSetting` (`setting_key`, `setting_value`) VALUES
 >   ('ai_provider', 'ollama'),
 >   ('gemini_model', 'gemini-2.5-flash'),
->   ('ollama_model', 'gemma4:e4b');
+>   ('ollama_model', 'gemma4:e2b');
 > ```
 >
 > Baza koja već ima `AppSetting` treba samo novi red (postojeće instalacije rade i bez njega —
-> `appSettings.js` tad vraća ugrađeni default `gemma4:e4b`):
+> `appSettings.js` tad vraća ugrađeni default `gemma4:e2b`):
 > ```sql
-> INSERT INTO `AppSetting` (`setting_key`, `setting_value`) VALUES ('ollama_model', 'gemma4:e4b')
+> INSERT INTO `AppSetting` (`setting_key`, `setting_value`) VALUES ('ollama_model', 'gemma4:e2b')
 >   ON DUPLICATE KEY UPDATE `setting_value` = `setting_value`;
 > ```
 
@@ -439,7 +439,7 @@ Poznati ključevi:
 - `ai_provider` — `'ollama'` ili `'gemini'`, bira koji `LlmProvider` `assistantRoutes.js` koristi.
 - `gemini_model` — naziv Gemini modela (npr. `gemini-2.5-flash`); nije hardkodiran jer točna verzija
   Gemini Flasha nije bila fiksirana u trenutku implementacije.
-- `ollama_model` — koji lokalni model Ollama provider koristi (trenutno samo `gemma4:e4b`).
+- `ollama_model` — koji lokalni model Ollama provider koristi (trenutno samo `gemma4:e2b`).
   Za razliku od `gemini_model`, vrijednost NIJE slobodna: mora biti iz kataloga
   `server/src/services/llm/ollamaModels.js`, jer o njegovoj `supportsTools` zastavici ovisi šalje li
   orchestrator alate (vidi docs/AI.md, *Odabir lokalnog modela*).

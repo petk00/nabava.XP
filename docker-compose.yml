@@ -76,10 +76,10 @@ services:
   # Opcionalno — Ollama kao kontejner umjesto servisa na hostu (docs/AI.md,
   # docs/DEPLOYMENT.md). Ne pokreće se u običnom `docker compose up`, nego samo
   # uz `docker compose --profile ollama up -d`; namjerno, jer slika i model
-  # (gemma4:e4b, ~9.6 GB) su velikima za deployment koji AI asistenta ne koristi,
+  # (gemma4:e2b, ~7.2 GB) su velikima za deployment koji AI asistenta ne koristi,
   # a bez GPU-a je generiranje presporo za stvarnu upotrebu.
   # Nakon prvog pokretanja model treba jednom povući:
-  #   docker compose exec ollama ollama pull gemma4:e4b
+  #   docker compose exec ollama ollama pull gemma4:e2b
   # Ako se katalog (server/src/services/llm/ollamaModels.js) proširi, svaki
   # dodani model treba jednom povući na isti način.
   ollama:

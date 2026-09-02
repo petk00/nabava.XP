@@ -105,7 +105,7 @@ ne samo kroz env varijablu koju treba restartati server:
 
 | Provider | Kako radi | Prednost | Mana |
 |---|---|---|---|
-| **Lokalni Gemma (Ollama)** | Poziva lokalni `POST http://localhost:11434/api/chat`, model `gemma4:e4b`. (Implementirano kroz Ollamin **nativni** `/api/chat` tool-calling format, ne kroz OpenAI-kompatibilnu rutu kako je prijedlog pretpostavljao.) | Podaci ne napuštaju server, nema troška po pozivu. | Treba GPU/RAM na serveru, sporiji i slabiji od cloud modela pri manjim varijantama. |
+| **Lokalni Gemma (Ollama)** | Poziva lokalni `POST http://localhost:11434/api/chat`, model `gemma4:e2b`. (Implementirano kroz Ollamin **nativni** `/api/chat` tool-calling format, ne kroz OpenAI-kompatibilnu rutu kako je prijedlog pretpostavljao.) | Podaci ne napuštaju server, nema troška po pozivu. | Treba GPU/RAM na serveru, sporiji i slabiji od cloud modela pri manjim varijantama. |
 | **Gemini Flash API** | Cloud poziv na Google-ov API, function-calling podržan nativno. | Brže, kvalitetnije zaključivanje. | Podaci idu na Google servere, trošak po pozivu, treba API ključ. |
 
 Toggle bi trebao biti runtime postavka (npr. admin postavka spremljena u bazi ili konfiguracijskoj
@@ -286,7 +286,7 @@ Status: ✅ **Napravljeno.** Toggle je postavka `ai_provider` u tablici `AppSett
 - Zajedničko sučelje: `chat(messages, tools) -> { text?, tool_calls? }`, s podrškom za streaming.
 - `OllamaProvider` — poziva lokalni `POST http://localhost:11434/api/chat`, podržava tool-calling
   preko Ollamine OpenAI-kompatibilne rute. Model se bira u runtimeu (postavka `ollama_model`,
-  vidi *Odabir lokalnog modela* niže); zadani je `gemma4:e4b`.
+  vidi *Odabir lokalnog modela* niže); zadani je `gemma4:e2b`.
 - `GeminiProvider` — poziva Gemini Flash API, isto s function-calling podrškom.
 - Toggle: pošto treba biti runtime postavka (ne samo env var), izbor providera spremiti kao
   postavku (npr. u bazi, sličan pattern kao fiskalne godine/postavke), izložiti je kroz admin ili
@@ -321,7 +321,7 @@ vlastitu kopiju popisa.
 
 | Model | `supportsTools` | Što može |
 |---|---|---|
-| `gemma4:e4b` (zadani, jedini) | ✅ | Cijeli tijek, uključujući `propose_request`/`create_request`, te čitanje PDF i slikovnih ponuda. **10/10 na eval scenarijima** (docs/eval-runs/2026-08-31-e4b-1x-nakon-popravaka.md). |
+| `gemma4:e2b` (zadani, jedini) | ✅ | Cijeli tijek, uključujući `propose_request`/`create_request`. |
 
 **Zašto samo jedan model.** Katalog je 2026-08-31 sveden na `gemma4:e4b` nakon
 mjerenja (docs/eval-runs/). Uklonjeni su:
@@ -330,7 +330,8 @@ mjerenja (docs/eval-runs/). Uklonjeni su:
 |---|---|
 | `qwen2.5vl:7b` | Nema `tools` — zahtjev ne može kreirati. Uz to je količine s ponude čitao krivo (`126,40` kao „12 × 6,40"). |
 | `qwen3.5:9b` | Preskače `propose_request` i zove `create_request` izravno. Ponovno mjeren nakon što je uvedena pretvorba tog poziva u prijedlog — ne pomaže, jer model tad prijedlog samo **ispiše u prozi** umjesto da pozove alat. Najsporiji izmjereni (351 s/scenarij), a deklarirani `vision` mu ne radi. |
-| `gemma4:12b` | Pouzdan i dugo zadani, ali ~3× sporiji od `e4b` uz isti ishod na eval scenarijima. Sirovi podaci njegovih runova obrisani su pri svođenju kataloga. |
+| `gemma4:12b` | Pouzdan i dugo zadani, ali osjetno sporiji uz isti ishod na eval scenarijima. Sirovi podaci njegovih runova obrisani su pri svođenju kataloga. |
+| `gemma4:e4b` | Uklonjen 2026-09-01 zajedno sa svim svojim mjerenjima, odlukom autora rada. Zamijenio ga je manji `e2b` iz iste obitelji. |
 
 Mehanizam za modele bez alata (`supportsTools: false` → orchestrator ne šalje
 `tools` + `NO_TOOLS_NOTE`) **namjerno je zadržan** iako ga trenutni katalog ne
