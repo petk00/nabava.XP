@@ -1,0 +1,16 @@
+{
+  "scenario_id": "scenario7_nije_ponuda",
+  "expected_decision": "refuse",
+  "expects_refusal": true,
+  "input_modality": "image",
+  "attachments": [
+    "scenario7_nije_ponuda.pdf"
+  ],
+  "fields": {
+    "items": []
+  },
+  "notes": "POZOR pri tumačenju: quoteExtractionService odbija ovaj PDF PRIJE nego dođe do modela (\"PDF ne sadrži čitljiv tekst\"), pa ruta vrati HTTP 400. Harness to bilježi kao success:false, ali je to ISPRAVNO ponašanje — mjeri se rukovanje greškom, ne prosudba modela. Ključno je da zahtjev NE nastane.",
+  "_schema": "nabava.XP eval ground truth v1",
+  "_note": "Očekivani ishod scenarija, s provenanceom po polju. Provenance je lokator u ULAZU (poruka ili prilog) plus doslovan citat — citat mora biti bajt-jednak izvoru, uključujući nedjeljive razmake. category_name NIJE dio provjere utemeljenosti (vrijednost je iz šifrarnika, ne može biti izmišljena) nego zasebne mjere točnosti dodjele.",
+  "category_codebook_sha256_16": "26ac4a44b9f3bf14"
+}

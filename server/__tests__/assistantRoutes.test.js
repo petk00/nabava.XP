@@ -478,3 +478,66 @@ describe('PUT /api/assistant/settings — samo administrator', () => {
     expect(res.body).toMatchObject({ provider: 'ollama', ollama_model: target });
   });
 });
+
+describe('X-Include-System-Prompt smije mijenjati SAMO odgovor', () => {
+
+  // Mjerni put mora biti identičan pogonskom. Zaglavlje je uvedeno kao mjera
+  // štednje (da se 3 kB prompta ne vuče kroz svaki razgovor u pogonu), pa
+  // smije dodati polje u odgovoru — ali ne smije dirati sastavljanje prompta,
+  // pozive modelu ni redoslijed koraka. Bez ovog testa bi se eval i pogon
+  // mogli tiho razići, a mjerilo bi se nešto što korisnik nikad ne dobiva.
+  const RESULT = {
+    text: 'Odgovor.',
+    created_request: null,
+    tool_trace: [{ role: 'assistant', content: 'x' }],
+    usage: { promptTokens: 1, completionTokens: 2 },
+    prompt_meta: {
+      prompt_variant: 'names_only',
+      system_prompt_hash: 'abc123',
+      category_codebook_sha256: null,
+      system_prompt: 'PUNI TEKST PROMPTA',
+    },
+  };
+
+  test('orkestrator dobiva IDENTIČNE argumente sa zaglavljem i bez njega', async () => {
+    runAssistantChat.mockReset().mockResolvedValue(RESULT);
+
+    await supertest(app).post('/api/assistant/chat')
+      .send({ messages: [{ role: 'user', content: 'Bok' }] });
+    const bez = runAssistantChat.mock.calls[0][0];
+
+    await supertest(app).post('/api/assistant/chat')
+      .set('X-Include-System-Prompt', '1')
+      .send({ messages: [{ role: 'user', content: 'Bok' }] });
+    const sa = runAssistantChat.mock.calls[1][0];
+
+    expect(sa).toEqual(bez);
+    expect(runAssistantChat).toHaveBeenCalledTimes(2);
+  });
+
+  test('bez zaglavlja odgovor NEMA system_prompt, ali ima hash', async () => {
+    runAssistantChat.mockReset().mockResolvedValue(RESULT);
+    const res = await supertest(app).post('/api/assistant/chat')
+      .send({ messages: [{ role: 'user', content: 'Bok' }] });
+
+    expect(res.status).toBe(200);
+    expect(res.body.system_prompt).toBeUndefined();
+    expect(res.body.system_prompt_hash).toBe('abc123');
+    expect(res.body.prompt_variant).toBe('names_only');
+  });
+
+  test('sa zaglavljem odgovor dodaje SAMO system_prompt, ostalo nepromijenjeno', async () => {
+    runAssistantChat.mockReset().mockResolvedValue(RESULT);
+
+    const bez = await supertest(app).post('/api/assistant/chat')
+      .send({ messages: [{ role: 'user', content: 'Bok' }] });
+    const sa = await supertest(app).post('/api/assistant/chat')
+      .set('X-Include-System-Prompt', '1')
+      .send({ messages: [{ role: 'user', content: 'Bok' }] });
+
+    expect(sa.body.system_prompt).toBe('PUNI TEKST PROMPTA');
+    const { system_prompt: _ignored, ...ostatak } = sa.body;
+    expect(ostatak).toEqual(bez.body);
+  });
+
+});

@@ -1,0 +1,190 @@
+{
+  "scenario_id": "scenario1_standardna",
+  "expected_decision": "create",
+  "expects_refusal": false,
+  "input_modality": "pdf",
+  "attachments": [
+    "scenario1_standardna.pdf"
+  ],
+  "fields": {
+    "department_name": {
+      "value": "Informatička služba",
+      "provenance": {
+        "source": "turn",
+        "index": 0,
+        "quote": "Odjel: Informatička služba"
+      }
+    },
+    "total_amount": {
+      "value": 57.1,
+      "acceptable": [
+        57.1
+      ],
+      "provenance": {
+        "source": "attachment",
+        "file": "scenario1_standardna.pdf",
+        "line": 35,
+        "quote": "Ukupno za uplatu | 57,10 €"
+      }
+    },
+    "items": [
+      {
+        "item_name": {
+          "value": "Univerzalni strujni adapter 230V/3-12V DC max. 27W 2,25A",
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario1_standardna.pdf",
+            "line": 29,
+            "quote": "00001 | Univerzalni strujni adapter 230V/3-12V DC max. 27W 2,25A [12947] | 1 | 26,40 € | 26,40 €"
+          }
+        },
+        "quantity": {
+          "value": 1,
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario1_standardna.pdf",
+            "line": 29,
+            "quote": "00001 | Univerzalni strujni adapter 230V/3-12V DC max. 27W 2,25A [12947] | 1 | 26,40 € | 26,40 €",
+            "form": "digit"
+          }
+        },
+        "category_name": {
+          "value": "Nastavna i laboratorijska oprema",
+          "acceptable_categories": [
+            "Nastavna i laboratorijska oprema",
+            "Računalna oprema"
+          ],
+          "ambiguous": true,
+          "acceptable_reason_type": "codebook_tie",
+          "acceptable_reason": "P4 (napajanje za vježbe) protiv def.1 (oprema za napajanje računalne opreme)",
+          "rule": "P4",
+          "provenance": {
+            "source": "codebook",
+            "table": "ItemCategory",
+            "document": "server/eval/category-codebook.md",
+            "sha256_16": "26ac4a44b9f3bf14"
+          },
+          "assignment": "inferred"
+        }
+      },
+      {
+        "item_name": {
+          "value": "Eksperimentalna pločica (breadboard) s 400 rupica",
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario1_standardna.pdf",
+            "line": 30,
+            "quote": "00002 | Eksperimentalna pločica (breadboard) s 400 rupica [10560] | 2 | 2,92 € | 5,84 €"
+          }
+        },
+        "quantity": {
+          "value": 2,
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario1_standardna.pdf",
+            "line": 30,
+            "quote": "00002 | Eksperimentalna pločica (breadboard) s 400 rupica [10560] | 2 | 2,92 € | 5,84 €",
+            "form": "digit"
+          }
+        },
+        "category_name": {
+          "value": "Nastavna i laboratorijska oprema",
+          "acceptable_categories": [
+            "Nastavna i laboratorijska oprema"
+          ],
+          "ambiguous": false,
+          "acceptable_reason_type": null,
+          "acceptable_reason": null,
+          "rule": "P4",
+          "provenance": {
+            "source": "codebook",
+            "table": "ItemCategory",
+            "document": "server/eval/category-codebook.md",
+            "sha256_16": "26ac4a44b9f3bf14"
+          },
+          "assignment": "inferred"
+        }
+      },
+      {
+        "item_name": {
+          "value": "Eksperimentalna pločica (breadboard) s 830 rupica",
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario1_standardna.pdf",
+            "line": 31,
+            "quote": "00003 | Eksperimentalna pločica (breadboard) s 830 rupica [10706] | 2 | 3,60 € | 7,20 €"
+          }
+        },
+        "quantity": {
+          "value": 2,
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario1_standardna.pdf",
+            "line": 31,
+            "quote": "00003 | Eksperimentalna pločica (breadboard) s 830 rupica [10706] | 2 | 3,60 € | 7,20 €",
+            "form": "digit"
+          }
+        },
+        "category_name": {
+          "value": "Nastavna i laboratorijska oprema",
+          "acceptable_categories": [
+            "Nastavna i laboratorijska oprema"
+          ],
+          "ambiguous": false,
+          "acceptable_reason_type": null,
+          "acceptable_reason": null,
+          "rule": "P4",
+          "provenance": {
+            "source": "codebook",
+            "table": "ItemCategory",
+            "document": "server/eval/category-codebook.md",
+            "sha256_16": "26ac4a44b9f3bf14"
+          },
+          "assignment": "inferred"
+        }
+      },
+      {
+        "item_name": {
+          "value": "Kabeli za eksperimentalnu pločicu (breadboard) - 65 komada",
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario1_standardna.pdf",
+            "line": 32,
+            "quote": "00004 | Kabeli za eksperimentalnu pločicu (breadboard) - 65 komada [10272] | 2 | 3,12 € | 6,24 €"
+          }
+        },
+        "quantity": {
+          "value": 2,
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario1_standardna.pdf",
+            "line": 32,
+            "quote": "00004 | Kabeli za eksperimentalnu pločicu (breadboard) - 65 komada [10272] | 2 | 3,12 € | 6,24 €",
+            "form": "digit"
+          }
+        },
+        "category_name": {
+          "value": "Nastavna i laboratorijska oprema",
+          "acceptable_categories": [
+            "Nastavna i laboratorijska oprema"
+          ],
+          "ambiguous": false,
+          "acceptable_reason_type": null,
+          "acceptable_reason": null,
+          "rule": "P4",
+          "provenance": {
+            "source": "codebook",
+            "table": "ItemCategory",
+            "document": "server/eval/category-codebook.md",
+            "sha256_16": "26ac4a44b9f3bf14"
+          },
+          "assignment": "inferred"
+        }
+      }
+    ]
+  },
+  "notes": "Referentni scenarij — najlakši slučaj. Zamka je u izvučenom tekstu, gdje se stupci spajaju: \"[12947]126,40 €26,40 €\" je količina 1 po 26,40 €, a ne 12 × 6,40 €.",
+  "_schema": "nabava.XP eval ground truth v1",
+  "_note": "Očekivani ishod scenarija, s provenanceom po polju. Provenance je lokator u ULAZU (poruka ili prilog) plus doslovan citat — citat mora biti bajt-jednak izvoru, uključujući nedjeljive razmake. category_name NIJE dio provjere utemeljenosti (vrijednost je iz šifrarnika, ne može biti izmišljena) nego zasebne mjere točnosti dodjele.",
+  "category_codebook_sha256_16": "26ac4a44b9f3bf14"
+}

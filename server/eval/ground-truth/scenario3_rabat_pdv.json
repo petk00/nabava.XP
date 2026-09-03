@@ -1,0 +1,344 @@
+{
+  "scenario_id": "scenario3_rabat_pdv",
+  "expected_decision": "create",
+  "expects_refusal": false,
+  "input_modality": "pdf",
+  "attachments": [
+    "scenario3_rabat_pdv.pdf"
+  ],
+  "fields": {
+    "department_name": {
+      "value": "Informatička služba",
+      "provenance": {
+        "source": "turn",
+        "index": 0,
+        "quote": "Odjel: Informatička služba"
+      }
+    },
+    "total_amount": {
+      "value": 25036.88,
+      "acceptable": [
+        25036.88
+      ],
+      "provenance": {
+        "source": "attachment",
+        "file": "scenario3_rabat_pdv.pdf",
+        "line": 23,
+        "quote": "Za uplatu | 25 036,88 €"
+      }
+    },
+    "items": [
+      {
+        "item_name": {
+          "value": "IoT komplet ESP32",
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario3_rabat_pdv.pdf",
+            "line": 12,
+            "quote": "IoT komplet ESP32 | 30 | 89,00 | 2 670,00 | 25,00 %"
+          }
+        },
+        "quantity": {
+          "value": 30,
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario3_rabat_pdv.pdf",
+            "line": 12,
+            "quote": "IoT komplet ESP32 | 30 | 89,00 | 2 670,00 | 25,00 %",
+            "form": "digit"
+          }
+        },
+        "category_name": {
+          "value": "Nastavna i laboratorijska oprema",
+          "acceptable_categories": [
+            "Nastavna i laboratorijska oprema"
+          ],
+          "ambiguous": false,
+          "acceptable_reason_type": null,
+          "acceptable_reason": null,
+          "rule": "P4/P8",
+          "provenance": {
+            "source": "codebook",
+            "table": "ItemCategory",
+            "document": "server/eval/category-codebook.md",
+            "sha256_16": "26ac4a44b9f3bf14"
+          },
+          "assignment": "inferred"
+        }
+      },
+      {
+        "item_name": {
+          "value": "Set senzora",
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario3_rabat_pdv.pdf",
+            "line": 13,
+            "quote": "Set senzora | 30 | 59,00 | 1 770,00 | 25,00 %"
+          }
+        },
+        "quantity": {
+          "value": 30,
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario3_rabat_pdv.pdf",
+            "line": 13,
+            "quote": "Set senzora | 30 | 59,00 | 1 770,00 | 25,00 %",
+            "form": "digit"
+          }
+        },
+        "category_name": {
+          "value": "Nastavna i laboratorijska oprema",
+          "acceptable_categories": [
+            "Nastavna i laboratorijska oprema"
+          ],
+          "ambiguous": false,
+          "acceptable_reason_type": null,
+          "acceptable_reason": null,
+          "rule": "P4",
+          "provenance": {
+            "source": "codebook",
+            "table": "ItemCategory",
+            "document": "server/eval/category-codebook.md",
+            "sha256_16": "26ac4a44b9f3bf14"
+          },
+          "assignment": "inferred"
+        }
+      },
+      {
+        "item_name": {
+          "value": "Raspberry Pi 5",
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario3_rabat_pdv.pdf",
+            "line": 14,
+            "quote": "Raspberry Pi 5 | 20 | 129,00 | 2 580,00 | 25,00 %"
+          }
+        },
+        "quantity": {
+          "value": 20,
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario3_rabat_pdv.pdf",
+            "line": 14,
+            "quote": "Raspberry Pi 5 | 20 | 129,00 | 2 580,00 | 25,00 %",
+            "form": "digit"
+          }
+        },
+        "category_name": {
+          "value": "Nastavna i laboratorijska oprema",
+          "acceptable_categories": [
+            "Nastavna i laboratorijska oprema",
+            "Računalna oprema"
+          ],
+          "ambiguous": true,
+          "acceptable_reason_type": "codebook_tie",
+          "acceptable_reason": "P4 (razvojna pločica) protiv P5+def.1 (malo računalo)",
+          "rule": "P4",
+          "provenance": {
+            "source": "codebook",
+            "table": "ItemCategory",
+            "document": "server/eval/category-codebook.md",
+            "sha256_16": "26ac4a44b9f3bf14"
+          },
+          "assignment": "inferred"
+        }
+      },
+      {
+        "item_name": {
+          "value": "LoRaWAN gateway",
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario3_rabat_pdv.pdf",
+            "line": 15,
+            "quote": "LoRaWAN gateway | 4 | 329,00 | 1 316,00 | 25,00 %"
+          }
+        },
+        "quantity": {
+          "value": 4,
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario3_rabat_pdv.pdf",
+            "line": 15,
+            "quote": "LoRaWAN gateway | 4 | 329,00 | 1 316,00 | 25,00 %",
+            "form": "digit"
+          }
+        },
+        "category_name": {
+          "value": "Nastavna i laboratorijska oprema",
+          "acceptable_categories": [
+            "Nastavna i laboratorijska oprema",
+            "Računalna oprema"
+          ],
+          "ambiguous": true,
+          "acceptable_reason_type": "codebook_tie",
+          "acceptable_reason": "P3 (predmet poučavanja) protiv def.1 (mrežna oprema)",
+          "rule": "P3",
+          "provenance": {
+            "source": "codebook",
+            "table": "ItemCategory",
+            "document": "server/eval/category-codebook.md",
+            "sha256_16": "26ac4a44b9f3bf14"
+          },
+          "assignment": "inferred"
+        }
+      },
+      {
+        "item_name": {
+          "value": "Osciloskop Rigol",
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario3_rabat_pdv.pdf",
+            "line": 16,
+            "quote": "Osciloskop Rigol | 6 | 549,00 | 3 294,00 | 25,00 %"
+          }
+        },
+        "quantity": {
+          "value": 6,
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario3_rabat_pdv.pdf",
+            "line": 16,
+            "quote": "Osciloskop Rigol | 6 | 549,00 | 3 294,00 | 25,00 %",
+            "form": "digit"
+          }
+        },
+        "category_name": {
+          "value": "Nastavna i laboratorijska oprema",
+          "acceptable_categories": [
+            "Nastavna i laboratorijska oprema"
+          ],
+          "ambiguous": false,
+          "acceptable_reason_type": null,
+          "acceptable_reason": null,
+          "rule": "P3",
+          "provenance": {
+            "source": "codebook",
+            "table": "ItemCategory",
+            "document": "server/eval/category-codebook.md",
+            "sha256_16": "26ac4a44b9f3bf14"
+          },
+          "assignment": "inferred"
+        }
+      },
+      {
+        "item_name": {
+          "value": "Lemna stanica",
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario3_rabat_pdv.pdf",
+            "line": 17,
+            "quote": "Lemna stanica | 12 | 145,00 | 1 740,00 | 25,00 %"
+          }
+        },
+        "quantity": {
+          "value": 12,
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario3_rabat_pdv.pdf",
+            "line": 17,
+            "quote": "Lemna stanica | 12 | 145,00 | 1 740,00 | 25,00 %",
+            "form": "digit"
+          }
+        },
+        "category_name": {
+          "value": "Nastavna i laboratorijska oprema",
+          "acceptable_categories": [
+            "Nastavna i laboratorijska oprema"
+          ],
+          "ambiguous": false,
+          "acceptable_reason_type": null,
+          "acceptable_reason": null,
+          "rule": "P3",
+          "provenance": {
+            "source": "codebook",
+            "table": "ItemCategory",
+            "document": "server/eval/category-codebook.md",
+            "sha256_16": "26ac4a44b9f3bf14"
+          },
+          "assignment": "inferred"
+        }
+      },
+      {
+        "item_name": {
+          "value": "Radna stanica",
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario3_rabat_pdv.pdf",
+            "line": 18,
+            "quote": "Radna stanica | 15 | 469,00 | 7 035,00 | 25,00 %"
+          }
+        },
+        "quantity": {
+          "value": 15,
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario3_rabat_pdv.pdf",
+            "line": 18,
+            "quote": "Radna stanica | 15 | 469,00 | 7 035,00 | 25,00 %",
+            "form": "digit"
+          }
+        },
+        "category_name": {
+          "value": "Računalna oprema",
+          "acceptable_categories": [
+            "Računalna oprema",
+            "Nastavna i laboratorijska oprema"
+          ],
+          "ambiguous": true,
+          "acceptable_reason_type": "codebook_tie",
+          "acceptable_reason": "P8+def.1 (radno računalo) protiv P3 (namjena u nastavi)",
+          "rule": "P8",
+          "provenance": {
+            "source": "codebook",
+            "table": "ItemCategory",
+            "document": "server/eval/category-codebook.md",
+            "sha256_16": "26ac4a44b9f3bf14"
+          },
+          "assignment": "inferred"
+        }
+      },
+      {
+        "item_name": {
+          "value": "Instalacija i edukacija",
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario3_rabat_pdv.pdf",
+            "line": 19,
+            "quote": "Instalacija i edukacija | 1 | 1 850,00 | 1 850,00 | 25,00 %"
+          }
+        },
+        "quantity": {
+          "value": 1,
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario3_rabat_pdv.pdf",
+            "line": 19,
+            "quote": "Instalacija i edukacija | 1 | 1 850,00 | 1 850,00 | 25,00 %",
+            "form": "digit"
+          }
+        },
+        "category_name": {
+          "value": "Usluge održavanja",
+          "acceptable_categories": [
+            "Usluge održavanja"
+          ],
+          "ambiguous": false,
+          "acceptable_reason_type": null,
+          "acceptable_reason": null,
+          "rule": "P1",
+          "provenance": {
+            "source": "codebook",
+            "table": "ItemCategory",
+            "document": "server/eval/category-codebook.md",
+            "sha256_16": "26ac4a44b9f3bf14"
+          },
+          "assignment": "inferred"
+        }
+      }
+    ]
+  },
+  "notes": "Ponuda nudi ČETIRI iznosa: osnovica 22.255,00 / rabat -2.225,50 / PDV 5.007,38 / za uplatu 25.036,88. Točan je isključivo zadnji.",
+  "_schema": "nabava.XP eval ground truth v1",
+  "_note": "Očekivani ishod scenarija, s provenanceom po polju. Provenance je lokator u ULAZU (poruka ili prilog) plus doslovan citat — citat mora biti bajt-jednak izvoru, uključujući nedjeljive razmake. category_name NIJE dio provjere utemeljenosti (vrijednost je iz šifrarnika, ne može biti izmišljena) nego zasebne mjere točnosti dodjele.",
+  "category_codebook_sha256_16": "26ac4a44b9f3bf14"
+}

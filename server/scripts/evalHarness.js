@@ -38,7 +38,17 @@ const fs = require('fs');
 const path = require('path');
 const http = require('node:http');
 const db = require('../src/config/db');
+const crypto = require('node:crypto');
+const { execFileSync } = require('node:child_process');
 const { DEFAULT_OLLAMA_MODEL } = require('../src/services/llm/ollamaModels');
+const {
+  getSamplingConfig, PROVIDER_SUPPORT, equalizedKeys, UNEQUALIZED_NOTE,
+} = require('../src/services/llm/samplingConfig');
+const { DEFAULT_VARIANT } = require('../src/services/promptVariant');
+const {
+  OLLAMA_NUM_CTX: OLLAMA_NUM_CTX_APPLIED,
+  OLLAMA_KEEP_ALIVE: OLLAMA_KEEP_ALIVE_APPLIED,
+} = require('../src/services/llm/ollamaProvider');
 const { SCENARIOS, CLARIFICATIONS, MAX_CLARIFICATIONS } = require('./evalScenarios');
 
 const BASE_URL = process.env.EVAL_BASE_URL || 'http://localhost:3000';
@@ -109,6 +119,7 @@ function parseArgs() {
     model: process.env.EVAL_OLLAMA_MODEL || null,
     only: null,
     repeat: null,
+    kind: null,
   };
   for (const arg of process.argv.slice(2)) {
     // split('=') bi na "gemma4:e2b" bio bezopasan, ali naziv modela smije
@@ -118,6 +129,9 @@ function parseArgs() {
     const key = eq === -1 ? raw : raw.slice(0, eq);
     const value = eq === -1 ? '' : raw.slice(eq + 1);
     if (key === 'provider') args.provider = value;
+    if (key === 'kind') args.kind = value;
+    // --attempts je alias za --repeat (brief traži oba naziva)
+    if (key === 'attempts') args.repeat = Number(value) || null;
     if (key === 'model') args.model = value;
     if (key === 'only') args.only = value.split(',').map((s) => s.trim());
     if (key === 'repeat') args.repeat = Number(value);
@@ -191,10 +205,25 @@ async function getOllamaTemperatureNote() {
     if (!res.ok) return { source: 'unavailable', temperature: null };
     const data = await res.json();
     const match = /temperature\s+([\d.]+)/.exec(data.parameters || '');
+    const sampling = getSamplingConfig();
     return {
-      source: 'ollama /api/show, Modelfile default (ollamaProvider.js ne postavlja "temperature" eksplicitno u options)',
-      temperature: match ? Number(match[1]) : null,
+      // Modelfile default je ono što model NOSI; ollamaProvider.js ga od
+      // uvođenja llm/samplingConfig.js PREGAZI eksplicitnim options. Oboje se
+      // bilježi da se vidi što je zatečeno, a što stvarno primijenjeno.
+      source: 'ollama /api/show (Modelfile default) — provider ga pregazi vrijednostima iz llm/samplingConfig.js',
+      modelfile_temperature: match ? Number(match[1]) : null,
+      applied_temperature: sampling.temperature,
       raw_parameters: data.parameters || null,
+      top_k: (/top_k\s+(\d+)/.exec(data.parameters || '') || [])[1] ?? null,
+      parameter_size: data.details?.parameter_size || null,
+      quantization_level: data.details?.quantization_level || null,
+      family: data.details?.family || null,
+      // num_ctx i seed su ono što provider STVARNO šalje, ne ono što model nudi.
+      num_ctx: OLLAMA_NUM_CTX_APPLIED,
+      seed: sampling.seed,
+      // KV cache modela PREŽIVLJAVA pokušaje (keep_alive), pa context_reset u
+      // zapisu znači "nova povijest razgovora", ne "model bez ikakvog stanja".
+      keep_alive: OLLAMA_KEEP_ALIVE_APPLIED,
     };
   } catch (error) {
     return { source: 'unavailable', temperature: null, error: error.message };
@@ -268,6 +297,11 @@ function summarizeToolTrace(toolTrace) {
         ok,
         ...(awaiting ? { awaiting_confirmation: true } : {}),
         ...(message ? { message } : {}),
+        // Skraćeni SADRŽAJ rezultata, ne samo poruka: bez njega se ne vidi je
+        // li create_request pretvoren u prijedlog ili je zahtjev stvarno
+        // nastao, pa ni propose_before_create nije provjerljiv iz zapisa
+        // (nalaz C-probe, docs/c-proba.md).
+        content: typeof msg.content === 'string' ? msg.content.slice(0, 2000) : null,
       });
     } else if (msg.role === 'system') {
       summary.push({ role: 'system', note: 'attachment_instruction' });
@@ -362,6 +396,82 @@ function quantitiesOf(items) {
  * ("ETIK.45,7x21,2mm" -> "etikete"), pa bi doslovna usporedba lažno prijavila
  * greške. Nazivi ostaju na ručnoj provjeri (scoreEvalResults.js).
  */
+
+const GROUND_TRUTH_DIR = path.join(__dirname, '..', 'eval', 'ground-truth');
+
+/**
+ * Ground truth se čita ISKLJUČIVO iz eval/ground-truth/<id>.json — verzioniranog
+ * artefakta koji ide u prilog rada. Ranije je živio kao `expectedResult` unutar
+ * evalScenarios.js, dakle kao logika zakopana u kodu, pa se nije mogao ni
+ * citirati ni neovisno provjeriti.
+ *
+ * Nedostajuća datoteka je TVRDA GREŠKA, ne tihi preskok: scenarij bez mjerila
+ * ne smije proći kao da je izmjeren.
+ */
+function loadGroundTruth(scenarioId) {
+  const file = path.join(GROUND_TRUTH_DIR, `${scenarioId}.json`);
+  if (!fs.existsSync(file)) {
+    throw new Error(`Nema ground trutha za "${scenarioId}" (${file}). `
+      + 'Scenarij se ne smije mjeriti bez mjerila.');
+  }
+  const gt = JSON.parse(fs.readFileSync(file, 'utf8'));
+  const items = (gt.fields?.items || []).map((it) => ({
+    item_name: it.item_name?.value ?? null,
+    quantity: it.quantity?.value ?? null,
+    category_name: it.category_name?.value ?? null,
+    acceptable_categories: it.category_name?.acceptable_categories || [],
+    category_ambiguous: it.category_name?.ambiguous === true,
+  }));
+  return {
+    decision: gt.expected_decision,
+    expects_refusal: gt.expects_refusal === true,
+    input_modality: gt.input_modality || null,
+    department_name: gt.fields?.department_name?.value ?? null,
+    total_amount: gt.fields?.total_amount?.value ?? null,
+    total_amount_acceptable: gt.fields?.total_amount?.acceptable ?? null,
+    items,
+    category_codebook_sha256: gt.category_codebook_sha256_16 || null,
+  };
+}
+
+/**
+ * Točnost dodjele kategorije — ZASEBNA mjera, ne dio provjere utemeljenosti:
+ * šifrarničko polje ne može biti izmišljeno, samo krivo dodijeljeno.
+ *
+ * Boduje se dvojako (docs/mjerni-plan.md §6): STROGO priznaje samo očekivanu
+ * kategoriju, BLAGO bilo koju iz acceptable_categories. Razlika između te dvije
+ * brojke mjeri koliko dodjela ovisi o konvenciji ustanove, a koliko o
+ * prepoznavanju predmeta.
+ *
+ * Uspoređuje se po REDOSLIJEDU stavaka; kad se broj stavaka ne poklapa, mjera
+ * nije definirana (null) umjesto da se poravnava nagađanjem.
+ */
+function checkCategoryAssignment(actual, expectedItems) {
+  const actualItems = actual?.items || [];
+  if (!expectedItems.length || actualItems.length !== expectedItems.length) {
+    return { checked: 0, strict: null, lenient: null, mismatches: [] };
+  }
+  let strict = 0;
+  let lenient = 0;
+  const mismatches = [];
+  expectedItems.forEach((exp, i) => {
+    const got = actualItems[i]?.category_name ?? null;
+    const isStrict = got === exp.category_name;
+    const isLenient = (exp.acceptable_categories || [exp.category_name]).includes(got);
+    if (isStrict) strict += 1;
+    if (isLenient) lenient += 1;
+    if (!isLenient) {
+      mismatches.push({
+        item_name: exp.item_name,
+        expected: exp.category_name,
+        acceptable: exp.acceptable_categories,
+        actual: got,
+      });
+    }
+  });
+  return { checked: expectedItems.length, strict, lenient, mismatches };
+}
+
 function checkAccuracy(actual, expected) {
   if (!expected) return null;
   // Scenariji s decision:'refuse' (npr. scenario7_nije_ponuda) su TOČNI upravo
@@ -373,7 +483,9 @@ function checkAccuracy(actual, expected) {
   // `decision_match` — namjerno se ne preslikava uspjeh u `created`, jer bi
   // "created: true" uz nepostojeći zahtjev krivo čitao svatko tko gleda JSONL.
   // Zato zbrajanje točnih scenarija mora gledati decision_match kad postoji.
-  if (expected.decision === 'refuse') {
+  // Očekuje li scenarij odbijanje čita se iz IZRIČITE zastavice, ne zaključuje
+  // iz `decision` — zastavica je dio ground trutha i vidljiva je u zapisu.
+  if (expected.expects_refusal) {
     return {
       created: Boolean(actual),
       decision_match: !actual,
@@ -411,13 +523,18 @@ function checkAccuracy(actual, expected) {
 }
 
 /** Jedan pokušaj JEDNOG scenarija — može uključivati više turnova (echo tool_trace/povijesti). */
-async function runOneAttempt(scenario, token, provider, attemptNumber) {
+async function runOneAttempt(scenario, token, provider, attemptNumber, runId, promptStore) {
+  const groundTruth = loadGroundTruth(scenario.id);
   const startedAt = new Date().toISOString();
   const start = process.hrtime.bigint();
 
   let conversation = [];
   let allToolTrace = [];
-  const usage = { promptTokens: 0, completionTokens: 0, modelLatencyMs: 0, modelCalls: 0 };
+  const usage = {
+    promptTokens: 0, completionTokens: 0, modelLatencyMs: 0, modelCalls: 0,
+    modelCallLatenciesMs: [], rateLimitWaitMs: 0,
+    finishReasons: [], truncated: false, modelVersion: null, modelVersionsSeen: [],
+  };
   let lastResponseText = null;
   let httpStatus = null;
   let errorMessage = null;
@@ -429,6 +546,13 @@ async function runOneAttempt(scenario, token, provider, attemptNumber) {
   const turnsSent = [];
   const usedClarifications = new Set();
   let clarificationsUsed = 0;
+  // Odziv kakav korisnik osjeti: od slanja poruke do PRVOG odgovora, uključujući
+  // ekstrakciju priloga i sve pozive modelu unutar tog poteza. Nije isto što i
+  // trajanje prvog poziva modelu (model_call_latencies_ms[0]).
+  let timeToFirstResponseMs = null;
+  const promptHashes = new Set();
+  let promptVariant = null;
+  let codebookSha = null;
 
   try {
     for (let turnIdx = 0; pending.length > 0; turnIdx++) {
@@ -441,19 +565,30 @@ async function runOneAttempt(scenario, token, provider, attemptNumber) {
       if (hasAttachments) {
         const { bodyBuffer, contentType } = await buildAttachmentsBody(turnText, scenario.attachments);
         res = await postChat({
-          headers: { Authorization: `Bearer ${token}`, 'Content-Type': contentType },
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': contentType,
+            'X-Include-System-Prompt': '1',
+          },
           bodyBuffer,
         });
       } else {
         conversation.push({ role: 'user', content: turnText });
         const bodyBuffer = Buffer.from(JSON.stringify({ messages: conversation }), 'utf8');
         res = await postChat({
-          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+            'X-Include-System-Prompt': '1',
+          },
           bodyBuffer,
         });
       }
 
       httpStatus = res.status;
+      if (timeToFirstResponseMs === null) {
+        timeToFirstResponseMs = Math.round(Number(process.hrtime.bigint() - start) / 1e6);
+      }
       const body = await res.json().catch(() => null);
       if (!res.ok) {
         errorMessage = body?.message || res.statusText;
@@ -475,7 +610,28 @@ async function runOneAttempt(scenario, token, provider, attemptNumber) {
       usage.completionTokens += body.usage?.completionTokens || 0;
       usage.modelLatencyMs += body.usage?.modelLatencyMs || 0;
       usage.modelCalls += body.usage?.modelCalls || 0;
+      usage.rateLimitWaitMs += body.usage?.rateLimitWaitMs || 0;
+      usage.modelCallLatenciesMs.push(...(body.usage?.modelCallLatenciesMs || []));
+      usage.finishReasons.push(...(body.usage?.finishReasons || []));
+      if (body.usage?.truncated) usage.truncated = true;
+      if (body.usage?.modelVersion) {
+        usage.modelVersion = body.usage.modelVersion;
+        for (const v of body.usage.modelVersionsSeen || []) {
+          if (!usage.modelVersionsSeen.includes(v)) usage.modelVersionsSeen.push(v);
+        }
+      }
       lastResponseText = body.text ?? null;
+      // Prompt se sastavlja po zahtjevu (kategorije iz baze, uvjetna uputa o
+      // prilogu), pa se hash bilježi po POKUŠAJU, a puni tekst jednom po
+      // jedinstvenom hashu — inače bi se 3 kB ponavljalo u svakom retku.
+      if (body.system_prompt_hash) {
+        promptHashes.add(body.system_prompt_hash);
+        promptVariant = body.prompt_variant ?? promptVariant;
+        codebookSha = body.category_codebook_sha256 ?? codebookSha;
+        if (body.system_prompt && promptStore && !promptStore[body.system_prompt_hash]) {
+          promptStore[body.system_prompt_hash] = body.system_prompt;
+        }
+      }
 
       // Zahtjev je kreiran — preostali koraci skripte nemaju svrhu. Bez ovoga
       // se nakon uspjeha slao još jedan "potvrđujem", što je trošilo poziv
@@ -513,9 +669,15 @@ async function runOneAttempt(scenario, token, provider, attemptNumber) {
   }
 
   return {
+    run_id: runId,
     scenario_id: scenario.id,
     scenario_description: scenario.description,
     attempt: attemptNumber,
+    // Svaki pokušaj kreće iz PRAZNE povijesti razgovora (conversation = [])
+    // i sam pribavlja prilog. Što se NE resetira: baza (zahtjevi iz ranijih
+    // pokušaja ostaju) i KV cache lokalnog modela (keep_alive) — vidi
+    // ollama_keep_alive u manifestu i docs/mjerni-plan.md.
+    context_reset: true,
     provider,
     timestamp: startedAt,
     turns_sent: turnsSent,
@@ -533,21 +695,207 @@ async function runOneAttempt(scenario, token, provider, attemptNumber) {
     // scenarij spor zbog modela ili zbog broja koraka.
     model_latency_ms: usage.modelLatencyMs,
     model_calls: usage.modelCalls,
+    // Trajanje SVAKOG poziva zasebno — medijan i p95 po pozivu se iz zbroja
+    // ne mogu izračunati.
+    model_call_latencies_ms: usage.modelCallLatenciesMs,
+    rate_limit_wait_ms: usage.rateLimitWaitMs,
+    time_to_first_response_ms: timeToFirstResponseMs,
+    // Odrezan odgovor (num_predict / maxOutputTokens) je artefakt mjerne
+    // postavke, ne svojstvo modela. U završnom runu je razlog za poništenje.
+    finish_reasons: usage.finishReasons,
+    truncated: usage.truncated,
+    model_version_reported: usage.modelVersion,
+    model_versions_seen: usage.modelVersionsSeen,
     // Koliko je puta harness morao odgovoriti na modelovo pitanje. Model koji
     // zadatak riješi bez ijednog pojašnjenja bolji je od onog kojem su trebala
     // tri, iako oba završe s kreiranim zahtjevom.
     clarifications_used: clarificationsUsed,
     turns_total: turnsSent.length,
+    prompt_variant: promptVariant,
+    // Više hasheva u jednom pokušaju znači da se prompt mijenjao između
+    // koraka — očekivano kod priloga (uputa se dodaje), sumnjivo inače.
+    system_prompt_hash: promptHashes.size === 1 ? [...promptHashes][0] : [...promptHashes],
+    system_prompt_hash_count: promptHashes.size,
+    category_codebook_sha256: codebookSha,
     propose_request_called,
     create_request_called,
     propose_before_create,
     // Mehanička provjera točnosti spremljenog zahtjeva (checkAccuracy):
     // razdvaja "zahtjev je nastao" od "zahtjev je ISPRAVAN".
-    accuracy: checkAccuracy(actualCreatedRequest, scenario.expectedResult),
+    input_modality: groundTruth.input_modality,
+    expects_refusal: groundTruth.expects_refusal,
+    accuracy: checkAccuracy(actualCreatedRequest, groundTruth),
+    // Zasebna mjera, uz strogo i blago bodovanje (docs/mjerni-plan.md §6).
+    category_assignment: checkCategoryAssignment(actualCreatedRequest, groundTruth.items),
+    ground_truth_codebook_sha256: groundTruth.category_codebook_sha256,
     tool_trace_summary,
     final_response_text: lastResponseText,
     actual_created_request: actualCreatedRequest,
   };
+}
+
+/** Git stanje radnog stabla iz kojeg se harness pokreće. */
+function harnessGitInfo() {
+  const run = (args) => {
+    try {
+      return execFileSync('git', args, {
+        cwd: path.join(__dirname, '..', '..'), encoding: 'utf8', timeout: 5000,
+      }).trim();
+    } catch { return null; }
+  };
+  const status = run(['status', '--porcelain']);
+  return {
+    commit: run(['rev-parse', 'HEAD']),
+    dirty: status === null ? null : status.length > 0,
+    branch: run(['rev-parse', '--abbrev-ref', 'HEAD']),
+  };
+}
+
+/**
+ * Verzija koda koji POSLUŽITELJ vrti (GET /version) naspram one iz koje se
+ * harness pokreće. Neslaganje znači da se mjeri nešto drugo od onoga što
+ * metapodaci tvrde — stvarno opaženo dvaput 2026-09-02, kad je osirotjeli
+ * proces držao port s kodom starim sat i pol. Kod --kind=final to je TVRDI
+ * PREKID, ne upozorenje (docs/mjerni-plan.md, protokol završnog mjerenja).
+ */
+async function checkServerVersion(harnessGit, runKind) {
+  let server = null;
+  try {
+    const res = await fetch(`${BASE_URL}/version`);
+    if (res.ok) server = await res.json();
+  } catch { /* server bez /version rute — stariji build */ }
+
+  if (!server) {
+    const msg = '[evalHarness] Poslužitelj ne izlaže /version — verzija koda koji vrti NIJE provjerljiva.';
+    if (runKind === 'final') throw new Error(`${msg} Završni run se ne pokreće bez te provjere.`);
+    console.warn(`${msg} (nastavljam jer run_kind nije "final")`);
+    return {
+      server: null, matches: null, variantMatches: null,
+      intendedVariant: process.env.PROMPT_VARIANT || DEFAULT_VARIANT,
+    };
+  }
+
+  const matches = server.commit === harnessGit.commit;
+  console.log(`[evalHarness] Poslužitelj: ${String(server.commit).slice(0, 8)} `
+    + `(dirty=${server.dirty}), harness: ${String(harnessGit.commit).slice(0, 8)} (dirty=${harnessGit.dirty})`);
+
+  // prompt_variant je varijabla koju rad MJERI — pretpostaviti je jednako je
+  // opasno kao pretpostaviti commit. Bez ove provjere cijeli 2×2 nacrt počiva
+  // na tome da se netko sjetio izvezti pravu varijablu okoline.
+  const intended = process.env.PROMPT_VARIANT || DEFAULT_VARIANT;
+  const variantMatches = server.prompt_variant === intended;
+  console.log(`[evalHarness] prompt_variant — poslužitelj: ${server.prompt_variant}, `
+    + `harness očekuje: ${intended}`);
+
+  if (runKind === 'final') {
+    if (!variantMatches) {
+      throw new Error(`Poslužitelj vrti prompt_variant="${server.prompt_variant}", `
+        + `harness očekuje "${intended}". Završni run traži isti uvjet na obje strane.`);
+    }
+    if (!matches) {
+      throw new Error(`Poslužitelj vrti commit ${server.commit}, harness ${harnessGit.commit}. `
+        + 'Završni run traži isti commit — restartaj poslužitelj.');
+    }
+    if (server.dirty !== false || harnessGit.dirty !== false) {
+      throw new Error('Završni run traži čisto radno stablo (dirty=false) na obje strane. '
+        + `Poslužitelj: ${server.dirty}, harness: ${harnessGit.dirty}.`);
+    }
+  } else {
+    if (!matches) {
+      console.warn('[evalHarness] UPOZORENJE: poslužitelj i harness NISU na istom commitu — '
+        + 'mjeri se kod koji proces već ima učitan, ne onaj na disku.');
+    }
+    if (!variantMatches) {
+      console.warn(`[evalHarness] UPOZORENJE: prompt_variant se razlikuje `
+        + `(poslužitelj "${server.prompt_variant}", očekivano "${intended}").`);
+    }
+  }
+  return { server, matches, variantMatches, intendedVariant: intended };
+}
+
+/**
+ * Rječnici koje je model VIDIO u sustavnom promptu, snimljeni uz run.
+ * Bez ovoga category_name nije provjerljiv iz samog zapisa: popis kategorija
+ * ulazi kroz buildSystemPrompt, a tool_trace ga ne bilježi (nalaz C-probe).
+ */
+async function snapshotCodebooks() {
+  try {
+    const [categories] = await db.query(
+      `SELECT c.id_item_category, c.name, c.is_active, f.year
+         FROM ItemCategory c JOIN FiscalYear f ON f.id_fiscal_year = c.fk_fiscal_year
+        ORDER BY c.id_item_category`
+    );
+    const [departments] = await db.query(
+      `SELECT d.id_department, d.name, f.year
+         FROM Department d JOIN FiscalYear f ON f.id_fiscal_year = d.fk_fiscal_year
+        ORDER BY d.id_department`
+    );
+    return { fetched_at: new Date().toISOString(), categories, departments };
+  } catch (error) {
+    return { fetched_at: new Date().toISOString(), error: error.message };
+  }
+}
+
+/** Stanje baze relevantno za scenarije, prije i poslije pokušaja. */
+async function snapshotDbState() {
+  try {
+    const [[row]] = await db.query(
+      `SELECT COUNT(*) AS request_count, MAX(request_number) AS last_request_number
+         FROM PurchaseRequest`
+    );
+    const [[items]] = await db.query('SELECT COUNT(*) AS item_count FROM PurchaseRequestItem');
+    return {
+      request_count: Number(row.request_count),
+      last_request_number: row.last_request_number,
+      item_count: Number(items.item_count),
+    };
+  } catch (error) {
+    return { error: error.message };
+  }
+}
+
+
+/**
+ * Zagrijavanje prije mjerenja.
+ *
+ * Prvi poziv lokalnom modelu nosi učitavanje težina u memoriju, pa bi se to
+ * vrijeme pripisalo prvom scenariju i lokalna izvedba ispala sporija nego što
+ * jest. Stvarno opaženo u pilot runu: trajanja poziva unutar jednog pokušaja
+ * bila su [26257, 12677, 15831] ms — prvi dvostruko sporiji od drugog.
+ *
+ * Zagrijava se IZRAVNO preko Ollame, ne kroz aplikaciju: cilj je učitati model,
+ * a ne stvoriti zahtjev u bazi ni potrošiti korak scenarija.
+ *
+ * Za Gemini se ne radi: nema učitavanja modela, a poziv bi trošio dnevnu kvotu
+ * (besplatna razina: 20 poziva/dan). Razlog se zapisuje umjesto da polje ostane
+ * prazno bez objašnjenja.
+ */
+async function warmUpModel(provider, modelName) {
+  if (provider !== 'ollama') {
+    return {
+      performed: false,
+      reason: `provider "${provider}" nema učitavanje modela; poziv bi trošio kvotu`,
+      ms: null,
+    };
+  }
+  const started = process.hrtime.bigint();
+  try {
+    const res = await fetch(`${OLLAMA_BASE_URL}/api/chat`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: modelName,
+        messages: [{ role: 'user', content: 'ok' }],
+        stream: false,
+        options: { num_predict: 1 },
+      }),
+    });
+    const ms = Number((process.hrtime.bigint() - started) / 1000000n);
+    if (!res.ok) return { performed: false, reason: `HTTP ${res.status}`, ms };
+    return { performed: true, reason: null, ms, model: modelName };
+  } catch (error) {
+    return { performed: false, reason: error.message, ms: null };
+  }
 }
 
 async function main() {
@@ -564,7 +912,10 @@ async function main() {
   fs.mkdirSync(outputDir, { recursive: true });
   const runStartedAt = new Date().toISOString().replace(/[:.]/g, '-');
   const outputFile = path.join(outputDir, `run_${runStartedAt}.jsonl`);
+  // .meta.json ostaje pod starim imenom da stariji runovi i evalCost.js i dalje
+  // rade; run_manifest.json je ista datoteka pod imenom iz mjernog plana.
   const metaFile = path.join(outputDir, `run_${runStartedAt}.meta.json`);
+  const manifestFile = path.join(outputDir, `run_${runStartedAt}.run_manifest.json`);
 
   console.log(`[evalHarness] Prijava kao ${USER_EMAIL}...`);
   const token = await login(USER_EMAIL, USER_PASSWORD);
@@ -581,15 +932,68 @@ async function main() {
   if (provider === 'ollama') console.log(`[evalHarness] Lokalni model: ${ollamaModelName}`);
   console.log(`[evalHarness] Temperature napomena: ${JSON.stringify(temperatureNote)}`);
 
+  // run_kind odlučuje ulazi li run u rad. Default je NAMJERNO 'smoke': mjerenje
+  // koje ide u rad mora biti izričito označeno, da se probni prolaz nikad ne
+  // nađe u konačnoj tablici zato što je netko zaboravio zastavicu.
+  const runKind = args.kind || 'smoke';
+  if (!['pilot', 'final', 'sensitivity', 'smoke'].includes(runKind)) {
+    throw new Error(`--kind mora biti pilot|final|sensitivity|smoke (dobiveno: "${runKind}")`);
+  }
+
+  // Zastavice stoje na DVA mjesta: u scenariju (za filtriranje i izvještaje) i
+  // u ground truthu (kao mjerilo). Ako se raziđu, izvještaj bi grupirao po
+  // jednoj vrijednosti a bodovao po drugoj — ista zamka kao zastarjeli server.
+  for (const sc of scenarios) {
+    const gt = loadGroundTruth(sc.id);
+    if (sc.inputModality !== gt.input_modality || sc.expectsRefusal !== gt.expects_refusal) {
+      throw new Error(`Scenarij "${sc.id}" i njegov ground truth se ne slažu: `
+        + `scenarij (modality=${sc.inputModality}, refusal=${sc.expectsRefusal}) vs `
+        + `ground truth (modality=${gt.input_modality}, refusal=${gt.expects_refusal}).`);
+    }
+  }
+
+  const runId = crypto.randomUUID();
+  const harnessGit = harnessGitInfo();
+  const serverVersion = await checkServerVersion(harnessGit, runKind);
+  const codebooks = await snapshotCodebooks();
+  const dbBefore = await snapshotDbState();
+
+  const sampling = getSamplingConfig();
+  const equalized = equalizedKeys();
   const totalAttempts = scenarios.reduce((sum, s) => sum + s.repeatCount, 0);
   console.log(`[evalHarness] Scenariji: ${scenarios.map((s) => s.id).join(', ')}`);
   console.log(`[evalHarness] Ukupno pokušaja: ${totalAttempts}`);
   console.log(`[evalHarness] Izlaz: ${outputFile}`);
 
-  fs.writeFileSync(metaFile, JSON.stringify({
+  const manifest = {
+    run_id: runId,
     run_started_at: runStartedAt,
+    run_kind: runKind,
+    // Obje strane, ne jedna: harness i poslužitelj mogu biti na različitom kodu.
+    git_harness: harnessGit,
+    git_server: serverVersion.server,
+    git_matches: serverVersion.matches,
+    // Izvor istine je ono što POSLUŽITELJ javlja; namjera harnessa se bilježi
+    // zasebno, da se neslaganje vidi i naknadno.
+    prompt_variant: serverVersion.server?.prompt_variant ?? null,
+    prompt_variant_intended: serverVersion.intendedVariant,
+    prompt_variant_matches: serverVersion.variantMatches,
+    category_codebook_sha256: serverVersion.server?.category_codebook_sha256 ?? null,
+    codebook_excerpt_sha256: serverVersion.server?.codebook_excerpt_sha256 ?? null,
+    // Rječnici koje je model vidio — bez njih category_name nije provjerljiv.
+    codebooks,
+    db_state_before: dbBefore,
     provider,
     provider_auto_set: autoSet,
+    // Parametri uzorkovanja stvarno primijenjeni na OBA pružatelja
+    // (llm/samplingConfig.js). `sampling_equalized` je true samo za parametre
+    // koje oba podržavaju — Gemini nema seed, pa determinizam nije izjednačen
+    // i to se ne smije prešutjeti.
+    sampling_config: sampling,
+    sampling_equalized: equalized.length > 0,
+    sampling_equalized_keys: equalized,
+    sampling_provider_support: PROVIDER_SUPPORT,
+    sampling_unequalized: UNEQUALIZED_NOTE,
     // Bez ovoga se JSONL redovi ne mogu pripisati konkretnom lokalnom modelu
     // (od uvođenja AppSetting.ollama_model provider više ne implicira model).
     ollama_model: provider === 'ollama' ? ollamaModelName : null,
@@ -597,25 +1001,65 @@ async function main() {
     ollama_temperature_note: temperatureNote,
     scenarios: scenarios.map((s) => ({ id: s.id, description: s.description, repeat_count: s.repeatCount, turns: s.turns.length, attachments: s.attachments.length })),
     total_attempts: totalAttempts,
-  }, null, 2));
+  };
+  fs.writeFileSync(metaFile, JSON.stringify(manifest, null, 2));
+
+  const warmup = await warmUpModel(provider, ollamaModelName);
+  console.log(`[evalHarness] Zagrijavanje: ${warmup.performed ? `${warmup.ms} ms` : `preskočeno (${warmup.reason})`}`);
+  manifest.warmup = warmup;
 
   const writeStream = fs.createWriteStream(outputFile, { flags: 'a' });
+  const truncatedAttempts = [];
+  const promptStore = {};
   let completed = 0;
 
-  for (const scenario of scenarios) {
-    console.log(`\n[evalHarness] === ${scenario.id} — ${scenario.description} (${scenario.repeatCount}x) ===`);
-    for (let attempt = 1; attempt <= scenario.repeatCount; attempt++) {
+  // KRUGOVI, ne nizovi. Vrtjeti scenarij deset puta zaredom pa prijeći na
+  // sljedeći znači da se s rednim brojem pokušaja sustavno poklapaju dvije
+  // stvari: predmemorija modela je najhladnija na prvom pokušaju svakog
+  // scenarija, a baza najpunija na zadnjima. Oboje se uvlači u mjeru brzine i
+  // dosljednosti. Jedan prolaz kroz sve scenarije, pa ponovo — što ujedno
+  // bolje odgovara stvarnoj uporabi. Vidi docs/mjerni-plan.md.
+  const maxRounds = Math.max(...scenarios.map((s) => s.repeatCount));
+  for (let round = 1; round <= maxRounds; round++) {
+    console.log(`\n[evalHarness] ===== KRUG ${round}/${maxRounds} =====`);
+    for (const scenario of scenarios) {
+      if (round > scenario.repeatCount) continue;
+      const attempt = round;
       completed += 1;
-      process.stdout.write(`[evalHarness] (${completed}/${totalAttempts}) ${scenario.id} pokušaj ${attempt}/${scenario.repeatCount}... `);
-      const record = await runOneAttempt(scenario, token, provider, attempt);
+      process.stdout.write(`[evalHarness] (${completed}/${totalAttempts}) krug ${round} — ${scenario.id} pokušaj ${attempt}/${scenario.repeatCount}... `);
+      const record = await runOneAttempt(scenario, token, provider, attempt, runId, promptStore);
+      record.round = round;
+      record.position_in_run = completed;
       writeStream.write(`${JSON.stringify(record)}\n`);
       console.log(record.success ? `OK (${record.latency_ms}ms, create=${record.create_request_called})` : `FAIL (${record.error})`);
+      if (record.truncated) {
+        truncatedAttempts.push(`${scenario.id}#${attempt}`);
+        console.warn(`[evalHarness] !!! ODREZAN ODGOVOR (${record.finish_reasons.join(',')}) — `
+          + `pokušaj je udario u max_output_tokens. Bodovanje bi to zabilježilo kao grešku modela.`);
+      }
     }
   }
 
   await new Promise((resolve) => writeStream.end(resolve));
+  manifest.db_state_after = await snapshotDbState();
+  // Po jedan unos za svaki jedinstveni hash koji se u runu pojavio. Više
+  // hasheva nego što uvjeti predviđaju znači da se prompt mijenjao ispod ruke
+  // i run je sumnjiv — analyze.js to prijavljuje kao upozorenje.
+  manifest.system_prompts = promptStore;
+  manifest.system_prompt_hash_count = Object.keys(promptStore).length;
+  fs.writeFileSync(metaFile, JSON.stringify(manifest, null, 2));
+  fs.writeFileSync(manifestFile, JSON.stringify(manifest, null, 2));
   console.log(`\n[evalHarness] Gotovo. Rezultati u ${outputFile}`);
   console.log(`[evalHarness] Metapodaci u ${metaFile}`);
+  if (truncatedAttempts.length > 0) {
+    console.warn(`\n[evalHarness] !!! ${truncatedAttempts.length} pokušaja s ODREZANIM odgovorom: `
+      + `${truncatedAttempts.join(', ')}`);
+    if (runKind === 'final') {
+      console.warn('[evalHarness] !!! Ovo je run_kind=final — prema protokolu mjerenja run se PONIŠTAVA '
+        + 'i vrti ispočetka, ne krpa. Vidi docs/mjerni-plan.md.');
+      process.exitCode = 2;
+    }
+  }
 }
 
 main()

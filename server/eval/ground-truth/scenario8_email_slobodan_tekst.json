@@ -1,0 +1,147 @@
+{
+  "scenario_id": "scenario8_email_slobodan_tekst",
+  "expected_decision": "create",
+  "expects_refusal": false,
+  "input_modality": "text",
+  "attachments": [],
+  "fields": {
+    "department_name": {
+      "value": "Informatička služba",
+      "provenance": {
+        "source": "turn",
+        "index": 0,
+        "quote": "Odjel: Informatička služba"
+      }
+    },
+    "total_amount": {
+      "value": 572,
+      "acceptable": [
+        572
+      ],
+      "provenance": {
+        "source": "turn",
+        "index": 0,
+        "quote": "Ukupno ti to dođe 572 EUR s PDV-om",
+        "surface_form": "572 EUR"
+      }
+    },
+    "items": [
+      {
+        "item_name": {
+          "value": "Monitor Dell 24\"",
+          "provenance": {
+            "source": "turn",
+            "index": 0,
+            "quote": "monitor Dell 24\""
+          }
+        },
+        "quantity": {
+          "value": 2,
+          "provenance": {
+            "source": "turn",
+            "index": 0,
+            "quote": "2x monitor Dell 24\"",
+            "surface_form": "2x",
+            "form": "digit"
+          }
+        },
+        "category_name": {
+          "value": "Računalna oprema",
+          "acceptable_categories": [
+            "Računalna oprema"
+          ],
+          "ambiguous": false,
+          "acceptable_reason_type": null,
+          "acceptable_reason": null,
+          "rule": "P6",
+          "provenance": {
+            "source": "codebook",
+            "table": "ItemCategory",
+            "document": "server/eval/category-codebook.md",
+            "sha256_16": "26ac4a44b9f3bf14"
+          },
+          "assignment": "inferred"
+        }
+      },
+      {
+        "item_name": {
+          "value": "Tipkovnica Logitech K120",
+          "provenance": {
+            "source": "turn",
+            "index": 0,
+            "quote": "tipkovnica Logitech K120"
+          }
+        },
+        "quantity": {
+          "value": 3,
+          "provenance": {
+            "source": "turn",
+            "index": 0,
+            "quote": "3x tipkovnica Logitech K120",
+            "surface_form": "3x",
+            "form": "digit"
+          }
+        },
+        "category_name": {
+          "value": "Računalna oprema",
+          "acceptable_categories": [
+            "Računalna oprema",
+            "Uredski materijal"
+          ],
+          "ambiguous": true,
+          "acceptable_reason_type": "alternative_convention",
+          "acceptable_reason": "po P6 i P10 jednoznačno računalna oprema (trajno sredstvo rada); ustanova koja jeftinu periferiju vodi kao potrošnu robu svrstala bi je u uredski materijal",
+          "rule": "P6",
+          "provenance": {
+            "source": "codebook",
+            "table": "ItemCategory",
+            "document": "server/eval/category-codebook.md",
+            "sha256_16": "26ac4a44b9f3bf14"
+          },
+          "assignment": "inferred"
+        }
+      },
+      {
+        "item_name": {
+          "value": "Docking stanica",
+          "provenance": {
+            "source": "turn",
+            "index": 0,
+            "quote": "docking stanica"
+          }
+        },
+        "quantity": {
+          "value": 1,
+          "provenance": {
+            "source": "turn",
+            "index": 0,
+            "quote": "jedna docking stanica za 149 EUR",
+            "surface_form": "jedna",
+            "form": "word"
+          }
+        },
+        "category_name": {
+          "value": "Računalna oprema",
+          "acceptable_categories": [
+            "Računalna oprema"
+          ],
+          "ambiguous": false,
+          "acceptable_reason_type": null,
+          "acceptable_reason": null,
+          "rule": "P6",
+          "provenance": {
+            "source": "codebook",
+            "table": "ItemCategory",
+            "document": "server/eval/category-codebook.md",
+            "sha256_16": "26ac4a44b9f3bf14"
+          },
+          "assignment": "inferred"
+        }
+      }
+    ]
+  },
+  "notes": "Ekstrakcija iz slobodnog teksta, bez tablice. VAŽNO: dvofazna brava se ovdje NE aktivira jer nema priloga (conversationInvolvesAttachment), pa zahtjev može nastati bez prikazanog prijedloga — iako su podaci jednako izvedeni kao iz ponude. To je poznata rupa u dizajnu koju ovaj scenarij razotkriva.",
+  "_schema": "nabava.XP eval ground truth v1",
+  "_note": "Očekivani ishod scenarija, s provenanceom po polju. Provenance je lokator u ULAZU (poruka ili prilog) plus doslovan citat — citat mora biti bajt-jednak izvoru, uključujući nedjeljive razmake. category_name NIJE dio provjere utemeljenosti (vrijednost je iz šifrarnika, ne može biti izmišljena) nego zasebne mjere točnosti dodjele.",
+  "category_codebook_sha256_16": "26ac4a44b9f3bf14"
+}

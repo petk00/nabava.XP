@@ -21,9 +21,12 @@ yarn-debug.log*
 node_modules/
 
 # Environment (sadrže tajne ključeve — ne commitati)
+# Obrazac je namjerno širok: .env.bak-uploads je prošao kroz .env.*.local i
+# stigao do pusha s pravim Gemini ključem, koji je zaustavila tek GitHubova
+# zaštita. Predlošci bez tajni izuzeti su izrijekom.
 .env
-.env.local
-.env.*.local
+.env.*
+!.env.example
 
 # Build output
 dist/
@@ -37,3 +40,7 @@ e2e/playwright-report/
 server/eval-results/
 db/backup/
 backups/
+
+# Sigurnosne kopije radnih datoteka (ručni artefakti — ne commitati)
+*.bak
+*.bak-*

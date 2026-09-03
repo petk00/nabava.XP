@@ -1,0 +1,189 @@
+{
+  "scenario_id": "scenario6_format_brojeva",
+  "expected_decision": "create",
+  "expects_refusal": false,
+  "input_modality": "pdf",
+  "attachments": [
+    "scenario6_jedinice.pdf"
+  ],
+  "fields": {
+    "department_name": {
+      "value": "Informatička služba",
+      "provenance": {
+        "source": "turn",
+        "index": 0,
+        "quote": "Odjel: Informatička služba"
+      }
+    },
+    "total_amount": {
+      "value": 5906.63,
+      "acceptable": [
+        5906.63
+      ],
+      "provenance": {
+        "source": "attachment",
+        "file": "scenario6_jedinice.pdf",
+        "line": 38,
+        "quote": "Za uplatu | 5,906.63 €"
+      }
+    },
+    "items": [
+      {
+        "item_name": {
+          "value": "Procesor AMD Ryzen 9 9950X3D (AM5)",
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario6_jedinice.pdf",
+            "line": 12,
+            "quote": "Procesor AMD Ryzen 9 9950X3D (AM5) — 16"
+          }
+        },
+        "quantity": {
+          "value": 2,
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario6_jedinice.pdf",
+            "line": 12,
+            "quote": "Procesor AMD Ryzen 9 9950X3D (AM5) — 16",
+            "form": "digit"
+          }
+        },
+        "category_name": {
+          "value": "Računalna oprema",
+          "acceptable_categories": [
+            "Računalna oprema"
+          ],
+          "ambiguous": false,
+          "acceptable_reason_type": null,
+          "acceptable_reason": null,
+          "rule": "P5",
+          "provenance": {
+            "source": "codebook",
+            "table": "ItemCategory",
+            "document": "server/eval/category-codebook.md",
+            "sha256_16": "26ac4a44b9f3bf14"
+          },
+          "assignment": "inferred"
+        }
+      },
+      {
+        "item_name": {
+          "value": "Grafička kartica GeForce RTX 5090 32GB GDDR7",
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario6_jedinice.pdf",
+            "line": 18,
+            "quote": "Grafička kartica GeForce RTX 5090 32GB GDDR7,"
+          }
+        },
+        "quantity": {
+          "value": 1,
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario6_jedinice.pdf",
+            "line": 18,
+            "quote": "Grafička kartica GeForce RTX 5090 32GB GDDR7,",
+            "form": "digit"
+          }
+        },
+        "category_name": {
+          "value": "Računalna oprema",
+          "acceptable_categories": [
+            "Računalna oprema"
+          ],
+          "ambiguous": false,
+          "acceptable_reason_type": null,
+          "acceptable_reason": null,
+          "rule": "P5",
+          "provenance": {
+            "source": "codebook",
+            "table": "ItemCategory",
+            "document": "server/eval/category-codebook.md",
+            "sha256_16": "26ac4a44b9f3bf14"
+          },
+          "assignment": "inferred"
+        }
+      },
+      {
+        "item_name": {
+          "value": "Matična ploča ASUS ROG Crosshair X870E Hero (AM5, EATX)",
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario6_jedinice.pdf",
+            "line": 24,
+            "quote": "Matična ploča ASUS ROG Crosshair X870E Hero"
+          }
+        },
+        "quantity": {
+          "value": 1,
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario6_jedinice.pdf",
+            "line": 24,
+            "quote": "Matična ploča ASUS ROG Crosshair X870E Hero",
+            "form": "digit"
+          }
+        },
+        "category_name": {
+          "value": "Računalna oprema",
+          "acceptable_categories": [
+            "Računalna oprema"
+          ],
+          "ambiguous": false,
+          "acceptable_reason_type": null,
+          "acceptable_reason": null,
+          "rule": "P5",
+          "provenance": {
+            "source": "codebook",
+            "table": "ItemCategory",
+            "document": "server/eval/category-codebook.md",
+            "sha256_16": "26ac4a44b9f3bf14"
+          },
+          "assignment": "inferred"
+        }
+      },
+      {
+        "item_name": {
+          "value": "Memorija G.Skill Trident Z5 Neo RGB 64 GB (2×32 GB) DDR5-6400 CL32",
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario6_jedinice.pdf",
+            "line": 29,
+            "quote": "Memorija G.Skill Trident Z5 Neo RGB 64 GB (2×32"
+          }
+        },
+        "quantity": {
+          "value": 2,
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario6_jedinice.pdf",
+            "line": 29,
+            "quote": "Memorija G.Skill Trident Z5 Neo RGB 64 GB (2×32",
+            "form": "digit"
+          }
+        },
+        "category_name": {
+          "value": "Računalna oprema",
+          "acceptable_categories": [
+            "Računalna oprema"
+          ],
+          "ambiguous": false,
+          "acceptable_reason_type": null,
+          "acceptable_reason": null,
+          "rule": "P5",
+          "provenance": {
+            "source": "codebook",
+            "table": "ItemCategory",
+            "document": "server/eval/category-codebook.md",
+            "sha256_16": "26ac4a44b9f3bf14"
+          },
+          "assignment": "inferred"
+        }
+      }
+    ]
+  },
+  "notes": "Zamka je zarez kao separator tisućica: \"4,974.00 €\" je 4974, ne 4,974. Isti sadržaj kao scenarij 5, pa razlika u rezultatu ide ISKLJUČIVO na račun formata.",
+  "_schema": "nabava.XP eval ground truth v1",
+  "_note": "Očekivani ishod scenarija, s provenanceom po polju. Provenance je lokator u ULAZU (poruka ili prilog) plus doslovan citat — citat mora biti bajt-jednak izvoru, uključujući nedjeljive razmake. category_name NIJE dio provjere utemeljenosti (vrijednost je iz šifrarnika, ne može biti izmišljena) nego zasebne mjere točnosti dodjele.",
+  "category_codebook_sha256_16": "26ac4a44b9f3bf14"
+}

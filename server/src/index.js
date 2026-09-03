@@ -15,6 +15,8 @@ const referenceRoutes = require('./routes/referenceRoutes');
 const userRoutes = require('./routes/userRoutes');
 const fiscalYearRoutes = require('./routes/fiscalYearRoutes');
 const assistantRoutes = require('./routes/assistantRoutes');
+const { BUILD_INFO } = require('./services/buildInfo');
+const { getPromptVariant, categoryDefinitionsBlock } = require('./services/promptVariant');
 
 const REQUIRED_ENV = ['JWT_SECRET', 'DB_HOST', 'DB_USER', 'DB_NAME'];
 for (const key of REQUIRED_ENV) {
@@ -116,6 +118,25 @@ app.use('/api/users', userRoutes);
 app.use('/api/fiscal-years', fiscalYearRoutes);
 app.use('/api/assistant/chat', assistantChatLimiter);
 app.use('/api/assistant', assistantRoutes);
+
+// Verzija koda koji OVAJ PROCES vrti. Eval harness je uspoređuje sa svojim
+// git_commitom prije mjerenja; neslaganje kod završnog runa je tvrdi prekid.
+// Vidi src/services/buildInfo.js i docs/mjerni-plan.md.
+app.get('/version', (req, res) => {
+  // BUILD_INFO je kеširan (git stanje pri pokretanju), a prompt_variant se
+  // čita ŽIVO: mijenja se okolinom bez ponovnog pokretanja, pa keširana
+  // vrijednost ne bi opisivala ono što poslužitelj doista radi. Harness ovo
+  // uspoređuje s onim što namjerava zapisati; neslaganje kod završnog runa je
+  // tvrdi prekid (docs/mjerni-plan.md).
+  const variant = getPromptVariant();
+  const cb = categoryDefinitionsBlock(variant);
+  res.json({
+    ...BUILD_INFO,
+    prompt_variant: variant,
+    category_codebook_sha256: cb.codebookSha256,
+    codebook_excerpt_sha256: cb.codebookExcerptSha256,
+  });
+});
 
 app.get('/health', async (req, res) => {
   try {

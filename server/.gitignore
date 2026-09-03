@@ -1,5 +1,7 @@
 .DS_Store
 uploads/
 .env
-.env.local
-.env.*.local
+.env.*
+!.env.example
+*.bak
+*.bak-*
