@@ -148,11 +148,23 @@ router.post('/chat', authenticateToken, uploadQuote.array('file', MAX_QUOTE_FILE
 
   try {
     const result = await runAssistantChat({ messages, userId: req.user.id_user, attachments });
+    // Hash i uvjet uvijek — jeftino i nužno da se svaki pokušaj može pripisati
+    // konkretnom sastavljenom promptu. PUNI TEKST samo na izričit zahtjev
+    // (zaglavlje X-Include-System-Prompt), da se 3 kB ne vuče kroz svaki
+    // razgovor u pogonu. Prompt nije tajna — sastavljen je od koda iz
+    // repozitorija i šifrarnika koje korisnik ionako vidi u aplikaciji.
+    const pm = result.prompt_meta || {};
+    const includePrompt = req.get('X-Include-System-Prompt') === '1';
     return res.json({
       text: result.text,
       created_request: result.created_request,
       tool_trace: result.tool_trace,
       usage: result.usage,
+      ...(pm.prompt_variant ? { prompt_variant: pm.prompt_variant } : {}),
+      ...(pm.system_prompt_hash ? { system_prompt_hash: pm.system_prompt_hash } : {}),
+      ...(pm.category_codebook_sha256 ? { category_codebook_sha256: pm.category_codebook_sha256 } : {}),
+      ...(pm.codebook_excerpt_sha256 ? { codebook_excerpt_sha256: pm.codebook_excerpt_sha256 } : {}),
+      ...(includePrompt && pm.system_prompt ? { system_prompt: pm.system_prompt } : {}),
     });
   } catch (error) {
     console.error('POST /api/assistant/chat error:', error);

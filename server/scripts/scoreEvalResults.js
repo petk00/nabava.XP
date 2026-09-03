@@ -26,6 +26,11 @@
 const fs = require('fs');
 const path = require('path');
 const { SCENARIOS } = require('./evalScenarios');
+// Ground truth dolazi iz eval/ground-truth/*.json, ISTOG izvora koji koristi
+// evalHarness.js. Ranije je svaka skripta imala vlastitu kopiju očekivanja
+// (evalScenarios.expectedResult ovdje, ista struktura ondje), pa su se dvije
+// implementacije istog mjerila mogle tiho razići.
+const { loadGroundTruthForScoring } = require('./groundTruth');
 
 const RESULTS_DIR = path.join(__dirname, '..', 'eval-results');
 const SCENARIO_BY_ID = new Map(SCENARIOS.map((s) => [s.id, s]));
@@ -114,7 +119,7 @@ function main() {
     `Uključeni runovi: ${files.map((f) => path.basename(f)).join(', ')}`,
     '',
     '**Kako čitati:** `[x]`/`[ ]` uz "Odluka", "Odjel", "Broj stavki", "Iznos" su AUTOMATSKI izračunati',
-    '(usporedba sa expectedResult iz evalScenarios.js). Redak "Sadržaj stavki" NIJE automatski —',
+    '(usporedba s ground truthom iz eval/ground-truth/). Redak "Sadržaj stavki" NIJE automatski —',
     'usporedi "STVARNE STAVKE" sa "OČEKIVANE STAVKE" ispod i ručno označi. Prazan `[ ]` kod automatskih',
     'polja gdje scenarij ne kreira zahtjev (ask/refuse) znači "nije primjenjivo", ne "netočno".',
     '',
@@ -124,10 +129,10 @@ function main() {
 
   for (const [scenarioId, rows] of [...byScenario.entries()].sort()) {
     const scenario = SCENARIO_BY_ID.get(scenarioId);
-    const expected = scenario?.expectedResult;
+    const expected = loadGroundTruthForScoring(row.scenario_id);
     lines.push(`## ${scenarioId}`, '');
     if (!expected) {
-      lines.push('_Nema expectedResult definiranog za ovaj scenarij — preskočeno._', '');
+      lines.push('_Nema ground trutha za ovaj scenarij (eval/ground-truth/) — preskočeno._', '');
       continue;
     }
     lines.push(`**Očekivano:** odluka=\`${expected.decision}\`, odjel=\`${expected.department_name ?? '-'}\`, ${expected.items.length} stavki, iznos∈${JSON.stringify(expected.total_amount_acceptable)}`);

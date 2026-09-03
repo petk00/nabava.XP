@@ -1,0 +1,65 @@
+{
+  "scenario_id": "scenario10_izmjena_nakon_kreiranja",
+  "expected_decision": "create",
+  "expects_refusal": false,
+  "input_modality": "text",
+  "attachments": [],
+  "fields": {
+    "department_name": {
+      "value": "Informatička služba",
+      "provenance": {
+        "source": "turn",
+        "index": 0,
+        "quote": "Molim kreirajte zahtjev za Informatičku službu",
+        "surface_form": "Informatičku službu",
+        "morphology": "akuzativ"
+      }
+    },
+    "items": [
+      {
+        "item_name": {
+          "value": "bežični miš",
+          "provenance": {
+            "source": "turn",
+            "index": 0,
+            "quote": "3 bežična miša",
+            "surface_form": "bežična miša",
+            "morphology": "genitiv jednine"
+          }
+        },
+        "quantity": {
+          "value": 3,
+          "provenance": {
+            "source": "turn",
+            "index": 0,
+            "quote": "3 bežična miša",
+            "surface_form": "3",
+            "form": "digit"
+          }
+        },
+        "category_name": {
+          "value": "Računalna oprema",
+          "acceptable_categories": [
+            "Računalna oprema",
+            "Uredski materijal"
+          ],
+          "ambiguous": true,
+          "acceptable_reason_type": "alternative_convention",
+          "acceptable_reason": "po P6 i P10 jednoznačno računalna oprema (trajno sredstvo rada); ustanova koja jeftinu periferiju vodi kao potrošnu robu svrstala bi je u uredski materijal",
+          "rule": "P6",
+          "provenance": {
+            "source": "codebook",
+            "table": "ItemCategory",
+            "document": "server/eval/category-codebook.md",
+            "sha256_16": "26ac4a44b9f3bf14"
+          },
+          "assignment": "inferred"
+        }
+      }
+    ]
+  },
+  "notes": "Prvi korak MORA kreirati zahtjev s 3 miša. Drugi korak testira findEarlierSuccessfulCreate (assistantOrchestrator.js): sustav nema alat za izmjenu postojećeg zahtjeva, pa model mora objasniti da izmjena nije moguća kroz chat i uputiti korisnika — a NE napraviti drugi zahtjev. Provjerava se ručno: smije postojati TOČNO JEDAN kreiran zahtjev.",
+  "_schema": "nabava.XP eval ground truth v1",
+  "_note": "Očekivani ishod scenarija, s provenanceom po polju. Provenance je lokator u ULAZU (poruka ili prilog) plus doslovan citat — citat mora biti bajt-jednak izvoru, uključujući nedjeljive razmake. category_name NIJE dio provjere utemeljenosti (vrijednost je iz šifrarnika, ne može biti izmišljena) nego zasebne mjere točnosti dodjele.",
+  "category_codebook_sha256_16": "26ac4a44b9f3bf14"
+}

@@ -1,0 +1,919 @@
+{
+  "scenario_id": "scenario2_visestranicna",
+  "expected_decision": "create",
+  "expects_refusal": false,
+  "input_modality": "pdf",
+  "attachments": [
+    "scenario2_visestranicna.pdf"
+  ],
+  "fields": {
+    "department_name": {
+      "value": "Informatička služba",
+      "provenance": {
+        "source": "turn",
+        "index": 0,
+        "quote": "Odjel: Informatička služba"
+      }
+    },
+    "total_amount": {
+      "value": 50677.88,
+      "acceptable": [
+        50677.88
+      ],
+      "provenance": {
+        "source": "attachment",
+        "file": "scenario2_visestranicna.pdf",
+        "line": 79,
+        "quote": "Ukupno za platiti | 50 677,88 €"
+      }
+    },
+    "items": [
+      {
+        "item_name": {
+          "value": "IoT edukacijski komplet ESP32-S3 DevKit s modulima i pločicom",
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario2_visestranicna.pdf",
+            "line": 12,
+            "quote": "IoT edukacijski komplet ESP32-S3 DevKit"
+          }
+        },
+        "quantity": {
+          "value": 30,
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario2_visestranicna.pdf",
+            "line": 12,
+            "quote": "IoT edukacijski komplet ESP32-S3 DevKit",
+            "form": "digit"
+          }
+        },
+        "category_name": {
+          "value": "Nastavna i laboratorijska oprema",
+          "acceptable_categories": [
+            "Nastavna i laboratorijska oprema"
+          ],
+          "ambiguous": false,
+          "acceptable_reason_type": null,
+          "acceptable_reason": null,
+          "rule": "P4/P8",
+          "provenance": {
+            "source": "codebook",
+            "table": "ItemCategory",
+            "document": "server/eval/category-codebook.md",
+            "sha256_16": "26ac4a44b9f3bf14"
+          },
+          "assignment": "inferred"
+        }
+      },
+      {
+        "item_name": {
+          "value": "Laboratorijski set senzora (temp., vlaga, tlak, IMU, svjetlo)",
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario2_visestranicna.pdf",
+            "line": 15,
+            "quote": "Laboratorijski set senzora (temp., vlaga,"
+          }
+        },
+        "quantity": {
+          "value": 30,
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario2_visestranicna.pdf",
+            "line": 15,
+            "quote": "Laboratorijski set senzora (temp., vlaga,",
+            "form": "word"
+          }
+        },
+        "category_name": {
+          "value": "Nastavna i laboratorijska oprema",
+          "acceptable_categories": [
+            "Nastavna i laboratorijska oprema"
+          ],
+          "ambiguous": false,
+          "acceptable_reason_type": null,
+          "acceptable_reason": null,
+          "rule": "P4",
+          "provenance": {
+            "source": "codebook",
+            "table": "ItemCategory",
+            "document": "server/eval/category-codebook.md",
+            "sha256_16": "26ac4a44b9f3bf14"
+          },
+          "assignment": "inferred"
+        }
+      },
+      {
+        "item_name": {
+          "value": "Raspberry Pi 5 8GB s kućištem, napajanjem i microSD 64GB",
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario2_visestranicna.pdf",
+            "line": 18,
+            "quote": "Raspberry Pi 5 8GB s kućištem,"
+          }
+        },
+        "quantity": {
+          "value": 20,
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario2_visestranicna.pdf",
+            "line": 18,
+            "quote": "Raspberry Pi 5 8GB s kućištem,",
+            "form": "digit"
+          }
+        },
+        "category_name": {
+          "value": "Nastavna i laboratorijska oprema",
+          "acceptable_categories": [
+            "Nastavna i laboratorijska oprema",
+            "Računalna oprema"
+          ],
+          "ambiguous": true,
+          "acceptable_reason_type": "codebook_tie",
+          "acceptable_reason": "P4 (razvojna pločica) protiv P5+def.1 (malo računalo)",
+          "rule": "P4",
+          "provenance": {
+            "source": "codebook",
+            "table": "ItemCategory",
+            "document": "server/eval/category-codebook.md",
+            "sha256_16": "26ac4a44b9f3bf14"
+          },
+          "assignment": "inferred"
+        }
+      },
+      {
+        "item_name": {
+          "value": "LoRaWAN gateway RAK7268CV2 indoor, 868 MHz",
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario2_visestranicna.pdf",
+            "line": 21,
+            "quote": "LoRaWAN gateway RAK7268CV2 indoor,"
+          }
+        },
+        "quantity": {
+          "value": 4,
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario2_visestranicna.pdf",
+            "line": 21,
+            "quote": "LoRaWAN gateway RAK7268CV2 indoor,",
+            "form": "digit"
+          }
+        },
+        "category_name": {
+          "value": "Nastavna i laboratorijska oprema",
+          "acceptable_categories": [
+            "Nastavna i laboratorijska oprema",
+            "Računalna oprema"
+          ],
+          "ambiguous": true,
+          "acceptable_reason_type": "codebook_tie",
+          "acceptable_reason": "P3 (predmet poučavanja) protiv def.1 (mrežna oprema)",
+          "rule": "P3",
+          "provenance": {
+            "source": "codebook",
+            "table": "ItemCategory",
+            "document": "server/eval/category-codebook.md",
+            "sha256_16": "26ac4a44b9f3bf14"
+          },
+          "assignment": "inferred"
+        }
+      },
+      {
+        "item_name": {
+          "value": "LoRa razvojni čvor RAK4631 WisBlock Starter Kit",
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario2_visestranicna.pdf",
+            "line": 24,
+            "quote": "LoRa razvojni čvor RAK4631 WisBlock"
+          }
+        },
+        "quantity": {
+          "value": 25,
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario2_visestranicna.pdf",
+            "line": 24,
+            "quote": "LoRa razvojni čvor RAK4631 WisBlock",
+            "form": "digit"
+          }
+        },
+        "category_name": {
+          "value": "Nastavna i laboratorijska oprema",
+          "acceptable_categories": [
+            "Nastavna i laboratorijska oprema"
+          ],
+          "ambiguous": false,
+          "acceptable_reason_type": null,
+          "acceptable_reason": null,
+          "rule": "P4",
+          "provenance": {
+            "source": "codebook",
+            "table": "ItemCategory",
+            "document": "server/eval/category-codebook.md",
+            "sha256_16": "26ac4a44b9f3bf14"
+          },
+          "assignment": "inferred"
+        }
+      },
+      {
+        "item_name": {
+          "value": "Digitalni osciloskop Rigol DHO814, 100 MHz, 4 kanala",
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario2_visestranicna.pdf",
+            "line": 27,
+            "quote": "Digitalni osciloskop Rigol DHO814, 100"
+          }
+        },
+        "quantity": {
+          "value": 6,
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario2_visestranicna.pdf",
+            "line": 27,
+            "quote": "Digitalni osciloskop Rigol DHO814, 100",
+            "form": "digit"
+          }
+        },
+        "category_name": {
+          "value": "Nastavna i laboratorijska oprema",
+          "acceptable_categories": [
+            "Nastavna i laboratorijska oprema"
+          ],
+          "ambiguous": false,
+          "acceptable_reason_type": null,
+          "acceptable_reason": null,
+          "rule": "P3",
+          "provenance": {
+            "source": "codebook",
+            "table": "ItemCategory",
+            "document": "server/eval/category-codebook.md",
+            "sha256_16": "26ac4a44b9f3bf14"
+          },
+          "assignment": "inferred"
+        }
+      },
+      {
+        "item_name": {
+          "value": "Laboratorijsko napajanje Rigol DP832, 3 kanala",
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario2_visestranicna.pdf",
+            "line": 30,
+            "quote": "Laboratorijsko napajanje Rigol DP832, 3"
+          }
+        },
+        "quantity": {
+          "value": 6,
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario2_visestranicna.pdf",
+            "line": 30,
+            "quote": "Laboratorijsko napajanje Rigol DP832, 3",
+            "form": "digit"
+          }
+        },
+        "category_name": {
+          "value": "Nastavna i laboratorijska oprema",
+          "acceptable_categories": [
+            "Nastavna i laboratorijska oprema"
+          ],
+          "ambiguous": false,
+          "acceptable_reason_type": null,
+          "acceptable_reason": null,
+          "rule": "P3",
+          "provenance": {
+            "source": "codebook",
+            "table": "ItemCategory",
+            "document": "server/eval/category-codebook.md",
+            "sha256_16": "26ac4a44b9f3bf14"
+          },
+          "assignment": "inferred"
+        }
+      },
+      {
+        "item_name": {
+          "value": "Digitalni multimetar Fluke 117 s priborom",
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario2_visestranicna.pdf",
+            "line": 33,
+            "quote": "Digitalni multimetar Fluke 117 s priborom | 10 | 219,00 | 2 190,00 | 547,50 (25.00%)"
+          }
+        },
+        "quantity": {
+          "value": 10,
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario2_visestranicna.pdf",
+            "line": 33,
+            "quote": "Digitalni multimetar Fluke 117 s priborom | 10 | 219,00 | 2 190,00 | 547,50 (25.00%)",
+            "form": "digit"
+          }
+        },
+        "category_name": {
+          "value": "Nastavna i laboratorijska oprema",
+          "acceptable_categories": [
+            "Nastavna i laboratorijska oprema"
+          ],
+          "ambiguous": false,
+          "acceptable_reason_type": null,
+          "acceptable_reason": null,
+          "rule": "P3",
+          "provenance": {
+            "source": "codebook",
+            "table": "ItemCategory",
+            "document": "server/eval/category-codebook.md",
+            "sha256_16": "26ac4a44b9f3bf14"
+          },
+          "assignment": "inferred"
+        }
+      },
+      {
+        "item_name": {
+          "value": "Lemna stanica Weller WE1010 s kompletom vrhova",
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario2_visestranicna.pdf",
+            "line": 34,
+            "quote": "Lemna stanica Weller WE1010 s"
+          }
+        },
+        "quantity": {
+          "value": 12,
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario2_visestranicna.pdf",
+            "line": 34,
+            "quote": "Lemna stanica Weller WE1010 s",
+            "form": "digit"
+          }
+        },
+        "category_name": {
+          "value": "Nastavna i laboratorijska oprema",
+          "acceptable_categories": [
+            "Nastavna i laboratorijska oprema"
+          ],
+          "ambiguous": false,
+          "acceptable_reason_type": null,
+          "acceptable_reason": null,
+          "rule": "P3",
+          "provenance": {
+            "source": "codebook",
+            "table": "ItemCategory",
+            "document": "server/eval/category-codebook.md",
+            "sha256_16": "26ac4a44b9f3bf14"
+          },
+          "assignment": "inferred"
+        }
+      },
+      {
+        "item_name": {
+          "value": "Odsis dima za lemljenje s filtrom, stolni",
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario2_visestranicna.pdf",
+            "line": 37,
+            "quote": "Odsis dima za lemljenje s filtrom, stolni | 6 | 89,00 | 534,00 | 133,50 (25.00%)"
+          }
+        },
+        "quantity": {
+          "value": 6,
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario2_visestranicna.pdf",
+            "line": 37,
+            "quote": "Odsis dima za lemljenje s filtrom, stolni | 6 | 89,00 | 534,00 | 133,50 (25.00%)",
+            "form": "digit"
+          }
+        },
+        "category_name": {
+          "value": "Nastavna i laboratorijska oprema",
+          "acceptable_categories": [
+            "Nastavna i laboratorijska oprema"
+          ],
+          "ambiguous": false,
+          "acceptable_reason_type": null,
+          "acceptable_reason": null,
+          "rule": "P3",
+          "provenance": {
+            "source": "codebook",
+            "table": "ItemCategory",
+            "document": "server/eval/category-codebook.md",
+            "sha256_16": "26ac4a44b9f3bf14"
+          },
+          "assignment": "inferred"
+        }
+      },
+      {
+        "item_name": {
+          "value": "3D pisač Prusa MK4S s kompletom filamenata",
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario2_visestranicna.pdf",
+            "line": 38,
+            "quote": "3D pisač Prusa MK4S s kompletom"
+          }
+        },
+        "quantity": {
+          "value": 2,
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario2_visestranicna.pdf",
+            "line": 38,
+            "quote": "3D pisač Prusa MK4S s kompletom",
+            "form": "digit"
+          }
+        },
+        "category_name": {
+          "value": "Nastavna i laboratorijska oprema",
+          "acceptable_categories": [
+            "Nastavna i laboratorijska oprema",
+            "Računalna oprema"
+          ],
+          "ambiguous": true,
+          "acceptable_reason_type": "codebook_tie",
+          "acceptable_reason": "P3 (namjena: radionički alat) protiv def.1 (računalna periferija)",
+          "rule": "P3",
+          "provenance": {
+            "source": "codebook",
+            "table": "ItemCategory",
+            "document": "server/eval/category-codebook.md",
+            "sha256_16": "26ac4a44b9f3bf14"
+          },
+          "assignment": "inferred"
+        }
+      },
+      {
+        "item_name": {
+          "value": "PoE preklopnik Ubiquiti USW-24-PoE, 24 porta",
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario2_visestranicna.pdf",
+            "line": 41,
+            "quote": "PoE preklopnik Ubiquiti USW-24-PoE, 24"
+          }
+        },
+        "quantity": {
+          "value": 2,
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario2_visestranicna.pdf",
+            "line": 41,
+            "quote": "PoE preklopnik Ubiquiti USW-24-PoE, 24",
+            "form": "digit"
+          }
+        },
+        "category_name": {
+          "value": "Računalna oprema",
+          "acceptable_categories": [
+            "Računalna oprema",
+            "Nastavna i laboratorijska oprema"
+          ],
+          "ambiguous": true,
+          "acceptable_reason_type": "codebook_tie",
+          "acceptable_reason": "def.1 (mrežna oprema) protiv P3 (ugrađena u nastavni laboratorij)",
+          "rule": "def.1",
+          "provenance": {
+            "source": "codebook",
+            "table": "ItemCategory",
+            "document": "server/eval/category-codebook.md",
+            "sha256_16": "26ac4a44b9f3bf14"
+          },
+          "assignment": "inferred"
+        }
+      },
+      {
+        "item_name": {
+          "value": "Wi-Fi 6 pristupna točka Ubiquiti U6-Pro",
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario2_visestranicna.pdf",
+            "line": 44,
+            "quote": "Wi-Fi 6 pristupna točka Ubiquiti U6-Pro | 6 | 179,00 | 1 074,00 | 268,50 (25.00%)"
+          }
+        },
+        "quantity": {
+          "value": 6,
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario2_visestranicna.pdf",
+            "line": 44,
+            "quote": "Wi-Fi 6 pristupna točka Ubiquiti U6-Pro | 6 | 179,00 | 1 074,00 | 268,50 (25.00%)",
+            "form": "digit"
+          }
+        },
+        "category_name": {
+          "value": "Računalna oprema",
+          "acceptable_categories": [
+            "Računalna oprema",
+            "Nastavna i laboratorijska oprema"
+          ],
+          "ambiguous": true,
+          "acceptable_reason_type": "codebook_tie",
+          "acceptable_reason": "def.1 (mrežna oprema) protiv P3 (ugrađena u nastavni laboratorij)",
+          "rule": "def.1",
+          "provenance": {
+            "source": "codebook",
+            "table": "ItemCategory",
+            "document": "server/eval/category-codebook.md",
+            "sha256_16": "26ac4a44b9f3bf14"
+          },
+          "assignment": "inferred"
+        }
+      },
+      {
+        "item_name": {
+          "value": "Poslužitelj za edge računarstvo Dell PowerEdge R250",
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario2_visestranicna.pdf",
+            "line": 45,
+            "quote": "Poslužitelj za edge računarstvo Dell"
+          }
+        },
+        "quantity": {
+          "value": 1,
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario2_visestranicna.pdf",
+            "line": 45,
+            "quote": "Poslužitelj za edge računarstvo Dell",
+            "form": "word"
+          }
+        },
+        "category_name": {
+          "value": "Računalna oprema",
+          "acceptable_categories": [
+            "Računalna oprema",
+            "Nastavna i laboratorijska oprema"
+          ],
+          "ambiguous": true,
+          "acceptable_reason_type": "codebook_tie",
+          "acceptable_reason": "def.1 (računalna oprema) protiv P3 (ugrađen u nastavni laboratorij)",
+          "rule": "def.1",
+          "provenance": {
+            "source": "codebook",
+            "table": "ItemCategory",
+            "document": "server/eval/category-codebook.md",
+            "sha256_16": "26ac4a44b9f3bf14"
+          },
+          "assignment": "inferred"
+        }
+      },
+      {
+        "item_name": {
+          "value": "Komunikacijski ormar 19\" 22U s policama i PDU letvom",
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario2_visestranicna.pdf",
+            "line": 48,
+            "quote": "Komunikacijski ormar 19\" 22U s policama"
+          }
+        },
+        "quantity": {
+          "value": 2,
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario2_visestranicna.pdf",
+            "line": 48,
+            "quote": "Komunikacijski ormar 19\" 22U s policama",
+            "form": "digit"
+          }
+        },
+        "category_name": {
+          "value": "Računalna oprema",
+          "acceptable_categories": [
+            "Računalna oprema",
+            "Namještaj"
+          ],
+          "ambiguous": true,
+          "acceptable_reason_type": "codebook_tie",
+          "acceptable_reason": "def.1 (smještaj mrežne opreme) protiv P7 (ormar je namještaj); P9 daje prednost tehničkoj funkciji, ali uže određenje nije nedvojbeno",
+          "rule": "P9",
+          "provenance": {
+            "source": "codebook",
+            "table": "ItemCategory",
+            "document": "server/eval/category-codebook.md",
+            "sha256_16": "26ac4a44b9f3bf14"
+          },
+          "assignment": "inferred"
+        }
+      },
+      {
+        "item_name": {
+          "value": "Studentska radna stanica (računalo, monitor 24\", periferija)",
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario2_visestranicna.pdf",
+            "line": 51,
+            "quote": "Studentska radna stanica (računalo,"
+          }
+        },
+        "quantity": {
+          "value": 15,
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario2_visestranicna.pdf",
+            "line": 51,
+            "quote": "Studentska radna stanica (računalo,",
+            "form": "word"
+          }
+        },
+        "category_name": {
+          "value": "Računalna oprema",
+          "acceptable_categories": [
+            "Računalna oprema",
+            "Nastavna i laboratorijska oprema"
+          ],
+          "ambiguous": true,
+          "acceptable_reason_type": "codebook_tie",
+          "acceptable_reason": "P8+def.1 (radno računalo) protiv P3 (namjena u nastavi)",
+          "rule": "P8",
+          "provenance": {
+            "source": "codebook",
+            "table": "ItemCategory",
+            "document": "server/eval/category-codebook.md",
+            "sha256_16": "26ac4a44b9f3bf14"
+          },
+          "assignment": "inferred"
+        }
+      },
+      {
+        "item_name": {
+          "value": "Set alata za elektroniku (odvijači, pincete, rezači, mjerni vodovi)",
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario2_visestranicna.pdf",
+            "line": 54,
+            "quote": "Set alata za elektroniku (odvijači, pincete,"
+          }
+        },
+        "quantity": {
+          "value": 15,
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario2_visestranicna.pdf",
+            "line": 54,
+            "quote": "Set alata za elektroniku (odvijači, pincete,",
+            "form": "word"
+          }
+        },
+        "category_name": {
+          "value": "Nastavna i laboratorijska oprema",
+          "acceptable_categories": [
+            "Nastavna i laboratorijska oprema"
+          ],
+          "ambiguous": false,
+          "acceptable_reason_type": null,
+          "acceptable_reason": null,
+          "rule": "P3",
+          "provenance": {
+            "source": "codebook",
+            "table": "ItemCategory",
+            "document": "server/eval/category-codebook.md",
+            "sha256_16": "26ac4a44b9f3bf14"
+          },
+          "assignment": "inferred"
+        }
+      },
+      {
+        "item_name": {
+          "value": "Ormarić za pohranu kompleta, s bravom, 12 pretinaca",
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario2_visestranicna.pdf",
+            "line": 57,
+            "quote": "Ormarić za pohranu kompleta, s bravom,"
+          }
+        },
+        "quantity": {
+          "value": 4,
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario2_visestranicna.pdf",
+            "line": 57,
+            "quote": "Ormarić za pohranu kompleta, s bravom,",
+            "form": "word"
+          }
+        },
+        "category_name": {
+          "value": "Namještaj",
+          "acceptable_categories": [
+            "Namještaj"
+          ],
+          "ambiguous": false,
+          "acceptable_reason_type": null,
+          "acceptable_reason": null,
+          "rule": "P7",
+          "provenance": {
+            "source": "codebook",
+            "table": "ItemCategory",
+            "document": "server/eval/category-codebook.md",
+            "sha256_16": "26ac4a44b9f3bf14"
+          },
+          "assignment": "inferred"
+        }
+      },
+      {
+        "item_name": {
+          "value": "Akademska licenca IoT platforme, 200 uređaja, 12 mjeseci",
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario2_visestranicna.pdf",
+            "line": 61,
+            "quote": "Akademska licenca IoT platforme, 200"
+          }
+        },
+        "quantity": {
+          "value": 1,
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario2_visestranicna.pdf",
+            "line": 61,
+            "quote": "Akademska licenca IoT platforme, 200",
+            "form": "digit"
+          }
+        },
+        "category_name": {
+          "value": "Programska oprema i licence",
+          "acceptable_categories": [
+            "Programska oprema i licence"
+          ],
+          "ambiguous": false,
+          "acceptable_reason_type": null,
+          "acceptable_reason": null,
+          "rule": "P2",
+          "provenance": {
+            "source": "codebook",
+            "table": "ItemCategory",
+            "document": "server/eval/category-codebook.md",
+            "sha256_16": "26ac4a44b9f3bf14"
+          },
+          "assignment": "inferred"
+        }
+      },
+      {
+        "item_name": {
+          "value": "Instalacija, umrežavanje i puštanje laboratorija u rad",
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario2_visestranicna.pdf",
+            "line": 64,
+            "quote": "Instalacija, umrežavanje i puštanje"
+          }
+        },
+        "quantity": {
+          "value": 1,
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario2_visestranicna.pdf",
+            "line": 64,
+            "quote": "Instalacija, umrežavanje i puštanje",
+            "form": "word"
+          }
+        },
+        "category_name": {
+          "value": "Usluge održavanja",
+          "acceptable_categories": [
+            "Usluge održavanja"
+          ],
+          "ambiguous": false,
+          "acceptable_reason_type": null,
+          "acceptable_reason": null,
+          "rule": "P1",
+          "provenance": {
+            "source": "codebook",
+            "table": "ItemCategory",
+            "document": "server/eval/category-codebook.md",
+            "sha256_16": "26ac4a44b9f3bf14"
+          },
+          "assignment": "inferred"
+        }
+      },
+      {
+        "item_name": {
+          "value": "Izrada 10 laboratorijskih vježbi i nastavnih materijala",
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario2_visestranicna.pdf",
+            "line": 67,
+            "quote": "Izrada 10 laboratorijskih vježbi i"
+          }
+        },
+        "quantity": {
+          "value": 1,
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario2_visestranicna.pdf",
+            "line": 67,
+            "quote": "Izrada 10 laboratorijskih vježbi i",
+            "form": "digit"
+          }
+        },
+        "category_name": {
+          "value": "Usluge održavanja",
+          "acceptable_categories": [
+            "Usluge održavanja"
+          ],
+          "ambiguous": false,
+          "acceptable_reason_type": null,
+          "acceptable_reason": null,
+          "rule": "P1",
+          "provenance": {
+            "source": "codebook",
+            "table": "ItemCategory",
+            "document": "server/eval/category-codebook.md",
+            "sha256_16": "26ac4a44b9f3bf14"
+          },
+          "assignment": "inferred"
+        }
+      },
+      {
+        "item_name": {
+          "value": "Edukacija nastavnog osoblja, 3 dana, do 12 polaznika",
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario2_visestranicna.pdf",
+            "line": 70,
+            "quote": "Edukacija nastavnog osoblja, 3 dana, do 12"
+          }
+        },
+        "quantity": {
+          "value": 1,
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario2_visestranicna.pdf",
+            "line": 70,
+            "quote": "Edukacija nastavnog osoblja, 3 dana, do 12",
+            "form": "digit"
+          }
+        },
+        "category_name": {
+          "value": "Usluge održavanja",
+          "acceptable_categories": [
+            "Usluge održavanja"
+          ],
+          "ambiguous": false,
+          "acceptable_reason_type": null,
+          "acceptable_reason": null,
+          "rule": "P1",
+          "provenance": {
+            "source": "codebook",
+            "table": "ItemCategory",
+            "document": "server/eval/category-codebook.md",
+            "sha256_16": "26ac4a44b9f3bf14"
+          },
+          "assignment": "inferred"
+        }
+      },
+      {
+        "item_name": {
+          "value": "Produljeno jamstvo i tehnička podrška 36 mjeseci",
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario2_visestranicna.pdf",
+            "line": 73,
+            "quote": "Produljeno jamstvo i tehnička podrška 36"
+          }
+        },
+        "quantity": {
+          "value": 1,
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario2_visestranicna.pdf",
+            "line": 73,
+            "quote": "Produljeno jamstvo i tehnička podrška 36",
+            "form": "digit"
+          }
+        },
+        "category_name": {
+          "value": "Usluge održavanja",
+          "acceptable_categories": [
+            "Usluge održavanja"
+          ],
+          "ambiguous": false,
+          "acceptable_reason_type": null,
+          "acceptable_reason": null,
+          "rule": "P1",
+          "provenance": {
+            "source": "codebook",
+            "table": "ItemCategory",
+            "document": "server/eval/category-codebook.md",
+            "sha256_16": "26ac4a44b9f3bf14"
+          },
+          "assignment": "inferred"
+        }
+      }
+    ]
+  },
+  "notes": "23 stavke. Redak \"Akademski popust (10%)\" (-4.504,70 €) NIJE stavka — već je uračunat u konačan iznos (BASE_SYSTEM_PROMPT). Pet stavki je na drugoj stranici.",
+  "_schema": "nabava.XP eval ground truth v1",
+  "_note": "Očekivani ishod scenarija, s provenanceom po polju. Provenance je lokator u ULAZU (poruka ili prilog) plus doslovan citat — citat mora biti bajt-jednak izvoru, uključujući nedjeljive razmake. category_name NIJE dio provjere utemeljenosti (vrijednost je iz šifrarnika, ne može biti izmišljena) nego zasebne mjere točnosti dodjele.",
+  "category_codebook_sha256_16": "26ac4a44b9f3bf14"
+}

@@ -1,0 +1,664 @@
+{
+  "scenario_id": "scenario4_dvije_ponude",
+  "expected_decision": "create",
+  "expects_refusal": false,
+  "input_modality": "pdf",
+  "attachments": [
+    "scenario4_ponuda_a.pdf",
+    "scenario4_ponuda_b.pdf"
+  ],
+  "fields": {
+    "department_name": {
+      "value": "Informatička služba",
+      "provenance": {
+        "source": "turn",
+        "index": 0,
+        "quote": "Odjel: Informatička služba"
+      }
+    },
+    "total_amount": {
+      "value": 619.32,
+      "acceptable": [
+        619.32
+      ],
+      "provenance": {
+        "source": "derived",
+        "operation": "sum",
+        "from": [
+          {
+            "source": "attachment",
+            "file": "scenario4_ponuda_a.pdf",
+            "line": 42,
+            "quote": "Ukupno za uplatu | 95,32 €",
+            "value": 95.32
+          },
+          {
+            "source": "attachment",
+            "file": "scenario4_ponuda_b.pdf",
+            "line": 36,
+            "quote": "Ukupno za uplatu | 524,00 €",
+            "value": 524.0
+          }
+        ],
+        "note": "619,32 se kao broj ne pojavljuje ni u jednom ulazu — mora se izračunati."
+      }
+    },
+    "items": [
+      {
+        "item_name": {
+          "value": "Ljubičasti laserski modul, 12x45mm, 0.5mW, 650nm, linijski",
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario4_ponuda_a.pdf",
+            "line": 29,
+            "quote": "00001 | Ljubičasti laserski modul, 12x45mm, 0.5mW, 650nm, linijski [12938] | 1 | 40,00 € | 40,00 €"
+          }
+        },
+        "quantity": {
+          "value": 1,
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario4_ponuda_a.pdf",
+            "line": 29,
+            "quote": "00001 | Ljubičasti laserski modul, 12x45mm, 0.5mW, 650nm, linijski [12938] | 1 | 40,00 € | 40,00 €",
+            "form": "digit"
+          }
+        },
+        "category_name": {
+          "value": "Nastavna i laboratorijska oprema",
+          "acceptable_categories": [
+            "Nastavna i laboratorijska oprema"
+          ],
+          "ambiguous": false,
+          "acceptable_reason_type": null,
+          "acceptable_reason": null,
+          "rule": "P4",
+          "provenance": {
+            "source": "codebook",
+            "table": "ItemCategory",
+            "document": "server/eval/category-codebook.md",
+            "sha256_16": "26ac4a44b9f3bf14"
+          },
+          "assignment": "inferred"
+        }
+      },
+      {
+        "item_name": {
+          "value": "28BYJ-48 5V koračni (stepper) motor + ULN2003 motor driver",
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario4_ponuda_a.pdf",
+            "line": 30,
+            "quote": "00002 | 28BYJ-48 5V koračni (stepper) motor + ULN2003 motor driver [10167] | 2 | 4,00 € | 8,00 €"
+          }
+        },
+        "quantity": {
+          "value": 2,
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario4_ponuda_a.pdf",
+            "line": 30,
+            "quote": "00002 | 28BYJ-48 5V koračni (stepper) motor + ULN2003 motor driver [10167] | 2 | 4,00 € | 8,00 €",
+            "form": "digit"
+          }
+        },
+        "category_name": {
+          "value": "Nastavna i laboratorijska oprema",
+          "acceptable_categories": [
+            "Nastavna i laboratorijska oprema"
+          ],
+          "ambiguous": false,
+          "acceptable_reason_type": null,
+          "acceptable_reason": null,
+          "rule": "P4",
+          "provenance": {
+            "source": "codebook",
+            "table": "ItemCategory",
+            "document": "server/eval/category-codebook.md",
+            "sha256_16": "26ac4a44b9f3bf14"
+          },
+          "assignment": "inferred"
+        }
+      },
+      {
+        "item_name": {
+          "value": "STSPIN220 stepper motor driver",
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario4_ponuda_a.pdf",
+            "line": 31,
+            "quote": "00003 | STSPIN220 stepper motor driver [12939] | 2 | 1,92 € | 3,84 €"
+          }
+        },
+        "quantity": {
+          "value": 2,
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario4_ponuda_a.pdf",
+            "line": 31,
+            "quote": "00003 | STSPIN220 stepper motor driver [12939] | 2 | 1,92 € | 3,84 €",
+            "form": "digit"
+          }
+        },
+        "category_name": {
+          "value": "Nastavna i laboratorijska oprema",
+          "acceptable_categories": [
+            "Nastavna i laboratorijska oprema"
+          ],
+          "ambiguous": false,
+          "acceptable_reason_type": null,
+          "acceptable_reason": null,
+          "rule": "P4",
+          "provenance": {
+            "source": "codebook",
+            "table": "ItemCategory",
+            "document": "server/eval/category-codebook.md",
+            "sha256_16": "26ac4a44b9f3bf14"
+          },
+          "assignment": "inferred"
+        }
+      },
+      {
+        "item_name": {
+          "value": "TPS6216DSG regulator napona",
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario4_ponuda_a.pdf",
+            "line": 32,
+            "quote": "00004 | TPS6216DSG regulator napona [12940] | 1 | 2,20 € | 2,20 €"
+          }
+        },
+        "quantity": {
+          "value": 1,
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario4_ponuda_a.pdf",
+            "line": 32,
+            "quote": "00004 | TPS6216DSG regulator napona [12940] | 1 | 2,20 € | 2,20 €",
+            "form": "digit"
+          }
+        },
+        "category_name": {
+          "value": "Nastavna i laboratorijska oprema",
+          "acceptable_categories": [
+            "Nastavna i laboratorijska oprema"
+          ],
+          "ambiguous": false,
+          "acceptable_reason_type": null,
+          "acceptable_reason": null,
+          "rule": "P4",
+          "provenance": {
+            "source": "codebook",
+            "table": "ItemCategory",
+            "document": "server/eval/category-codebook.md",
+            "sha256_16": "26ac4a44b9f3bf14"
+          },
+          "assignment": "inferred"
+        }
+      },
+      {
+        "item_name": {
+          "value": "QRE1113 fototranzistor",
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario4_ponuda_a.pdf",
+            "line": 33,
+            "quote": "00005 | QRE1113 fototranzistor [12941] | 2 | 0,72 € | 1,44 €"
+          }
+        },
+        "quantity": {
+          "value": 2,
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario4_ponuda_a.pdf",
+            "line": 33,
+            "quote": "00005 | QRE1113 fototranzistor [12941] | 2 | 0,72 € | 1,44 €",
+            "form": "digit"
+          }
+        },
+        "category_name": {
+          "value": "Nastavna i laboratorijska oprema",
+          "acceptable_categories": [
+            "Nastavna i laboratorijska oprema"
+          ],
+          "ambiguous": false,
+          "acceptable_reason_type": null,
+          "acceptable_reason": null,
+          "rule": "P4",
+          "provenance": {
+            "source": "codebook",
+            "table": "ItemCategory",
+            "document": "server/eval/category-codebook.md",
+            "sha256_16": "26ac4a44b9f3bf14"
+          },
+          "assignment": "inferred"
+        }
+      },
+      {
+        "item_name": {
+          "value": "NTR4501NT1G MOSFETs 20V 3.2A N-Channel",
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario4_ponuda_a.pdf",
+            "line": 34,
+            "quote": "00006 | NTR4501NT1G MOSFETs 20V 3.2A N-Channel [12942] | 1 | 0,50 € | 0,50 €"
+          }
+        },
+        "quantity": {
+          "value": 1,
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario4_ponuda_a.pdf",
+            "line": 34,
+            "quote": "00006 | NTR4501NT1G MOSFETs 20V 3.2A N-Channel [12942] | 1 | 0,50 € | 0,50 €",
+            "form": "digit"
+          }
+        },
+        "category_name": {
+          "value": "Nastavna i laboratorijska oprema",
+          "acceptable_categories": [
+            "Nastavna i laboratorijska oprema"
+          ],
+          "ambiguous": false,
+          "acceptable_reason_type": null,
+          "acceptable_reason": null,
+          "rule": "P4",
+          "provenance": {
+            "source": "codebook",
+            "table": "ItemCategory",
+            "document": "server/eval/category-codebook.md",
+            "sha256_16": "26ac4a44b9f3bf14"
+          },
+          "assignment": "inferred"
+        }
+      },
+      {
+        "item_name": {
+          "value": "EVPAA602W SMD taktilni prekidač",
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario4_ponuda_a.pdf",
+            "line": 35,
+            "quote": "00007 | EVPAA602W SMD taktilni prekidač [12943] | 2 | 0,88 € | 1,76 €"
+          }
+        },
+        "quantity": {
+          "value": 2,
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario4_ponuda_a.pdf",
+            "line": 35,
+            "quote": "00007 | EVPAA602W SMD taktilni prekidač [12943] | 2 | 0,88 € | 1,76 €",
+            "form": "digit"
+          }
+        },
+        "category_name": {
+          "value": "Nastavna i laboratorijska oprema",
+          "acceptable_categories": [
+            "Nastavna i laboratorijska oprema"
+          ],
+          "ambiguous": false,
+          "acceptable_reason_type": null,
+          "acceptable_reason": null,
+          "rule": "P4",
+          "provenance": {
+            "source": "codebook",
+            "table": "ItemCategory",
+            "document": "server/eval/category-codebook.md",
+            "sha256_16": "26ac4a44b9f3bf14"
+          },
+          "assignment": "inferred"
+        }
+      },
+      {
+        "item_name": {
+          "value": "EEEHBH220UAP elektrolitski kondenzator",
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario4_ponuda_a.pdf",
+            "line": 36,
+            "quote": "00008 | EEEHBH220UAP elektrolitski kondenzator [12944] | 2 | 0,68 € | 1,36 €"
+          }
+        },
+        "quantity": {
+          "value": 2,
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario4_ponuda_a.pdf",
+            "line": 36,
+            "quote": "00008 | EEEHBH220UAP elektrolitski kondenzator [12944] | 2 | 0,68 € | 1,36 €",
+            "form": "digit"
+          }
+        },
+        "category_name": {
+          "value": "Nastavna i laboratorijska oprema",
+          "acceptable_categories": [
+            "Nastavna i laboratorijska oprema"
+          ],
+          "ambiguous": false,
+          "acceptable_reason_type": null,
+          "acceptable_reason": null,
+          "rule": "P4",
+          "provenance": {
+            "source": "codebook",
+            "table": "ItemCategory",
+            "document": "server/eval/category-codebook.md",
+            "sha256_16": "26ac4a44b9f3bf14"
+          },
+          "assignment": "inferred"
+        }
+      },
+      {
+        "item_name": {
+          "value": "Mikrofon MAX9814",
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario4_ponuda_a.pdf",
+            "line": 37,
+            "quote": "00009 | Mikrofon MAX9814 [12945] | 1 | 9,80 € | 9,80 €"
+          }
+        },
+        "quantity": {
+          "value": 1,
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario4_ponuda_a.pdf",
+            "line": 37,
+            "quote": "00009 | Mikrofon MAX9814 [12945] | 1 | 9,80 € | 9,80 €",
+            "form": "digit"
+          }
+        },
+        "category_name": {
+          "value": "Nastavna i laboratorijska oprema",
+          "acceptable_categories": [
+            "Nastavna i laboratorijska oprema"
+          ],
+          "ambiguous": false,
+          "acceptable_reason_type": null,
+          "acceptable_reason": null,
+          "rule": "P4",
+          "provenance": {
+            "source": "codebook",
+            "table": "ItemCategory",
+            "document": "server/eval/category-codebook.md",
+            "sha256_16": "26ac4a44b9f3bf14"
+          },
+          "assignment": "inferred"
+        }
+      },
+      {
+        "item_name": {
+          "value": "Li-ion baterija 1200mAh 3.7V",
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario4_ponuda_a.pdf",
+            "line": 38,
+            "quote": "00010 | Li-ion baterija 1200mAh 3.7V [12003] | 1 | 6,00 € | 6,00 €"
+          }
+        },
+        "quantity": {
+          "value": 1,
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario4_ponuda_a.pdf",
+            "line": 38,
+            "quote": "00010 | Li-ion baterija 1200mAh 3.7V [12003] | 1 | 6,00 € | 6,00 €",
+            "form": "digit"
+          }
+        },
+        "category_name": {
+          "value": "Nastavna i laboratorijska oprema",
+          "acceptable_categories": [
+            "Nastavna i laboratorijska oprema",
+            "Uredski materijal"
+          ],
+          "ambiguous": true,
+          "acceptable_reason_type": "codebook_tie",
+          "acceptable_reason": "P4 (elektronička komponenta) protiv def.3+P10 (roba koja se troši)",
+          "rule": "P4",
+          "provenance": {
+            "source": "codebook",
+            "table": "ItemCategory",
+            "document": "server/eval/category-codebook.md",
+            "sha256_16": "26ac4a44b9f3bf14"
+          },
+          "assignment": "inferred"
+        }
+      },
+      {
+        "item_name": {
+          "value": "MOSFETs N-Ch 30V 50A DPAK-2 OptiMOS-T2",
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario4_ponuda_a.pdf",
+            "line": 39,
+            "quote": "00011 | MOSFETs N-Ch 30V 50A DPAK-2 OptiMOS-T2 [12946] | 1 | 1,36 € | 1,36 €"
+          }
+        },
+        "quantity": {
+          "value": 1,
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario4_ponuda_a.pdf",
+            "line": 39,
+            "quote": "00011 | MOSFETs N-Ch 30V 50A DPAK-2 OptiMOS-T2 [12946] | 1 | 1,36 € | 1,36 €",
+            "form": "digit"
+          }
+        },
+        "category_name": {
+          "value": "Nastavna i laboratorijska oprema",
+          "acceptable_categories": [
+            "Nastavna i laboratorijska oprema"
+          ],
+          "ambiguous": false,
+          "acceptable_reason_type": null,
+          "acceptable_reason": null,
+          "rule": "P4",
+          "provenance": {
+            "source": "codebook",
+            "table": "ItemCategory",
+            "document": "server/eval/category-codebook.md",
+            "sha256_16": "26ac4a44b9f3bf14"
+          },
+          "assignment": "inferred"
+        }
+      },
+      {
+        "item_name": {
+          "value": "MindWave Mobile 2: Brainwave Starter Kit",
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario4_ponuda_b.pdf",
+            "line": 29,
+            "quote": "00001 | MindWave Mobile 2: Brainwave Starter Kit [12935] | 2 | 152,00 € | 304,00 €"
+          }
+        },
+        "quantity": {
+          "value": 2,
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario4_ponuda_b.pdf",
+            "line": 29,
+            "quote": "00001 | MindWave Mobile 2: Brainwave Starter Kit [12935] | 2 | 152,00 € | 304,00 €",
+            "form": "digit"
+          }
+        },
+        "category_name": {
+          "value": "Nastavna i laboratorijska oprema",
+          "acceptable_categories": [
+            "Nastavna i laboratorijska oprema"
+          ],
+          "ambiguous": false,
+          "acceptable_reason_type": null,
+          "acceptable_reason": null,
+          "rule": "P4",
+          "provenance": {
+            "source": "codebook",
+            "table": "ItemCategory",
+            "document": "server/eval/category-codebook.md",
+            "sha256_16": "26ac4a44b9f3bf14"
+          },
+          "assignment": "inferred"
+        }
+      },
+      {
+        "item_name": {
+          "value": "Carrera GO DTM set",
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario4_ponuda_b.pdf",
+            "line": 30,
+            "quote": "00002 | Carrera GO DTM set [12936] | 1 | 103,20 € | 103,20 €"
+          }
+        },
+        "quantity": {
+          "value": 1,
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario4_ponuda_b.pdf",
+            "line": 30,
+            "quote": "00002 | Carrera GO DTM set [12936] | 1 | 103,20 € | 103,20 €",
+            "form": "digit"
+          }
+        },
+        "category_name": {
+          "value": "Nastavna i laboratorijska oprema",
+          "acceptable_categories": [
+            "Nastavna i laboratorijska oprema"
+          ],
+          "ambiguous": false,
+          "acceptable_reason_type": null,
+          "acceptable_reason": null,
+          "rule": "P8",
+          "provenance": {
+            "source": "codebook",
+            "table": "ItemCategory",
+            "document": "server/eval/category-codebook.md",
+            "sha256_16": "26ac4a44b9f3bf14"
+          },
+          "assignment": "inferred"
+        }
+      },
+      {
+        "item_name": {
+          "value": "Gravity: MOSFET kontroler 5-36V/20A",
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario4_ponuda_b.pdf",
+            "line": 31,
+            "quote": "00003 | Gravity: MOSFET kontroler 5-36V/20A [12937] | 1 | 4,40 € | 4,40 €"
+          }
+        },
+        "quantity": {
+          "value": 1,
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario4_ponuda_b.pdf",
+            "line": 31,
+            "quote": "00003 | Gravity: MOSFET kontroler 5-36V/20A [12937] | 1 | 4,40 € | 4,40 €",
+            "form": "digit"
+          }
+        },
+        "category_name": {
+          "value": "Nastavna i laboratorijska oprema",
+          "acceptable_categories": [
+            "Nastavna i laboratorijska oprema"
+          ],
+          "ambiguous": false,
+          "acceptable_reason_type": null,
+          "acceptable_reason": null,
+          "rule": "P4",
+          "provenance": {
+            "source": "codebook",
+            "table": "ItemCategory",
+            "document": "server/eval/category-codebook.md",
+            "sha256_16": "26ac4a44b9f3bf14"
+          },
+          "assignment": "inferred"
+        }
+      },
+      {
+        "item_name": {
+          "value": "GP ULTRA+ 4xAA alkalne baterije",
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario4_ponuda_b.pdf",
+            "line": 32,
+            "quote": "00004 | GP ULTRA+ 4xAA alkalne baterije [12801] | 2 | 2,32 € | 4,64 €"
+          }
+        },
+        "quantity": {
+          "value": 2,
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario4_ponuda_b.pdf",
+            "line": 32,
+            "quote": "00004 | GP ULTRA+ 4xAA alkalne baterije [12801] | 2 | 2,32 € | 4,64 €",
+            "form": "digit"
+          }
+        },
+        "category_name": {
+          "value": "Nastavna i laboratorijska oprema",
+          "acceptable_categories": [
+            "Nastavna i laboratorijska oprema",
+            "Uredski materijal"
+          ],
+          "ambiguous": true,
+          "acceptable_reason_type": "codebook_tie",
+          "acceptable_reason": "P4 (elektronička komponenta) protiv def.3+P10 (roba koja se troši)",
+          "rule": "P4",
+          "provenance": {
+            "source": "codebook",
+            "table": "ItemCategory",
+            "document": "server/eval/category-codebook.md",
+            "sha256_16": "26ac4a44b9f3bf14"
+          },
+          "assignment": "inferred"
+        }
+      },
+      {
+        "item_name": {
+          "value": "GP ULTRA+ 4xAAA alkalne baterije",
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario4_ponuda_b.pdf",
+            "line": 33,
+            "quote": "00005 | GP ULTRA+ 4xAAA alkalne baterije [12802] | 1 | 2,96 € | 2,96 €"
+          }
+        },
+        "quantity": {
+          "value": 1,
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario4_ponuda_b.pdf",
+            "line": 33,
+            "quote": "00005 | GP ULTRA+ 4xAAA alkalne baterije [12802] | 1 | 2,96 € | 2,96 €",
+            "form": "digit"
+          }
+        },
+        "category_name": {
+          "value": "Nastavna i laboratorijska oprema",
+          "acceptable_categories": [
+            "Nastavna i laboratorijska oprema",
+            "Uredski materijal"
+          ],
+          "ambiguous": true,
+          "acceptable_reason_type": "codebook_tie",
+          "acceptable_reason": "P4 (elektronička komponenta) protiv def.3+P10 (roba koja se troši)",
+          "rule": "P4",
+          "provenance": {
+            "source": "codebook",
+            "table": "ItemCategory",
+            "document": "server/eval/category-codebook.md",
+            "sha256_16": "26ac4a44b9f3bf14"
+          },
+          "assignment": "inferred"
+        }
+      }
+    ]
+  },
+  "notes": "11 stavki iz ponude A + 5 iz ponude B = 16. Iznos je ZBROJ obiju: 95,32 € + 524,00 € = 619,32 €. Svaka ponuda pridonosi svojim stavkama, bez spajanja.\nPonude su NADOPUNJUJUĆE: isti dobavljač (Mikrotron d.o.o.), različiti projekti (\"Laser Light Show\" i \"Mind Racer\"), pa je zbrajanje poslovno ispravno i usklađeno s BASE_SYSTEM_PROMPT-om. Slučaj KONKURENTSKIH ponuda — iste stavke od različitih dobavljača, gdje agent treba nabrojiti opcije i pustiti korisnika da bira — je DRUGI scenarij, za koji trenutno nema dokumenta. (kriterij_bodovanja.md opisuje taj drugi slučaj pod starom numeracijom; ne odnosi se na ovaj scenarij.)",
+  "_schema": "nabava.XP eval ground truth v1",
+  "_note": "Očekivani ishod scenarija, s provenanceom po polju. Provenance je lokator u ULAZU (poruka ili prilog) plus doslovan citat — citat mora biti bajt-jednak izvoru, uključujući nedjeljive razmake. category_name NIJE dio provjere utemeljenosti (vrijednost je iz šifrarnika, ne može biti izmišljena) nego zasebne mjere točnosti dodjele.",
+  "category_codebook_sha256_16": "26ac4a44b9f3bf14"
+}

@@ -13,6 +13,7 @@
 // provjerava tek ovdje, u trenutku stvarnog poziva.
 
 const { getSetting, SETTING_KEYS } = require('../../config/appSettings');
+const { getSamplingConfig } = require('./samplingConfig');
 
 const GEMINI_API_BASE = 'https://generativelanguage.googleapis.com/v1beta';
 
@@ -104,6 +105,8 @@ function toGeminiContents(messages) {
 /** Geminin candidates[0].content.parts -> kanonski { text, tool_calls, usage }. */
 function parseResponse(data) {
   const parts = data?.candidates?.[0]?.content?.parts || [];
+  // MAX_TOKENS znači odrezan odgovor — isti razlog kao done_reason kod Ollame.
+  const finishReason = data?.candidates?.[0]?.finishReason ?? null;
 
   const text = parts
     .filter((p) => typeof p.text === 'string')
@@ -133,7 +136,7 @@ function parseResponse(data) {
     completionTokens: data?.usageMetadata?.candidatesTokenCount ?? null,
   };
 
-  return { text, tool_calls, usage };
+  return { text, tool_calls, usage, finishReason };
 }
 
 async function chat(messages, tools = []) {
@@ -153,8 +156,19 @@ async function chat(messages, tools = []) {
     .map((m) => m.content)
     .join('\n');
 
+  // Isti parametri uzorkovanja kao Ollama (llm/samplingConfig.js). Do sad
+  // generationConfig nije slan uopće, pa je Gemini vrtio na svojim zadanim
+  // vrijednostima dok je lokalni model vrtio na svojima — dvije nezapisane i
+  // različite konfiguracije. Gemini API nema seed, pa se on NE šalje i u
+  // metapodacima se ne prijavljuje kao primijenjen (PROVIDER_SUPPORT).
+  const sampling = getSamplingConfig();
   const body = {
     contents: toGeminiContents(messages),
+    generationConfig: {
+      temperature: sampling.temperature,
+      topP: sampling.top_p,
+      maxOutputTokens: sampling.max_output_tokens,
+    },
     ...(systemText ? { system_instruction: { parts: [{ text: systemText }] } } : {}),
     ...(tools.length > 0 ? { tools: toGeminiTools(tools) } : {}),
   };
@@ -223,6 +237,10 @@ async function chat(messages, tools = []) {
   return {
     ...parseResponse(data),
     latencyMs: elapsedMs - waitedMs,
+    // Verzija modela kakvu prijavljuje SAM ODGOVOR, ne konfiguracija. Endpoint
+    // iza istog imena ("gemini-3.5-flash") zna se tiho promijeniti, pa je za
+    // obranjivost mjerenja bitno što je stvarno odgovorilo, a ne što smo tražili.
+    ...(data?.modelVersion ? { modelVersion: data.modelVersion } : {}),
     ...(waitedMs > 0 ? { rateLimitWaitMs: waitedMs } : {}),
   };
 }

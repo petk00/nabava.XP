@@ -18,10 +18,12 @@
 // dalje zove izravno, bez ikakve provjere.
 
 const db = require('../config/db');
+const crypto = require('node:crypto');
 const { getActiveProvider } = require('./llm/providerSelector');
 const { createRequest, proposeRequest, RequestValidationError } = require('./requestService');
 const { fixEkavica } = require('./croatianTextFixer');
 const { putAttachments, getAttachments, dropAttachments } = require('./assistantAttachmentStore');
+const { getPromptVariant, categoryDefinitionsBlock } = require('./promptVariant');
 
 const MAX_ITERATIONS = 6;
 
@@ -232,6 +234,10 @@ kreirao niti izmišljaj njegov broj — ako korisnik traži kreiranje, reci mu d
 prebaciti model asistenta na onaj koji podržava alate (gemma4:12b) ili na Gemini.`;
 
 function buildSystemPrompt({ fiscalYear, departments, categories }, { toolsSupported = true } = {}) {
+  // Uvjet `with_definitions` umeće definicije kategorija iz zamrznutog
+  // codebooka; `names_only` je zatečeno stanje i ne mijenja ništa.
+  // Vidi services/promptVariant.js i docs/mjerni-plan.md §3.
+  const definitions = categoryDefinitionsBlock(getPromptVariant());
   if (!toolsSupported) {
     // Ide PRIJE provjere poslovne godine: bez alata je nemogućnost kreiranja
     // ista i kad godina postoji, a kontekst odjela/kategorija modelu i dalje
@@ -257,7 +263,7 @@ Odjeli:
 ${deptList}
 
 Kategorije artikala:
-${catList}`;
+${catList}${definitions.text}`;
 }
 
 /**
@@ -505,6 +511,18 @@ async function runAssistantChat({ messages, userId, attachments = [] }) {
   const capabilities = provider.getCapabilities ? await provider.getCapabilities() : { supportsTools: true };
   const toolsSupported = capabilities.supportsTools !== false;
   const systemPrompt = buildSystemPrompt(referenceContext, { toolsSupported });
+  // Sustavni prompt NIJE konstanta runa: popis kategorija dolazi iz baze, a
+  // uputa o prilogu se dodaje uvjetno. Zato se uz svaki odgovor vraća hash
+  // (jeftino, po pokušaju) — puni tekst samo kad ga pozivatelj izričito traži,
+  // da se 3 kB ne vuče kroz svaki razgovor. Vidi docs/mjerni-plan.md.
+  const promptVariant = getPromptVariant();
+  const promptMeta = {
+    prompt_variant: promptVariant,
+    system_prompt_hash: crypto.createHash('sha256').update(systemPrompt, 'utf8').digest('hex').slice(0, 16),
+    category_codebook_sha256: categoryDefinitionsBlock(promptVariant).codebookSha256,
+    codebook_excerpt_sha256: categoryDefinitionsBlock(promptVariant).codebookExcerptSha256,
+    system_prompt: systemPrompt,
+  };
   const tools = referenceContext.fiscalYear && toolsSupported ? [CREATE_REQUEST_TOOL, PROPOSE_REQUEST_TOOL] : [];
   const attachmentInvolved = conversationInvolvesAttachment(messages, attachments);
 
@@ -562,17 +580,55 @@ async function runAssistantChat({ messages, userId, attachments = [] }) {
   // ekstrakcija i upis u bazu — bez ovoga se ne može reći koliko od te brojke
   // otpada na sam model, što je nužno za poštenu usporedbu lokalnog i cloud
   // providera (docs/AI.md, RQ2).
-  const usage = { promptTokens: 0, completionTokens: 0, modelLatencyMs: 0, modelCalls: 0 };
+  // modelCallLatenciesMs: trajanje SVAKOG pojedinog poziva, ne samo zbroj —
+  // bez toga se iz zapisa ne vidi je li scenarij spor zbog jednog dugog poziva
+  // ili zbog mnogo kratkih, pa se ne može računati medijan/p95 po pozivu.
+  // modelVersion: verzija koju prijavljuje sam odgovor (Gemini); zadnja
+  // viđena vrijednost, jer se unutar jednog poteza ne bi smjela mijenjati —
+  // ako se ipak promijeni, to je nalaz i vidi se u modelVersionsSeen.
+  const usage = {
+    promptTokens: 0,
+    completionTokens: 0,
+    modelLatencyMs: 0,
+    modelCalls: 0,
+    modelCallLatenciesMs: [],
+    rateLimitWaitMs: 0,
+    modelVersion: null,
+    modelVersionsSeen: [],
+    // Razlozi završetka po pozivu. "length"/"MAX_TOKENS" znači odrezan odgovor
+    // — to je artefakt mjerne postavke (max_output_tokens), ne svojstvo modela,
+    // pa harness na njega mora glasno upozoriti umjesto da ga tiho boduje.
+    finishReasons: [],
+    truncated: false,
+  };
   const addUsage = (u) => {
     usage.promptTokens += u?.promptTokens || 0;
     usage.completionTokens += u?.completionTokens || 0;
     usage.modelLatencyMs += u?.latencyMs || 0;
     usage.modelCalls += 1;
+    usage.modelCallLatenciesMs.push(u?.latencyMs ?? null);
+    usage.finishReasons.push(u?.finishReason ?? null);
+    if (u?.finishReason === 'length' || u?.finishReason === 'MAX_TOKENS') {
+      usage.truncated = true;
+    }
+    usage.rateLimitWaitMs += u?.rateLimitWaitMs || 0;
+    if (u?.modelVersion) {
+      usage.modelVersion = u.modelVersion;
+      if (!usage.modelVersionsSeen.includes(u.modelVersion)) {
+        usage.modelVersionsSeen.push(u.modelVersion);
+      }
+    }
   };
 
   for (let iteration = 0; iteration < MAX_ITERATIONS; iteration++) {
     const result = await provider.chat(convo, tools);
-    addUsage({ ...result.usage, latencyMs: result.latencyMs });
+    addUsage({
+      ...result.usage,
+      latencyMs: result.latencyMs,
+      rateLimitWaitMs: result.rateLimitWaitMs,
+      modelVersion: result.modelVersion,
+      finishReason: result.finishReason,
+    });
 
     if (!result.tool_calls || result.tool_calls.length === 0) {
       if (result.text && result.text.trim()) {
@@ -580,6 +636,7 @@ async function runAssistantChat({ messages, userId, attachments = [] }) {
           text: guardFalseCreationClaim(fixEkavica(result.text), createdRequest),
           created_request: createdRequest,
           tool_trace: toolTrace,
+          prompt_meta: promptMeta,
           usage,
         };
       }
@@ -590,6 +647,7 @@ async function runAssistantChat({ messages, userId, attachments = [] }) {
         text: 'Model nije uspio dovršiti odgovor. Pokušajte ponovno ili preformulirajte poruku.',
         created_request: createdRequest,
         tool_trace: toolTrace,
+        prompt_meta: promptMeta,
         usage,
       };
     }
@@ -730,7 +788,13 @@ async function runAssistantChat({ messages, userId, attachments = [] }) {
     // u njemu namjerno ignoriramo.
     if (awaitingUserConfirmation) {
       const closing = await provider.chat(convo, tools);
-      addUsage({ ...closing.usage, latencyMs: closing.latencyMs });
+      addUsage({
+        ...closing.usage,
+        latencyMs: closing.latencyMs,
+        rateLimitWaitMs: closing.rateLimitWaitMs,
+        modelVersion: closing.modelVersion,
+        finishReason: closing.finishReason,
+      });
       const closingText = closing.text && closing.text.trim()
         ? closing.text
         : 'Prijedlog zahtjeva je pripremljen, ali ga nisam uspio sažeti. Potvrdite kreiranje ili ponovite podatke.';
@@ -738,6 +802,7 @@ async function runAssistantChat({ messages, userId, attachments = [] }) {
         text: guardFalseCreationClaim(fixEkavica(closingText), createdRequest),
         created_request: createdRequest,
         tool_trace: toolTrace,
+        prompt_meta: promptMeta,
         usage,
       };
     }
@@ -748,6 +813,7 @@ async function runAssistantChat({ messages, userId, attachments = [] }) {
       'unesite podatke izravno kroz obrazac za novi zahtjev.',
     created_request: createdRequest,
     tool_trace: toolTrace,
+    prompt_meta: promptMeta,
     usage,
   };
 }

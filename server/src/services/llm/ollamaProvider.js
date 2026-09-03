@@ -11,6 +11,7 @@ const http = require('node:http');
 const https = require('node:https');
 const { getSetting, SETTING_KEYS } = require('../../config/appSettings');
 const { OLLAMA_MODELS, DEFAULT_OLLAMA_MODEL } = require('./ollamaModels');
+const { getSamplingConfig } = require('./samplingConfig');
 
 // Ollamin runtime default num_ctx (obično 2048-4096) je premalen za ovaj
 // slučaj — referentni kontekst (odjeli/kategorije) + tekst priložene ponude
@@ -210,12 +211,23 @@ async function chat(messages, tools = []) {
   const baseUrl = process.env.OLLAMA_BASE_URL || 'http://localhost:11434';
   const model = await getActiveModel();
 
+  // Parametri uzorkovanja dolaze iz zajedničkog modula (llm/samplingConfig.js),
+  // isti za oba pružatelja. Do sad je ovdje stajao samo num_ctx, pa je model
+  // vrtio na Modelfile defaultu (temperature 1, top_k 64, top_p 0.95) — što
+  // znači da je svako dosadašnje mjerenje uspoređivalo i postavku, ne samo model.
+  const sampling = getSamplingConfig();
   const body = {
     model: model.value,
     messages: toOllamaMessages(messages),
     stream: false,
     keep_alive: OLLAMA_KEEP_ALIVE,
-    options: { num_ctx: OLLAMA_NUM_CTX },
+    options: {
+      num_ctx: OLLAMA_NUM_CTX,
+      temperature: sampling.temperature,
+      top_p: sampling.top_p,
+      num_predict: sampling.max_output_tokens,
+      seed: sampling.seed,
+    },
   };
   // `think` je NAMJERNO po modelu (llm/ollamaModels.js), ne globalno: kod
   // gemma4:e4b isključivanje razmišljanja ubija pozivanje alata, a kod
@@ -260,6 +272,10 @@ async function chat(messages, tools = []) {
     text: data?.message?.content || null,
     tool_calls: normalizeToolCalls(data?.message?.tool_calls),
     latencyMs: Number((process.hrtime.bigint() - startedAt) / 1000000n),
+    // Zašto je generacija stala. "length" znači da je odgovor ODREZAN na
+    // num_predict — bodovanje bi to zabilježilo kao grešku modela, iako je
+    // artefakt mjerne postavke. Vidi docs/mjerni-plan.md.
+    finishReason: data?.done_reason ?? null,
     // prompt_eval_count/eval_count su Ollamin naziv za prompt/completion
     // tokene (docs.ollama.ai/api) — koristi se za RQ1/RQ2 eval harness
     // (docs/AI.md, evalHarness.js), ne izravno u chat odgovoru korisniku.
@@ -270,4 +286,4 @@ async function chat(messages, tools = []) {
   };
 }
 
-module.exports = { chat, getCapabilities };
+module.exports = { chat, getCapabilities, OLLAMA_NUM_CTX, OLLAMA_KEEP_ALIVE };
