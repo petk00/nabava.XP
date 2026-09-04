@@ -205,6 +205,11 @@
               <q-icon name="list" size="15px" />
               <span>Stavke</span>
               <span class="count-pill">{{ items.length }}</span>
+              <!-- AI analiza stavki: zasad samo gumb, akcija se dodaje naknadno. -->
+              <button type="button" class="ai-items-btn" aria-label="AI analiza stavki">
+                <q-icon name="auto_awesome" size="14px" />
+                <span>AI</span>
+              </button>
             </span>
           </div>
           <div class="card__body card__body--flush">
@@ -1062,6 +1067,33 @@ onMounted(() => { currentUser.value = getStoredUser(); fetchRequestDetails(); })
 .accordion-header .card__title .q-icon {
   color: #16294E;
 }
+/* AI gumb uz naslov Stavke — .q-icon boju mora pregaziti pravilo
+   `.section-header .card__title .q-icon` (ista specificnost, dolazi ranije). */
+.ai-items-btn {
+  all: unset;
+  box-sizing: border-box;
+  display: inline-flex; align-items: center; gap: 4px;
+  height: 20px; padding: 0 8px;
+  border: 1px solid rgba(0, 175, 219, 0.35);
+  border-radius: 9999px;
+  background: rgba(0, 175, 219, 0.08);
+  color: #0e7490;
+  font-size: 0.6875rem; font-weight: 700;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s, color 0.12s;
+}
+.section-header .ai-items-btn .q-icon { color: inherit; }
+.ai-items-btn:hover {
+  background: rgba(0, 175, 219, 0.18);
+  border-color: #00afdb;
+  color: #0369a1;
+}
+.ai-items-btn:focus-visible {
+  outline: 2px solid #00afdb;
+  outline-offset: 2px;
+}
+
 .count-pill {
   display: inline-flex; align-items: center; justify-content: center;
   min-width: 20px; height: 20px; padding: 0 6px;

@@ -11,89 +11,6 @@
         </div>
       </header>
 
-      <!-- Ask bar -->
-      <div class="ask-bar">
-        <label class="ask-bar__icon-btn" aria-label="Dodaj prilog">
-          <q-icon name="add" size="20px" />
-          <q-file
-            v-model="fileInputModel"
-            multiple
-            accept=".pdf,image/*"
-            style="display:none"
-            @update:model-value="onFilePicked"
-          />
-        </label>
-        <input
-          v-model="askInput"
-          type="text"
-          class="ask-bar__input"
-          placeholder="Pitajte nabava.XP asistenta..."
-          @keyup.enter="submitAsk"
-        />
-        <div class="ask-bar__right">
-          <button v-if="isAssistantAdmin" type="button" class="ask-bar__model">
-            {{ providerLabel }}
-            <q-icon name="expand_more" size="16px" />
-            <q-menu>
-              <q-list style="min-width: 260px">
-                <!-- Lokalni modeli: klik bira model I prebacuje na Ollamu -->
-                <q-item-label header class="ask-bar__menu-header">Ollama (lokalno)</q-item-label>
-                <q-item
-                  v-for="model in ollamaModels"
-                  :key="model.value"
-                  clickable
-                  v-close-popup
-                  @click="changeOllamaModel(model.value)"
-                >
-                  <q-item-section>
-                    <q-item-label>{{ model.label }}</q-item-label>
-                    <q-item-label v-if="model.supportsTools === false" caption>
-                      Bez alata — ne može kreirati zahtjev
-                    </q-item-label>
-                  </q-item-section>
-                  <q-item-section v-if="isOllamaActive && model.value === currentOllamaModel" side>
-                    <q-icon name="check" color="primary" size="16px" />
-                  </q-item-section>
-                </q-item>
-
-                <q-separator class="q-my-xs" />
-
-                <!-- Ostali provideri (Gemini) — model im se ne bira ovdje -->
-                <q-item
-                  v-for="opt in otherProviderOptions"
-                  :key="opt.value"
-                  clickable
-                  v-close-popup
-                  @click="changeProvider(opt.value)"
-                >
-                  <q-item-section>{{ opt.label }}</q-item-section>
-                  <q-item-section v-if="opt.value === currentProvider" side>
-                    <q-icon name="check" color="primary" size="16px" />
-                  </q-item-section>
-                </q-item>
-              </q-list>
-            </q-menu>
-          </button>
-          <button type="button" class="ask-bar__icon-btn" aria-label="Govorna naredba">
-            <q-icon name="mic" size="18px" />
-          </button>
-        </div>
-      </div>
-
-      <div v-if="pendingFiles.length > 0 && !askOpen" class="pending-file-chip-row">
-        <div
-          v-for="(file, idx) in pendingFiles"
-          :key="file.name + idx"
-          class="pending-file-chip"
-        >
-          <q-icon name="attach_file" size="14px" />
-          <span class="pending-file-chip__name">{{ file.name }}</span>
-          <button type="button" aria-label="Ukloni prilog" @click="removeAttachedFile(idx)">
-            <q-icon name="close" size="14px" />
-          </button>
-        </div>
-      </div>
-
       <div v-if="loading" class="loading-block">
         <q-spinner color="primary" size="28px" />
       </div>
@@ -114,6 +31,33 @@
               </div>
             </div>
           </button>
+
+          <!-- AI uvidi: zasad samo vizualni placeholder, bez stvarne analize. -->
+          <section class="ai-card">
+            <div class="ai-card__rule" aria-hidden="true"></div>
+
+            <div class="ai-card__main">
+              <div class="ai-card__label">Asistent nabave</div>
+              <h2 class="ai-card__title">Pitajte, ne tražite</h2>
+              <p class="ai-card__sub">
+                Umjesto filtriranja tablice, opišite što vas zanima. Asistent čita zahtjeve,
+                priložene ponude i otpremnice te odgovara s brojevima zahtjeva.
+              </p>
+
+              <div class="ai-card__prompts">
+                <div
+                  v-for="prompt in aiPrompts"
+                  :key="prompt"
+                  class="ai-prompt"
+                >
+                  <span class="ai-prompt__caret">&rsaquo;</span>
+                  {{ prompt }}
+                </div>
+              </div>
+            </div>
+
+            <div class="ai-card__glyph" aria-hidden="true"></div>
+          </section>
 
           <!-- Nedavni zahtjevi -->
           <div class="requests-section">
@@ -169,81 +113,6 @@
 
     </div>
 
-    <!-- Assistant overlay -->
-    <div v-if="askOpen" class="assistant-overlay" @dragover.prevent @drop.prevent="handleDrop">
-      <div class="assistant-overlay__header">
-        <span class="assistant-overlay__title">
-          <q-icon name="auto_awesome" size="18px" />
-          Asistent
-        </span>
-        <button type="button" class="assistant-overlay__close" aria-label="Zatvori" @click="closeAssistant">
-          <q-icon name="close" size="20px" />
-        </button>
-      </div>
-
-      <!-- Vidljivo samo administratoru koji je odabrao lokalni model bez
-           function-callinga — inače bi izostanak kreiranja zahtjeva izgledao
-           kao kvar asistenta. -->
-      <div v-if="ollamaModelWarning" class="assistant-overlay__notice">
-        <q-icon name="info" size="16px" />
-        <span>{{ ollamaModelWarning }}</span>
-      </div>
-
-      <div ref="assistantBodyEl" class="assistant-overlay__body">
-        <div
-          v-for="(msg, idx) in chatMessages"
-          :key="idx"
-          class="assistant-msg"
-          :class="msg.from"
-        >
-          <!-- Samo bot poruke (AI izlaz) se renderiraju kao Markdown — korisnikov
-               vlastiti unos ostaje obični tekst, ne interpretira se kao HTML. -->
-          <div v-if="msg.from === 'bot'" class="assistant-msg__markdown" v-html="renderMarkdown(msg.text)"></div>
-          <template v-else>{{ msg.text }}</template>
-        </div>
-        <div v-if="chatLoading" class="assistant-msg bot">
-          <q-spinner size="16px" />
-        </div>
-      </div>
-
-      <div v-if="pendingFiles.length > 0" class="pending-file-chip-row pending-file-chip-row--overlay">
-        <div
-          v-for="(file, idx) in pendingFiles"
-          :key="file.name + idx"
-          class="pending-file-chip pending-file-chip--overlay"
-        >
-          <q-icon name="attach_file" size="14px" />
-          <span class="pending-file-chip__name">{{ file.name }}</span>
-          <button type="button" aria-label="Ukloni prilog" @click="removeAttachedFile(idx)">
-            <q-icon name="close" size="14px" />
-          </button>
-        </div>
-      </div>
-
-      <form class="assistant-overlay__form" @submit.prevent="sendChatMessage">
-        <label class="assistant-overlay__attach-btn" aria-label="Dodaj prilog">
-          <q-icon name="add" size="20px" />
-          <q-file
-            v-model="fileInputModel"
-            multiple
-            accept=".pdf,image/*"
-            style="display:none"
-            @update:model-value="onFilePicked"
-          />
-        </label>
-        <input
-          v-model="chatInput"
-          type="text"
-          class="assistant-overlay__input"
-          placeholder="Pitajte nabava.XP asistenta..."
-          autofocus
-        />
-        <button type="submit" class="assistant-overlay__send" aria-label="Pošalji" :disabled="chatLoading">
-          <q-icon name="send" size="18px" />
-        </button>
-      </form>
-    </div>
-
   </q-page>
 </template>
 
@@ -251,38 +120,15 @@
 import { ref, computed, onMounted } from 'vue';
 import { api } from 'boot/axios';
 import { getStoredUser } from 'src/utils/authStorage';
-import { useAssistantChat } from 'src/composables/useAssistantChat';
-import { renderMarkdown } from 'src/utils/renderMarkdown';
 
 const user = getStoredUser();
 
-const {
-  askInput,
-  askOpen,
-  chatInput,
-  chatMessages,
-  assistantBodyEl,
-  chatLoading,
-  pendingFiles,
-  fileInputModel,
-  removeAttachedFile,
-  onFilePicked,
-  handleDrop,
-  isAdmin: isAssistantAdmin,
-  currentProvider,
-  providerLabel,
-  otherProviderOptions,
-  currentOllamaModel,
-  ollamaModels,
-  isOllamaActive,
-  ollamaModelWarning,
-  changeOllamaModel,
-  loadProviderSettings,
-  changeProvider,
-  submitAsk,
-  sendChatMessage,
-  closeAssistant,
-} = useAssistantChat();
+// Prijedlozi za AI karticu — placeholder sadržaj, bez interakcije.
+const aiPrompts = [
+  'Sažmi status mojih zahtjeva u ovoj godini',
+  'Usporedi priložene ponude i predloži povoljniju',
+  'Kojim zahtjevima nedostaje ponuda ili otpremnica?',
+];
 
 const loading = ref(true);
 const allRequests = ref([]);
@@ -336,7 +182,6 @@ function buildRequestStyle(row) {
 }
 
 onMounted(async () => {
-  loadProviderSettings();
   try {
     const currentYear = new Date().getFullYear();
     const { data } = await api.get('/requests', { params: { limit: 500, fiscalYear: currentYear, onlyMine: 1 } });
@@ -396,139 +241,6 @@ onMounted(async () => {
   display: flex;
   justify-content: center;
   padding: 64px 0;
-}
-
-/* ── Ask bar (placeholder) ── */
-.ask-bar {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 24px;
-  padding: 8px 10px 8px 14px;
-  background: #ffffff;
-  border: 1.5px solid rgba(0, 175, 219, 0.18);
-  border-radius: 999px;
-  box-shadow: 0 4px 18px rgba(0, 175, 219, 0.08);
-  transition: border-color 0.15s, box-shadow 0.15s;
-}
-
-.ask-bar:focus-within {
-  border-color: #00afdb;
-  box-shadow: 0 4px 18px rgba(0, 175, 219, 0.16);
-}
-
-.ask-bar__icon-btn {
-  all: unset;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  color: #6b7280;
-  cursor: pointer;
-  transition: background 0.15s, color 0.15s;
-}
-
-.ask-bar__icon-btn:hover {
-  background: #f0fbfe;
-  color: #00afdb;
-}
-
-.ask-bar__input {
-  flex: 1;
-  min-width: 0;
-  border: 0;
-  outline: none;
-  background: transparent;
-  color: #111827;
-  font-size: 0.9375rem;
-  font-family: inherit;
-}
-
-.ask-bar__input::placeholder {
-  color: #9ca3af;
-}
-
-.ask-bar__right {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  flex-shrink: 0;
-}
-
-.ask-bar__model {
-  all: unset;
-  display: flex;
-  align-items: center;
-  gap: 2px;
-  padding: 6px 10px;
-  border-radius: 999px;
-  color: #16294e;
-  font-size: 0.8125rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background 0.15s;
-}
-
-.ask-bar__model:hover {
-  background: #f0fbfe;
-}
-
-/* Zaglavlje sekcije lokalnih modela u izborniku providera */
-.ask-bar__menu-header {
-  padding: 8px 16px 4px;
-  color: #6b7a90;
-  font-size: 0.6875rem;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  line-height: 1.2;
-  min-height: 0;
-}
-
-/* ── Prilozi uz poruku (do MAX_QUOTE_FILES odjednom, nov element, ne mijenja
-      postojeći ask-bar/overlay stil) ── */
-.pending-file-chip-row {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 6px;
-  margin: -14px auto 20px;
-}
-
-.pending-file-chip-row--overlay {
-  margin: 0 auto 8px;
-  max-width: 720px;
-  width: 100%;
-  box-sizing: border-box;
-}
-
-.pending-file-chip {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  width: fit-content;
-  padding: 4px 10px;
-  background: #f0fbfe;
-  border-radius: 999px;
-  color: #16294e;
-  font-size: 0.8125rem;
-}
-
-.pending-file-chip button {
-  all: unset;
-  display: flex;
-  cursor: pointer;
-  color: #6b7280;
-}
-
-.pending-file-chip__name {
-  max-width: 260px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 /* ── Card grid ── */
@@ -632,6 +344,110 @@ onMounted(async () => {
   transform: translateX(3px);
 }
 
+
+/* ── AI kartica (placeholder) ── */
+.ai-card {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr 190px;
+  gap: 20px;
+  align-items: center;
+  overflow: hidden;
+  padding: 24px 26px;
+  border-radius: 16px;
+  border: 1.5px solid rgba(0, 175, 219, 0.42);
+  /* Dvije mreže crta preko navy gradijenta — "nacrt" ispod sadržaja. */
+  background:
+    linear-gradient(rgba(0, 175, 219, 0.07) 1px, transparent 1px) 0 0 / 100% 26px,
+    linear-gradient(90deg, rgba(0, 175, 219, 0.07) 1px, transparent 1px) 0 0 / 26px 100%,
+    linear-gradient(155deg, #1b2d59 0%, #16294e 58%, #10203f 100%);
+  box-shadow: 0 10px 30px rgba(22, 41, 78, 0.22);
+}
+
+.ai-card__rule {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background: linear-gradient(90deg, #00afdb 0%, rgba(0, 175, 219, 0) 62%);
+  pointer-events: none;
+}
+
+.ai-card__main {
+  position: relative;
+  z-index: 1;
+  min-width: 0;
+}
+
+.ai-card__label {
+  color: #7fe1f7;
+  font-family: ui-monospace, SFMono-Regular, 'Cascadia Mono', Menlo, Consolas, monospace;
+  font-size: 0.6875rem;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.ai-card__title {
+  margin: 7px 0 5px;
+  color: #ffffff;
+  font-size: 1.25rem;
+  font-weight: 700;
+  letter-spacing: -0.005em;
+  line-height: 1.2;
+}
+
+.ai-card__sub {
+  margin: 0;
+  max-width: 44ch;
+  color: #b9c9e2;
+  font-size: 0.8125rem;
+  line-height: 1.4;
+}
+
+.ai-card__prompts {
+  display: flex;
+  flex-direction: column;
+  margin-top: 16px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.ai-prompt {
+  all: unset;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 9px 4px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+  color: #dbe6f6;
+  font-size: 0.8125rem;
+}
+
+.ai-prompt__caret {
+  color: #00afdb;
+  font-family: ui-monospace, SFMono-Regular, 'Cascadia Mono', Menlo, Consolas, monospace;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+/* Glif iz /ai-file-format-svgrepo-com.svg — fill mu je zapečen u datoteci,
+   pa boju dobiva preko CSS maske. */
+.ai-card__glyph {
+  position: relative;
+  z-index: 1;
+  justify-self: center;
+  width: 150px;
+  height: 150px;
+  opacity: 0.85;
+  background: linear-gradient(165deg, #7fe1f7 0%, #00afdb 45%, rgba(0, 175, 219, 0.12) 100%);
+  -webkit-mask: url('/ai-file-format-svgrepo-com.svg') center / contain no-repeat;
+  mask: url('/ai-file-format-svgrepo-com.svg') center / contain no-repeat;
+  filter: drop-shadow(0 0 18px rgba(0, 175, 219, 0.35));
+  pointer-events: none;
+}
 
 /* ── Requests section ── */
 .requests-section {
@@ -790,194 +606,7 @@ onMounted(async () => {
   .page { padding: 20px 16px; }
   .page-header__title { font-size: 1.75rem; }
   .status-badge { min-width: unset; }
+  .ai-card { grid-template-columns: 1fr; padding: 20px; }
+  .ai-card__glyph { display: none; }
 }
-
-/* ── Assistant overlay (placeholder) ── */
-.assistant-overlay {
-  position: fixed;
-  inset: 0;
-  z-index: 10000;
-  display: flex;
-  flex-direction: column;
-  background: #f9fafb;
-}
-
-.assistant-overlay__header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex-shrink: 0;
-  padding: 16px 24px;
-  border-bottom: 1px solid #e5e7eb;
-  background: #ffffff;
-}
-
-.assistant-overlay__title {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  color: #16294e;
-  font-weight: 700;
-  font-size: 0.9375rem;
-}
-
-.assistant-overlay__close {
-  all: unset;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  color: #6b7280;
-  cursor: pointer;
-  transition: background 0.15s, color 0.15s;
-}
-
-.assistant-overlay__close:hover {
-  background: #f3f4f6;
-  color: #111827;
-}
-
-/* Upozorenje o modelu bez alata (vidi ollamaModelWarning) */
-.assistant-overlay__notice {
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
-  margin: 0 16px 8px;
-  padding: 8px 12px;
-  border: 1px solid #f5d99a;
-  border-radius: 10px;
-  background: #fff8e8;
-  color: #7a5a12;
-  font-size: 0.75rem;
-  line-height: 1.35;
-}
-
-.assistant-overlay__body {
-  flex: 1;
-  overflow-y: auto;
-  padding: 24px;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  max-width: 720px;
-  width: 100%;
-  margin: 0 auto;
-  box-sizing: border-box;
-}
-
-.assistant-msg {
-  padding: 12px 16px;
-  border-radius: 16px;
-  max-width: 75%;
-  font-size: 0.9375rem;
-  line-height: 1.45;
-}
-
-.assistant-msg.user {
-  align-self: flex-end;
-  background: #00afdb;
-  color: white;
-  border-bottom-right-radius: 4px;
-}
-
-.assistant-msg.bot {
-  align-self: flex-start;
-  background: #ffffff;
-  color: #111827;
-  border: 1px solid #e5e7eb;
-  border-bottom-left-radius: 4px;
-}
-
-.assistant-msg__markdown :deep(p) {
-  margin: 0 0 8px;
-}
-.assistant-msg__markdown :deep(p:last-child) {
-  margin-bottom: 0;
-}
-.assistant-msg__markdown :deep(ul),
-.assistant-msg__markdown :deep(ol) {
-  margin: 0 0 8px;
-  padding-left: 20px;
-}
-.assistant-msg__markdown :deep(li) {
-  margin-bottom: 2px;
-}
-.assistant-msg__markdown :deep(strong) {
-  font-weight: 600;
-}
-.assistant-msg__markdown :deep(code) {
-  background: #f3f4f6;
-  border-radius: 4px;
-  padding: 1px 4px;
-  font-size: 0.875em;
-}
-
-.assistant-overlay__form {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-shrink: 0;
-  max-width: 720px;
-  width: 100%;
-  margin: 0 auto;
-  box-sizing: border-box;
-  padding: 16px 24px 24px;
-}
-
-.assistant-overlay__attach-btn {
-  all: unset;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  color: #6b7280;
-  cursor: pointer;
-  flex-shrink: 0;
-  transition: background 0.15s, color 0.15s;
-}
-
-.assistant-overlay__attach-btn:hover {
-  background: #f0fbfe;
-  color: #00afdb;
-}
-
-.assistant-overlay__input {
-  flex: 1;
-  padding: 14px 18px;
-  border: 1.5px solid rgba(0, 175, 219, 0.18);
-  border-radius: 999px;
-  outline: none;
-  background: #ffffff;
-  color: #111827;
-  font-size: 0.9375rem;
-  font-family: inherit;
-}
-
-.assistant-overlay__input:focus {
-  border-color: #00afdb;
-}
-
-.assistant-overlay__send {
-  all: unset;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 44px;
-  height: 44px;
-  border-radius: 50%;
-  background: #00afdb;
-  color: white;
-  cursor: pointer;
-  flex-shrink: 0;
-  transition: background 0.15s;
-}
-
-.assistant-overlay__send:hover {
-  background: #14bae4;
-}
-
 </style>
