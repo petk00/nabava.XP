@@ -67,19 +67,21 @@
         "category_name": {
           "value": "Nastavna i laboratorijska oprema",
           "acceptable_categories": [
-            "Nastavna i laboratorijska oprema"
+            "Nastavna i laboratorijska oprema",
+            "Elektronička i elektrotehnička oprema"
           ],
-          "ambiguous": false,
+          "ambiguous": true,
           "acceptable_reason_type": null,
           "acceptable_reason": null,
-          "rule": "P4",
+          "rule": null,
+          "note": "Laserski modul je elektronička komponenta/oprema za eksperimentalni rad.",
           "provenance": {
             "source": "codebook",
             "table": "ItemCategory",
             "document": "server/eval/category-codebook.md",
-            "sha256_16": "26ac4a44b9f3bf14"
+            "sha256_16": "68fdea0563aefe30"
           },
-          "assignment": "inferred"
+          "assignment": "author"
         }
       },
       {
@@ -103,21 +105,23 @@
           }
         },
         "category_name": {
-          "value": "Nastavna i laboratorijska oprema",
+          "value": "Elektronička i elektrotehnička oprema",
           "acceptable_categories": [
+            "Elektronička i elektrotehnička oprema",
             "Nastavna i laboratorijska oprema"
           ],
-          "ambiguous": false,
+          "ambiguous": true,
           "acceptable_reason_type": null,
           "acceptable_reason": null,
-          "rule": "P4",
+          "rule": null,
+          "note": "Koračni motor i driver čine elektrotehničku komponentu.",
           "provenance": {
             "source": "codebook",
             "table": "ItemCategory",
             "document": "server/eval/category-codebook.md",
-            "sha256_16": "26ac4a44b9f3bf14"
+            "sha256_16": "68fdea0563aefe30"
           },
-          "assignment": "inferred"
+          "assignment": "author"
         }
       },
       {
@@ -141,21 +145,23 @@
           }
         },
         "category_name": {
-          "value": "Nastavna i laboratorijska oprema",
+          "value": "Elektronička i elektrotehnička oprema",
           "acceptable_categories": [
+            "Elektronička i elektrotehnička oprema",
             "Nastavna i laboratorijska oprema"
           ],
-          "ambiguous": false,
+          "ambiguous": true,
           "acceptable_reason_type": null,
           "acceptable_reason": null,
-          "rule": "P4",
+          "rule": null,
+          "note": "Driver za koračni motor je elektronička komponenta.",
           "provenance": {
             "source": "codebook",
             "table": "ItemCategory",
             "document": "server/eval/category-codebook.md",
-            "sha256_16": "26ac4a44b9f3bf14"
+            "sha256_16": "68fdea0563aefe30"
           },
-          "assignment": "inferred"
+          "assignment": "author"
         }
       },
       {
@@ -179,21 +185,23 @@
           }
         },
         "category_name": {
-          "value": "Nastavna i laboratorijska oprema",
+          "value": "Elektronička i elektrotehnička oprema",
           "acceptable_categories": [
+            "Elektronička i elektrotehnička oprema",
             "Nastavna i laboratorijska oprema"
           ],
-          "ambiguous": false,
+          "ambiguous": true,
           "acceptable_reason_type": null,
           "acceptable_reason": null,
-          "rule": "P4",
+          "rule": null,
+          "note": "Regulator napona je elektronička komponenta.",
           "provenance": {
             "source": "codebook",
             "table": "ItemCategory",
             "document": "server/eval/category-codebook.md",
-            "sha256_16": "26ac4a44b9f3bf14"
+            "sha256_16": "68fdea0563aefe30"
           },
-          "assignment": "inferred"
+          "assignment": "author"
         }
       },
       {
@@ -217,21 +225,23 @@
           }
         },
         "category_name": {
-          "value": "Nastavna i laboratorijska oprema",
+          "value": "Elektronička i elektrotehnička oprema",
           "acceptable_categories": [
+            "Elektronička i elektrotehnička oprema",
             "Nastavna i laboratorijska oprema"
           ],
-          "ambiguous": false,
+          "ambiguous": true,
           "acceptable_reason_type": null,
           "acceptable_reason": null,
-          "rule": "P4",
+          "rule": null,
+          "note": "Fototranzistor je elektronička komponenta.",
           "provenance": {
             "source": "codebook",
             "table": "ItemCategory",
             "document": "server/eval/category-codebook.md",
-            "sha256_16": "26ac4a44b9f3bf14"
+            "sha256_16": "68fdea0563aefe30"
           },
-          "assignment": "inferred"
+          "assignment": "author"
         }
       },
       {
@@ -255,21 +265,23 @@
           }
         },
         "category_name": {
-          "value": "Nastavna i laboratorijska oprema",
+          "value": "Elektronička i elektrotehnička oprema",
           "acceptable_categories": [
+            "Elektronička i elektrotehnička oprema",
             "Nastavna i laboratorijska oprema"
           ],
-          "ambiguous": false,
+          "ambiguous": true,
           "acceptable_reason_type": null,
           "acceptable_reason": null,
-          "rule": "P4",
+          "rule": null,
+          "note": "MOSFET je elektronička komponenta.",
           "provenance": {
             "source": "codebook",
             "table": "ItemCategory",
             "document": "server/eval/category-codebook.md",
-            "sha256_16": "26ac4a44b9f3bf14"
+            "sha256_16": "68fdea0563aefe30"
           },
-          "assignment": "inferred"
+          "assignment": "author"
         }
       },
       {
@@ -293,21 +305,23 @@
           }
         },
         "category_name": {
-          "value": "Nastavna i laboratorijska oprema",
+          "value": "Elektronička i elektrotehnička oprema",
           "acceptable_categories": [
+            "Elektronička i elektrotehnička oprema",
             "Nastavna i laboratorijska oprema"
           ],
-          "ambiguous": false,
+          "ambiguous": true,
           "acceptable_reason_type": null,
           "acceptable_reason": null,
-          "rule": "P4",
+          "rule": null,
+          "note": "SMD taktilni prekidač je elektronička komponenta.",
           "provenance": {
             "source": "codebook",
             "table": "ItemCategory",
             "document": "server/eval/category-codebook.md",
-            "sha256_16": "26ac4a44b9f3bf14"
+            "sha256_16": "68fdea0563aefe30"
           },
-          "assignment": "inferred"
+          "assignment": "author"
         }
       },
       {
@@ -331,21 +345,23 @@
           }
         },
         "category_name": {
-          "value": "Nastavna i laboratorijska oprema",
+          "value": "Elektronička i elektrotehnička oprema",
           "acceptable_categories": [
+            "Elektronička i elektrotehnička oprema",
             "Nastavna i laboratorijska oprema"
           ],
-          "ambiguous": false,
+          "ambiguous": true,
           "acceptable_reason_type": null,
           "acceptable_reason": null,
-          "rule": "P4",
+          "rule": null,
+          "note": "Elektrolitski kondenzator je elektronička komponenta.",
           "provenance": {
             "source": "codebook",
             "table": "ItemCategory",
             "document": "server/eval/category-codebook.md",
-            "sha256_16": "26ac4a44b9f3bf14"
+            "sha256_16": "68fdea0563aefe30"
           },
-          "assignment": "inferred"
+          "assignment": "author"
         }
       },
       {
@@ -369,21 +385,24 @@
           }
         },
         "category_name": {
-          "value": "Nastavna i laboratorijska oprema",
+          "value": "Elektronička i elektrotehnička oprema",
           "acceptable_categories": [
-            "Nastavna i laboratorijska oprema"
+            "Elektronička i elektrotehnička oprema",
+            "Nastavna i laboratorijska oprema",
+            "Audio-vizualna oprema"
           ],
-          "ambiguous": false,
+          "ambiguous": true,
           "acceptable_reason_type": null,
           "acceptable_reason": null,
-          "rule": "P4",
+          "rule": null,
+          "note": "Mikrofon je elektronička komponenta; može se klasificirati i kao AV oprema prema namjeni.",
           "provenance": {
             "source": "codebook",
             "table": "ItemCategory",
             "document": "server/eval/category-codebook.md",
-            "sha256_16": "26ac4a44b9f3bf14"
+            "sha256_16": "68fdea0563aefe30"
           },
-          "assignment": "inferred"
+          "assignment": "author"
         }
       },
       {
@@ -407,22 +426,23 @@
           }
         },
         "category_name": {
-          "value": "Nastavna i laboratorijska oprema",
+          "value": "Elektronička i elektrotehnička oprema",
           "acceptable_categories": [
-            "Nastavna i laboratorijska oprema",
-            "Uredski materijal"
+            "Elektronička i elektrotehnička oprema",
+            "Nastavna i laboratorijska oprema"
           ],
           "ambiguous": true,
-          "acceptable_reason_type": "codebook_tie",
-          "acceptable_reason": "P4 (elektronička komponenta) protiv def.3+P10 (roba koja se troši)",
-          "rule": "P4",
+          "acceptable_reason_type": null,
+          "acceptable_reason": null,
+          "rule": null,
+          "note": "Baterija je elektrotehnička komponenta/napajanje.",
           "provenance": {
             "source": "codebook",
             "table": "ItemCategory",
             "document": "server/eval/category-codebook.md",
-            "sha256_16": "26ac4a44b9f3bf14"
+            "sha256_16": "68fdea0563aefe30"
           },
-          "assignment": "inferred"
+          "assignment": "author"
         }
       },
       {
@@ -446,21 +466,23 @@
           }
         },
         "category_name": {
-          "value": "Nastavna i laboratorijska oprema",
+          "value": "Elektronička i elektrotehnička oprema",
           "acceptable_categories": [
+            "Elektronička i elektrotehnička oprema",
             "Nastavna i laboratorijska oprema"
           ],
-          "ambiguous": false,
+          "ambiguous": true,
           "acceptable_reason_type": null,
           "acceptable_reason": null,
-          "rule": "P4",
+          "rule": null,
+          "note": "MOSFET je elektronička komponenta.",
           "provenance": {
             "source": "codebook",
             "table": "ItemCategory",
             "document": "server/eval/category-codebook.md",
-            "sha256_16": "26ac4a44b9f3bf14"
+            "sha256_16": "68fdea0563aefe30"
           },
-          "assignment": "inferred"
+          "assignment": "author"
         }
       },
       {
@@ -486,19 +508,21 @@
         "category_name": {
           "value": "Nastavna i laboratorijska oprema",
           "acceptable_categories": [
-            "Nastavna i laboratorijska oprema"
+            "Nastavna i laboratorijska oprema",
+            "Elektronička i elektrotehnička oprema"
           ],
-          "ambiguous": false,
+          "ambiguous": true,
           "acceptable_reason_type": null,
           "acceptable_reason": null,
-          "rule": "P4",
+          "rule": null,
+          "note": "Brainwave kit je specijalizirani edukacijski/eksperimentalni komplet.",
           "provenance": {
             "source": "codebook",
             "table": "ItemCategory",
             "document": "server/eval/category-codebook.md",
-            "sha256_16": "26ac4a44b9f3bf14"
+            "sha256_16": "68fdea0563aefe30"
           },
-          "assignment": "inferred"
+          "assignment": "author"
         }
       },
       {
@@ -524,19 +548,21 @@
         "category_name": {
           "value": "Nastavna i laboratorijska oprema",
           "acceptable_categories": [
-            "Nastavna i laboratorijska oprema"
+            "Nastavna i laboratorijska oprema",
+            "Sitni inventar"
           ],
-          "ambiguous": false,
+          "ambiguous": true,
           "acceptable_reason_type": null,
           "acceptable_reason": null,
-          "rule": "P8",
+          "rule": null,
+          "note": "Komplet za edukacijski/eksperimentalni rad; namjena je presudna.",
           "provenance": {
             "source": "codebook",
             "table": "ItemCategory",
             "document": "server/eval/category-codebook.md",
-            "sha256_16": "26ac4a44b9f3bf14"
+            "sha256_16": "68fdea0563aefe30"
           },
-          "assignment": "inferred"
+          "assignment": "author"
         }
       },
       {
@@ -560,21 +586,23 @@
           }
         },
         "category_name": {
-          "value": "Nastavna i laboratorijska oprema",
+          "value": "Elektronička i elektrotehnička oprema",
           "acceptable_categories": [
+            "Elektronička i elektrotehnička oprema",
             "Nastavna i laboratorijska oprema"
           ],
-          "ambiguous": false,
+          "ambiguous": true,
           "acceptable_reason_type": null,
           "acceptable_reason": null,
-          "rule": "P4",
+          "rule": null,
+          "note": "MOSFET kontroler je elektronička upravljačka komponenta.",
           "provenance": {
             "source": "codebook",
             "table": "ItemCategory",
             "document": "server/eval/category-codebook.md",
-            "sha256_16": "26ac4a44b9f3bf14"
+            "sha256_16": "68fdea0563aefe30"
           },
-          "assignment": "inferred"
+          "assignment": "author"
         }
       },
       {
@@ -598,22 +626,23 @@
           }
         },
         "category_name": {
-          "value": "Nastavna i laboratorijska oprema",
+          "value": "Elektronička i elektrotehnička oprema",
           "acceptable_categories": [
-            "Nastavna i laboratorijska oprema",
-            "Uredski materijal"
+            "Elektronička i elektrotehnička oprema",
+            "Nastavna i laboratorijska oprema"
           ],
           "ambiguous": true,
-          "acceptable_reason_type": "codebook_tie",
-          "acceptable_reason": "P4 (elektronička komponenta) protiv def.3+P10 (roba koja se troši)",
-          "rule": "P4",
+          "acceptable_reason_type": null,
+          "acceptable_reason": null,
+          "rule": null,
+          "note": "Alkalne baterije su potrošni elektrotehnički materijal.",
           "provenance": {
             "source": "codebook",
             "table": "ItemCategory",
             "document": "server/eval/category-codebook.md",
-            "sha256_16": "26ac4a44b9f3bf14"
+            "sha256_16": "68fdea0563aefe30"
           },
-          "assignment": "inferred"
+          "assignment": "author"
         }
       },
       {
@@ -637,22 +666,23 @@
           }
         },
         "category_name": {
-          "value": "Nastavna i laboratorijska oprema",
+          "value": "Elektronička i elektrotehnička oprema",
           "acceptable_categories": [
-            "Nastavna i laboratorijska oprema",
-            "Uredski materijal"
+            "Elektronička i elektrotehnička oprema",
+            "Nastavna i laboratorijska oprema"
           ],
           "ambiguous": true,
-          "acceptable_reason_type": "codebook_tie",
-          "acceptable_reason": "P4 (elektronička komponenta) protiv def.3+P10 (roba koja se troši)",
-          "rule": "P4",
+          "acceptable_reason_type": null,
+          "acceptable_reason": null,
+          "rule": null,
+          "note": "Alkalne baterije su potrošni elektrotehnički materijal.",
           "provenance": {
             "source": "codebook",
             "table": "ItemCategory",
             "document": "server/eval/category-codebook.md",
-            "sha256_16": "26ac4a44b9f3bf14"
+            "sha256_16": "68fdea0563aefe30"
           },
-          "assignment": "inferred"
+          "assignment": "author"
         }
       }
     ]
@@ -660,5 +690,5 @@
   "notes": "11 stavki iz ponude A + 5 iz ponude B = 16. Iznos je ZBROJ obiju: 95,32 € + 524,00 € = 619,32 €. Svaka ponuda pridonosi svojim stavkama, bez spajanja.\nPonude su NADOPUNJUJUĆE: isti dobavljač (Mikrotron d.o.o.), različiti projekti (\"Laser Light Show\" i \"Mind Racer\"), pa je zbrajanje poslovno ispravno i usklađeno s BASE_SYSTEM_PROMPT-om. Slučaj KONKURENTSKIH ponuda — iste stavke od različitih dobavljača, gdje agent treba nabrojiti opcije i pustiti korisnika da bira — je DRUGI scenarij, za koji trenutno nema dokumenta. (kriterij_bodovanja.md opisuje taj drugi slučaj pod starom numeracijom; ne odnosi se na ovaj scenarij.)",
   "_schema": "nabava.XP eval ground truth v1",
   "_note": "Očekivani ishod scenarija, s provenanceom po polju. Provenance je lokator u ULAZU (poruka ili prilog) plus doslovan citat — citat mora biti bajt-jednak izvoru, uključujući nedjeljive razmake. category_name NIJE dio provjere utemeljenosti (vrijednost je iz šifrarnika, ne može biti izmišljena) nego zasebne mjere točnosti dodjele.",
-  "category_codebook_sha256_16": "26ac4a44b9f3bf14"
+  "category_codebook_sha256_16": "68fdea0563aefe30"
 }

@@ -51,19 +51,22 @@
         "category_name": {
           "value": "Nastavna i laboratorijska oprema",
           "acceptable_categories": [
-            "Nastavna i laboratorijska oprema"
+            "Nastavna i laboratorijska oprema",
+            "Računalna oprema",
+            "Mrežna i telekomunikacijska oprema"
           ],
-          "ambiguous": false,
+          "ambiguous": true,
           "acceptable_reason_type": null,
           "acceptable_reason": null,
-          "rule": "P4/P8",
+          "rule": null,
+          "note": "Razvojni edukacijski komplet s mikrokontrolerom i modulima.",
           "provenance": {
             "source": "codebook",
             "table": "ItemCategory",
             "document": "server/eval/category-codebook.md",
-            "sha256_16": "26ac4a44b9f3bf14"
+            "sha256_16": "68fdea0563aefe30"
           },
-          "assignment": "inferred"
+          "assignment": "author"
         }
       },
       {
@@ -87,21 +90,23 @@
           }
         },
         "category_name": {
-          "value": "Nastavna i laboratorijska oprema",
+          "value": "Mjerna i ispitna oprema",
           "acceptable_categories": [
+            "Mjerna i ispitna oprema",
             "Nastavna i laboratorijska oprema"
           ],
-          "ambiguous": false,
+          "ambiguous": true,
           "acceptable_reason_type": null,
           "acceptable_reason": null,
-          "rule": "P4",
+          "rule": null,
+          "note": "Senzorski set služi mjerenju fizikalnih veličina.",
           "provenance": {
             "source": "codebook",
             "table": "ItemCategory",
             "document": "server/eval/category-codebook.md",
-            "sha256_16": "26ac4a44b9f3bf14"
+            "sha256_16": "68fdea0563aefe30"
           },
-          "assignment": "inferred"
+          "assignment": "author"
         }
       },
       {
@@ -125,22 +130,23 @@
           }
         },
         "category_name": {
-          "value": "Nastavna i laboratorijska oprema",
+          "value": "Računalna oprema",
           "acceptable_categories": [
-            "Nastavna i laboratorijska oprema",
-            "Računalna oprema"
+            "Računalna oprema",
+            "Nastavna i laboratorijska oprema"
           ],
           "ambiguous": true,
-          "acceptable_reason_type": "codebook_tie",
-          "acceptable_reason": "P4 (razvojna pločica) protiv P5+def.1 (malo računalo)",
-          "rule": "P4",
+          "acceptable_reason_type": null,
+          "acceptable_reason": null,
+          "rule": null,
+          "note": "Jednoplatformsko računalo s priborom; namjena je računalna.",
           "provenance": {
             "source": "codebook",
             "table": "ItemCategory",
             "document": "server/eval/category-codebook.md",
-            "sha256_16": "26ac4a44b9f3bf14"
+            "sha256_16": "68fdea0563aefe30"
           },
-          "assignment": "inferred"
+          "assignment": "author"
         }
       },
       {
@@ -164,22 +170,23 @@
           }
         },
         "category_name": {
-          "value": "Nastavna i laboratorijska oprema",
+          "value": "Mrežna i telekomunikacijska oprema",
           "acceptable_categories": [
-            "Nastavna i laboratorijska oprema",
-            "Računalna oprema"
+            "Mrežna i telekomunikacijska oprema",
+            "Nastavna i laboratorijska oprema"
           ],
           "ambiguous": true,
-          "acceptable_reason_type": "codebook_tie",
-          "acceptable_reason": "P3 (predmet poučavanja) protiv def.1 (mrežna oprema)",
-          "rule": "P3",
+          "acceptable_reason_type": null,
+          "acceptable_reason": null,
+          "rule": null,
+          "note": "LoRaWAN gateway je mrežna komunikacijska oprema.",
           "provenance": {
             "source": "codebook",
             "table": "ItemCategory",
             "document": "server/eval/category-codebook.md",
-            "sha256_16": "26ac4a44b9f3bf14"
+            "sha256_16": "68fdea0563aefe30"
           },
-          "assignment": "inferred"
+          "assignment": "author"
         }
       },
       {
@@ -205,19 +212,21 @@
         "category_name": {
           "value": "Nastavna i laboratorijska oprema",
           "acceptable_categories": [
-            "Nastavna i laboratorijska oprema"
+            "Nastavna i laboratorijska oprema",
+            "Mrežna i telekomunikacijska oprema"
           ],
-          "ambiguous": false,
+          "ambiguous": true,
           "acceptable_reason_type": null,
           "acceptable_reason": null,
-          "rule": "P4",
+          "rule": null,
+          "note": "Razvojni LoRa čvor namijenjen laboratorijskom/edukacijskom radu.",
           "provenance": {
             "source": "codebook",
             "table": "ItemCategory",
             "document": "server/eval/category-codebook.md",
-            "sha256_16": "26ac4a44b9f3bf14"
+            "sha256_16": "68fdea0563aefe30"
           },
-          "assignment": "inferred"
+          "assignment": "author"
         }
       },
       {
@@ -241,21 +250,23 @@
           }
         },
         "category_name": {
-          "value": "Nastavna i laboratorijska oprema",
+          "value": "Mjerna i ispitna oprema",
           "acceptable_categories": [
+            "Mjerna i ispitna oprema",
             "Nastavna i laboratorijska oprema"
           ],
-          "ambiguous": false,
+          "ambiguous": true,
           "acceptable_reason_type": null,
           "acceptable_reason": null,
-          "rule": "P3",
+          "rule": null,
+          "note": "Digitalni osciloskop je mjerna i ispitna oprema.",
           "provenance": {
             "source": "codebook",
             "table": "ItemCategory",
             "document": "server/eval/category-codebook.md",
-            "sha256_16": "26ac4a44b9f3bf14"
+            "sha256_16": "68fdea0563aefe30"
           },
-          "assignment": "inferred"
+          "assignment": "author"
         }
       },
       {
@@ -279,21 +290,23 @@
           }
         },
         "category_name": {
-          "value": "Nastavna i laboratorijska oprema",
+          "value": "Mjerna i ispitna oprema",
           "acceptable_categories": [
+            "Mjerna i ispitna oprema",
             "Nastavna i laboratorijska oprema"
           ],
-          "ambiguous": false,
+          "ambiguous": true,
           "acceptable_reason_type": null,
           "acceptable_reason": null,
-          "rule": "P3",
+          "rule": null,
+          "note": "Laboratorijsko napajanje je mjerna/laboratorijska oprema.",
           "provenance": {
             "source": "codebook",
             "table": "ItemCategory",
             "document": "server/eval/category-codebook.md",
-            "sha256_16": "26ac4a44b9f3bf14"
+            "sha256_16": "68fdea0563aefe30"
           },
-          "assignment": "inferred"
+          "assignment": "author"
         }
       },
       {
@@ -317,21 +330,23 @@
           }
         },
         "category_name": {
-          "value": "Nastavna i laboratorijska oprema",
+          "value": "Mjerna i ispitna oprema",
           "acceptable_categories": [
+            "Mjerna i ispitna oprema",
             "Nastavna i laboratorijska oprema"
           ],
-          "ambiguous": false,
+          "ambiguous": true,
           "acceptable_reason_type": null,
           "acceptable_reason": null,
-          "rule": "P3",
+          "rule": null,
+          "note": "Digitalni multimetar je mjerna i ispitna oprema.",
           "provenance": {
             "source": "codebook",
             "table": "ItemCategory",
             "document": "server/eval/category-codebook.md",
-            "sha256_16": "26ac4a44b9f3bf14"
+            "sha256_16": "68fdea0563aefe30"
           },
-          "assignment": "inferred"
+          "assignment": "author"
         }
       },
       {
@@ -357,19 +372,21 @@
         "category_name": {
           "value": "Nastavna i laboratorijska oprema",
           "acceptable_categories": [
-            "Nastavna i laboratorijska oprema"
+            "Nastavna i laboratorijska oprema",
+            "Elektronička i elektrotehnička oprema"
           ],
-          "ambiguous": false,
+          "ambiguous": true,
           "acceptable_reason_type": null,
           "acceptable_reason": null,
-          "rule": "P3",
+          "rule": null,
+          "note": "Lemna stanica za laboratorijski rad.",
           "provenance": {
             "source": "codebook",
             "table": "ItemCategory",
             "document": "server/eval/category-codebook.md",
-            "sha256_16": "26ac4a44b9f3bf14"
+            "sha256_16": "68fdea0563aefe30"
           },
-          "assignment": "inferred"
+          "assignment": "author"
         }
       },
       {
@@ -395,19 +412,21 @@
         "category_name": {
           "value": "Nastavna i laboratorijska oprema",
           "acceptable_categories": [
-            "Nastavna i laboratorijska oprema"
+            "Nastavna i laboratorijska oprema",
+            "Elektronička i elektrotehnička oprema"
           ],
-          "ambiguous": false,
+          "ambiguous": true,
           "acceptable_reason_type": null,
           "acceptable_reason": null,
-          "rule": "P3",
+          "rule": null,
+          "note": "Odsis dima je specijalizirana oprema radnog mjesta za lemljenje.",
           "provenance": {
             "source": "codebook",
             "table": "ItemCategory",
             "document": "server/eval/category-codebook.md",
-            "sha256_16": "26ac4a44b9f3bf14"
+            "sha256_16": "68fdea0563aefe30"
           },
-          "assignment": "inferred"
+          "assignment": "author"
         }
       },
       {
@@ -437,16 +456,17 @@
             "Računalna oprema"
           ],
           "ambiguous": true,
-          "acceptable_reason_type": "codebook_tie",
-          "acceptable_reason": "P3 (namjena: radionički alat) protiv def.1 (računalna periferija)",
-          "rule": "P3",
+          "acceptable_reason_type": null,
+          "acceptable_reason": null,
+          "rule": null,
+          "note": "3D pisač je laboratorijska/nastavna oprema; može se tretirati i kao računalno upravljani uređaj.",
           "provenance": {
             "source": "codebook",
             "table": "ItemCategory",
             "document": "server/eval/category-codebook.md",
-            "sha256_16": "26ac4a44b9f3bf14"
+            "sha256_16": "68fdea0563aefe30"
           },
-          "assignment": "inferred"
+          "assignment": "author"
         }
       },
       {
@@ -470,22 +490,23 @@
           }
         },
         "category_name": {
-          "value": "Računalna oprema",
+          "value": "Mrežna i telekomunikacijska oprema",
           "acceptable_categories": [
-            "Računalna oprema",
-            "Nastavna i laboratorijska oprema"
+            "Mrežna i telekomunikacijska oprema",
+            "Računalna oprema"
           ],
           "ambiguous": true,
-          "acceptable_reason_type": "codebook_tie",
-          "acceptable_reason": "def.1 (mrežna oprema) protiv P3 (ugrađena u nastavni laboratorij)",
-          "rule": "def.1",
+          "acceptable_reason_type": null,
+          "acceptable_reason": null,
+          "rule": null,
+          "note": "PoE preklopnik je mrežna oprema.",
           "provenance": {
             "source": "codebook",
             "table": "ItemCategory",
             "document": "server/eval/category-codebook.md",
-            "sha256_16": "26ac4a44b9f3bf14"
+            "sha256_16": "68fdea0563aefe30"
           },
-          "assignment": "inferred"
+          "assignment": "author"
         }
       },
       {
@@ -509,22 +530,23 @@
           }
         },
         "category_name": {
-          "value": "Računalna oprema",
+          "value": "Mrežna i telekomunikacijska oprema",
           "acceptable_categories": [
-            "Računalna oprema",
-            "Nastavna i laboratorijska oprema"
+            "Mrežna i telekomunikacijska oprema",
+            "Računalna oprema"
           ],
           "ambiguous": true,
-          "acceptable_reason_type": "codebook_tie",
-          "acceptable_reason": "def.1 (mrežna oprema) protiv P3 (ugrađena u nastavni laboratorij)",
-          "rule": "def.1",
+          "acceptable_reason_type": null,
+          "acceptable_reason": null,
+          "rule": null,
+          "note": "Wi‑Fi pristupna točka je mrežna oprema.",
           "provenance": {
             "source": "codebook",
             "table": "ItemCategory",
             "document": "server/eval/category-codebook.md",
-            "sha256_16": "26ac4a44b9f3bf14"
+            "sha256_16": "68fdea0563aefe30"
           },
-          "assignment": "inferred"
+          "assignment": "author"
         }
       },
       {
@@ -551,19 +573,20 @@
           "value": "Računalna oprema",
           "acceptable_categories": [
             "Računalna oprema",
-            "Nastavna i laboratorijska oprema"
+            "Mrežna i telekomunikacijska oprema"
           ],
           "ambiguous": true,
-          "acceptable_reason_type": "codebook_tie",
-          "acceptable_reason": "def.1 (računalna oprema) protiv P3 (ugrađen u nastavni laboratorij)",
-          "rule": "def.1",
+          "acceptable_reason_type": null,
+          "acceptable_reason": null,
+          "rule": null,
+          "note": "Poslužitelj je računalna oprema.",
           "provenance": {
             "source": "codebook",
             "table": "ItemCategory",
             "document": "server/eval/category-codebook.md",
-            "sha256_16": "26ac4a44b9f3bf14"
+            "sha256_16": "68fdea0563aefe30"
           },
-          "assignment": "inferred"
+          "assignment": "author"
         }
       },
       {
@@ -587,22 +610,24 @@
           }
         },
         "category_name": {
-          "value": "Računalna oprema",
+          "value": "Mrežna i telekomunikacijska oprema",
           "acceptable_categories": [
+            "Mrežna i telekomunikacijska oprema",
             "Računalna oprema",
             "Namještaj"
           ],
           "ambiguous": true,
-          "acceptable_reason_type": "codebook_tie",
-          "acceptable_reason": "def.1 (smještaj mrežne opreme) protiv P7 (ormar je namještaj); P9 daje prednost tehničkoj funkciji, ali uže određenje nije nedvojbeno",
-          "rule": "P9",
+          "acceptable_reason_type": null,
+          "acceptable_reason": null,
+          "rule": null,
+          "note": "Komunikacijski ormar je prvenstveno infrastruktura za mrežnu opremu; može se tretirati kao namještaj prema načinu evidencije.",
           "provenance": {
             "source": "codebook",
             "table": "ItemCategory",
             "document": "server/eval/category-codebook.md",
-            "sha256_16": "26ac4a44b9f3bf14"
+            "sha256_16": "68fdea0563aefe30"
           },
-          "assignment": "inferred"
+          "assignment": "author"
         }
       },
       {
@@ -632,16 +657,17 @@
             "Nastavna i laboratorijska oprema"
           ],
           "ambiguous": true,
-          "acceptable_reason_type": "codebook_tie",
-          "acceptable_reason": "P8+def.1 (radno računalo) protiv P3 (namjena u nastavi)",
-          "rule": "P8",
+          "acceptable_reason_type": null,
+          "acceptable_reason": null,
+          "rule": null,
+          "note": "Računalo, monitor i periferija čine radnu računalnu cjelinu.",
           "provenance": {
             "source": "codebook",
             "table": "ItemCategory",
             "document": "server/eval/category-codebook.md",
-            "sha256_16": "26ac4a44b9f3bf14"
+            "sha256_16": "68fdea0563aefe30"
           },
-          "assignment": "inferred"
+          "assignment": "author"
         }
       },
       {
@@ -667,19 +693,22 @@
         "category_name": {
           "value": "Nastavna i laboratorijska oprema",
           "acceptable_categories": [
-            "Nastavna i laboratorijska oprema"
+            "Nastavna i laboratorijska oprema",
+            "Elektronička i elektrotehnička oprema",
+            "Sitni inventar"
           ],
-          "ambiguous": false,
+          "ambiguous": true,
           "acceptable_reason_type": null,
           "acceptable_reason": null,
-          "rule": "P3",
+          "rule": null,
+          "note": "Specijalizirani alat za laboratorij elektronike.",
           "provenance": {
             "source": "codebook",
             "table": "ItemCategory",
             "document": "server/eval/category-codebook.md",
-            "sha256_16": "26ac4a44b9f3bf14"
+            "sha256_16": "68fdea0563aefe30"
           },
-          "assignment": "inferred"
+          "assignment": "author"
         }
       },
       {
@@ -705,19 +734,21 @@
         "category_name": {
           "value": "Namještaj",
           "acceptable_categories": [
-            "Namještaj"
+            "Namještaj",
+            "Sitni inventar"
           ],
-          "ambiguous": false,
+          "ambiguous": true,
           "acceptable_reason_type": null,
           "acceptable_reason": null,
-          "rule": "P7",
+          "rule": null,
+          "note": "Ormarić za pohranu je namještaj; sitni inventar je moguća alternativa ovisno o vrijednosnom pragu.",
           "provenance": {
             "source": "codebook",
             "table": "ItemCategory",
             "document": "server/eval/category-codebook.md",
-            "sha256_16": "26ac4a44b9f3bf14"
+            "sha256_16": "68fdea0563aefe30"
           },
-          "assignment": "inferred"
+          "assignment": "author"
         }
       },
       {
@@ -748,14 +779,15 @@
           "ambiguous": false,
           "acceptable_reason_type": null,
           "acceptable_reason": null,
-          "rule": "P2",
+          "rule": null,
+          "note": "Vremenski ograničena akademska licenca.",
           "provenance": {
             "source": "codebook",
             "table": "ItemCategory",
             "document": "server/eval/category-codebook.md",
-            "sha256_16": "26ac4a44b9f3bf14"
+            "sha256_16": "68fdea0563aefe30"
           },
-          "assignment": "inferred"
+          "assignment": "author"
         }
       },
       {
@@ -779,21 +811,23 @@
           }
         },
         "category_name": {
-          "value": "Usluge održavanja",
+          "value": "Usluge razvoja i održavanja informacijskih sustava",
           "acceptable_categories": [
+            "Usluge razvoja i održavanja informacijskih sustava",
             "Usluge održavanja"
           ],
-          "ambiguous": false,
+          "ambiguous": true,
           "acceptable_reason_type": null,
           "acceptable_reason": null,
-          "rule": "P1",
+          "rule": null,
+          "note": "Instalacija, umrežavanje i puštanje IT/laboratorijske infrastrukture u rad.",
           "provenance": {
             "source": "codebook",
             "table": "ItemCategory",
             "document": "server/eval/category-codebook.md",
-            "sha256_16": "26ac4a44b9f3bf14"
+            "sha256_16": "68fdea0563aefe30"
           },
-          "assignment": "inferred"
+          "assignment": "author"
         }
       },
       {
@@ -817,21 +851,24 @@
           }
         },
         "category_name": {
-          "value": "Usluge održavanja",
+          "value": "Stručne i savjetodavne usluge",
           "acceptable_categories": [
-            "Usluge održavanja"
+            "Stručne i savjetodavne usluge",
+            "Edukacije i stručno usavršavanje",
+            "Nastavne potrepštine"
           ],
-          "ambiguous": false,
+          "ambiguous": true,
           "acceptable_reason_type": null,
           "acceptable_reason": null,
-          "rule": "P1",
+          "rule": null,
+          "note": "Izrada laboratorijskih vježbi i nastavnih materijala je stručna usluga; dio sadržaja je nastavnog karaktera.",
           "provenance": {
             "source": "codebook",
             "table": "ItemCategory",
             "document": "server/eval/category-codebook.md",
-            "sha256_16": "26ac4a44b9f3bf14"
+            "sha256_16": "68fdea0563aefe30"
           },
-          "assignment": "inferred"
+          "assignment": "author"
         }
       },
       {
@@ -855,21 +892,23 @@
           }
         },
         "category_name": {
-          "value": "Usluge održavanja",
+          "value": "Edukacije i stručno usavršavanje",
           "acceptable_categories": [
-            "Usluge održavanja"
+            "Edukacije i stručno usavršavanje",
+            "Stručne i savjetodavne usluge"
           ],
-          "ambiguous": false,
+          "ambiguous": true,
           "acceptable_reason_type": null,
           "acceptable_reason": null,
-          "rule": "P1",
+          "rule": null,
+          "note": "Izravno predstavlja edukaciju nastavnog osoblja.",
           "provenance": {
             "source": "codebook",
             "table": "ItemCategory",
             "document": "server/eval/category-codebook.md",
-            "sha256_16": "26ac4a44b9f3bf14"
+            "sha256_16": "68fdea0563aefe30"
           },
-          "assignment": "inferred"
+          "assignment": "author"
         }
       },
       {
@@ -895,19 +934,21 @@
         "category_name": {
           "value": "Usluge održavanja",
           "acceptable_categories": [
-            "Usluge održavanja"
+            "Usluge održavanja",
+            "Ostale usluge"
           ],
-          "ambiguous": false,
+          "ambiguous": true,
           "acceptable_reason_type": null,
           "acceptable_reason": null,
-          "rule": "P1",
+          "rule": null,
+          "note": "Produljeno jamstvo i tehnička podrška; ako je riječ o zasebnoj servisnoj usluzi, održavanje je najbliže.",
           "provenance": {
             "source": "codebook",
             "table": "ItemCategory",
             "document": "server/eval/category-codebook.md",
-            "sha256_16": "26ac4a44b9f3bf14"
+            "sha256_16": "68fdea0563aefe30"
           },
-          "assignment": "inferred"
+          "assignment": "author"
         }
       }
     ]
@@ -915,5 +956,5 @@
   "notes": "23 stavke. Redak \"Akademski popust (10%)\" (-4.504,70 €) NIJE stavka — već je uračunat u konačan iznos (BASE_SYSTEM_PROMPT). Pet stavki je na drugoj stranici.",
   "_schema": "nabava.XP eval ground truth v1",
   "_note": "Očekivani ishod scenarija, s provenanceom po polju. Provenance je lokator u ULAZU (poruka ili prilog) plus doslovan citat — citat mora biti bajt-jednak izvoru, uključujući nedjeljive razmake. category_name NIJE dio provjere utemeljenosti (vrijednost je iz šifrarnika, ne može biti izmišljena) nego zasebne mjere točnosti dodjele.",
-  "category_codebook_sha256_16": "26ac4a44b9f3bf14"
+  "category_codebook_sha256_16": "68fdea0563aefe30"
 }
