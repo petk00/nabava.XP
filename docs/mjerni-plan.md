@@ -1,5 +1,13 @@
 # Mjerni plan
 
+> **Status od 5. 9. 2026.** Predmet mjerenja je promijenjen: chat asistenta je
+> uklonjen iz sustava i mjeri se ruta `POST /api/requests/:id/ai-items`. Time
+> ispadaju mjere vezane uz razgovor (broj pojašnjenja, dvofazna potvrda,
+> ponašanje nakon kreiranja), a ostaju brzina, potrošnja tokena i točnost
+> čitanja ponude — stavke, količine, kategorije i iznos. Izvedba se bira po
+> pozivu, pa se lokalni model i Gemini mogu mjeriti naizmjence bez diranja
+> postavke poslužitelja.
+
 Definicije mjera, protokol mjerenja i zapis metodoloških odluka za usporedbu dviju izvedbi
 AI agenta u sustavu nabava.XP: lokalnog modela preko Ollame i Gemini API-ja.
 

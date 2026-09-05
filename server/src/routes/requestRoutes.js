@@ -6,6 +6,12 @@ const { STATUS, STATUS_LABELS, LOCKED_STATUSES } = require('../constants/status'
 const {
   createRequest, RequestValidationError, MAX_JUSTIFICATION_LEN, ITEM_NAME_MAX_LENGTH,
 } = require('../services/requestService');
+const fs = require('fs');
+const path = require('path');
+const rateLimit = require('express-rate-limit');
+const { extractQuoteText, QuoteExtractionError } = require('../services/quoteExtractionService');
+const { extractItemsFromQuotes, ItemExtractionError } = require('../services/itemExtractionService');
+const { PROVIDER_KEYS } = require('../services/llm/providerSelector');
 
 /**
  * State machine.
@@ -881,6 +887,262 @@ router.put('/:id', authenticateToken, async (req, res) => {
     });
   } finally {
     connection.release();
+  }
+});
+
+/* ───────────────────────────────────────────────
+   POST /api/requests/:id/ai-items
+
+   AI pročita ponudu koja je VEĆ priložena uz zahtjev i njome ZAMIJENI popis
+   stavki (RequestDetailsPage, gumb "AI" uz naslov Stavke). Zamjena je
+   destruktivna — stare stavke se brišu — pa korisnik u UI-u prije poziva
+   potvrđuje radnju, a ovdje vrijede ISTA prava pisanja kao za PUT /:id:
+   zaključan zahtjev se ne dira, a korisnik koji nije administrator smije
+   mijenjati samo svoj zahtjev i samo dok je vraćen na dopunu.
+
+   Mijenjaju se stavke i ukupan iznos — oboje piše u ponudi. Odjel,
+   obrazloženje i status ostaju kakvi jesu: ponuda o njima ili ne govori ili
+   bi ih ovaj poziv mijenjao mimo korisnikove namjere. Iznos se NE dira kad ga
+   ponuda ne navodi ili kad nije u eurima (itemExtractionService vrati null).
+   ─────────────────────────────────────────────── */
+
+// Isti obrazac kao attachmentRoutes.js: path.resolve zbog relativne putanje
+// ili trailing slasha iz okoline, i podrška za stare apsolutne file_path
+// vrijednosti u bazi.
+const AI_ITEMS_UPLOADS_DIR = path.resolve(process.env.UPLOADS_DIR || path.join(__dirname, '../../uploads'));
+const resolveAttachmentPath = (filePath) =>
+  (path.isAbsolute(filePath) ? filePath : path.join(AI_ITEMS_UPLOADS_DIR, filePath));
+
+// Limiter stoji uz rutu, a ne u index.js uz ostale: veže se na jednu putanju
+// s parametrom (app.use tamo ne bi pogodio /:id) i štiti od uzastopnog
+// pokretanja modela klikanjem gumba. Isti prozor kao za asistenta.
+const aiItemsLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: Number(process.env.AI_ITEMS_RATE_LIMIT_MAX) || 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { message: 'Previše AI obrada ponude. Pokušajte ponovo za 15 minuta.' },
+});
+
+router.post('/:id/ai-items', authenticateToken, aiItemsLimiter, async (req, res) => {
+  const { id } = req.params;
+  const userId = req.user.id_user;
+  const userIsAdmin = isAdmin(req.user);
+  // Provider se bira PO POZIVU, ne runtime postavkom: uz stavke stoje dva
+  // gumba (lokalni model i Gemini) i oba moraju biti dostupna istovremeno.
+  // Bez imena se uzima onaj iz postavke — tako ruta radi i iz skripte.
+  const providerKey = req.body?.provider ?? req.query?.provider ?? null;
+  if (providerKey !== null && !PROVIDER_KEYS.includes(providerKey)) {
+    return res.status(400).json({
+      message: `Nepoznat AI provider: "${providerKey}". Dopušteno: ${PROVIDER_KEYS.join(', ')}.`,
+    });
+  }
+
+  try {
+    const [requestRows] = await db.query(
+      `SELECT fk_request_status, fk_created_by_user, fk_fiscal_year
+       FROM PurchaseRequest
+       WHERE id_purchase_request = ?
+       LIMIT 1`,
+      [id]
+    );
+
+    if (requestRows.length === 0) {
+      return res.status(404).json({ message: 'Zahtjev nije pronađen.' });
+    }
+
+    const { fk_request_status: currentStatus, fk_created_by_user: creatorId, fk_fiscal_year: fyId } = requestRows[0];
+
+    if (LOCKED_STATUSES.includes(currentStatus)) {
+      return res.status(400).json({ message: 'Zahtjev je zaključan i više se ne može mijenjati.' });
+    }
+    if (!userIsAdmin) {
+      if (creatorId !== userId) {
+        return res.status(403).json({ message: 'Možete mijenjati samo svoje zahtjeve.' });
+      }
+      if (currentStatus !== STATUS.VRACENO) {
+        return res.status(403).json({ message: 'Stavke možete mijenjati samo kad je zahtjev vraćen na dopunu.' });
+      }
+    }
+
+    // Ponude priložene uz zahtjev — redoslijedom kojim su dodane, da se
+    // "Ponuda 1/2" u promptu poklapa s onim što korisnik vidi u popisu.
+    const [attachmentRows] = await db.query(
+      `SELECT id_attachment, file_name, file_path
+       FROM Attachment
+       WHERE fk_purchase_request = ? AND document_type = 'Ponuda'
+       ORDER BY uploaded_at ASC, id_attachment ASC`,
+      [id]
+    );
+
+    if (attachmentRows.length === 0) {
+      return res.status(400).json({ message: 'Uz zahtjev nije priložena nijedna ponuda.' });
+    }
+
+    const quotes = [];
+    const skipped = [];
+    for (const attachment of attachmentRows) {
+      const diskPath = resolveAttachmentPath(attachment.file_path);
+      let buffer;
+      try {
+        buffer = fs.readFileSync(diskPath);
+      } catch {
+        skipped.push(`"${attachment.file_name}": datoteka nije pronađena na poslužitelju.`);
+        continue;
+      }
+      try {
+        quotes.push({ filename: attachment.file_name, text: await extractQuoteText(buffer) });
+      } catch (error) {
+        if (error instanceof QuoteExtractionError) {
+          // Ponuda može biti .docx, slika ili skenirani PDF bez tekstualnog
+          // sloja — to nije greška poziva dok postoji barem jedna čitljiva.
+          skipped.push(`"${attachment.file_name}": ${error.message}`);
+          continue;
+        }
+        throw error;
+      }
+    }
+
+    if (quotes.length === 0) {
+      return res.status(400).json({
+        message: `Nijedna priložena ponuda nije čitljiv PDF. ${skipped.join(' ')}`.trim(),
+      });
+    }
+
+    // Kategorije POSLOVNE GODINE ZAHTJEVA, ne aktivne godine — zahtjev iz
+    // ranije godine se i dalje smije dopunjavati, a INSERT bi inače pao na
+    // provjeri koju radi i PUT /:id.
+    const [categories] = await db.query(
+      `SELECT id_item_category, name
+       FROM ItemCategory
+       WHERE fk_fiscal_year = ? AND is_active = 1
+       ORDER BY name ASC`,
+      [fyId]
+    );
+
+    const extraction = await extractItemsFromQuotes({ quotes, categories, providerKey });
+
+    // Tek sada transakcija: model je znao trajati minutama, a konekcija se ne
+    // drži zaključana dok on razmišlja.
+    const connection = await db.getConnection();
+    let previousCount = 0;
+    let previousAmount = null;
+    let amountChanged = false;
+    try {
+      await connection.beginTransaction();
+
+      const [lockedRows] = await connection.query(
+        `SELECT fk_request_status, fk_created_by_user, total_amount
+         FROM PurchaseRequest
+         WHERE id_purchase_request = ?
+         FOR UPDATE`,
+        [id]
+      );
+
+      if (lockedRows.length === 0) {
+        await connection.rollback();
+        return res.status(404).json({ message: 'Zahtjev nije pronađen.' });
+      }
+
+      // Status se mogao promijeniti dok je model radio (npr. administrator je
+      // u međuvremenu zahtjev odbio) — provjera se zato ponavlja pod ključem.
+      const statusNow = lockedRows[0].fk_request_status;
+      if (LOCKED_STATUSES.includes(statusNow)
+        || (!userIsAdmin && (statusNow !== STATUS.VRACENO || lockedRows[0].fk_created_by_user !== userId))) {
+        await connection.rollback();
+        return res.status(409).json({
+          message: 'Status zahtjeva se promijenio dok je AI obrađivao ponudu — stavke nisu izmijenjene.',
+        });
+      }
+
+      const [countRows] = await connection.query(
+        'SELECT COUNT(*) AS count FROM PurchaseRequestItem WHERE fk_purchase_request = ?',
+        [id]
+      );
+      previousCount = countRows[0]?.count ?? 0;
+
+      await connection.query('DELETE FROM PurchaseRequestItem WHERE fk_purchase_request = ?', [id]);
+
+      await connection.query(
+        `INSERT INTO PurchaseRequestItem
+           (fk_purchase_request, fk_item_category, item_name, quantity)
+         VALUES ?`,
+        [extraction.items.map((it) => [id, it.fk_item_category, it.item_name, it.quantity])]
+      );
+
+      // Iznos se mijenja samo kad ga je model doista pročitao iz ponude.
+      // null znači "ponuda ga ne navodi ili nije u eurima" — tada se postojeći
+      // iznos zadržava, a ne briše.
+      previousAmount = lockedRows[0].total_amount === null ? null : Number(lockedRows[0].total_amount);
+      amountChanged = extraction.amount !== null && extraction.amount !== previousAmount;
+
+      if (extraction.amount !== null) {
+        await connection.query(
+          'UPDATE PurchaseRequest SET total_amount = ?, updated_at = CURRENT_TIMESTAMP WHERE id_purchase_request = ?',
+          [extraction.amount, id]
+        );
+      } else {
+        await connection.query(
+          'UPDATE PurchaseRequest SET updated_at = CURRENT_TIMESTAMP WHERE id_purchase_request = ?',
+          [id]
+        );
+      }
+
+      // Zamjena stavki i iznosa mora ostati vidljiva u povijesti — inače se
+      // poslije ne može reći je li podatke unio čovjek ili model.
+      const formatAmount = (value) => (value === null ? 'nije određen' : `${Number(value).toFixed(2)} €`);
+      const historyComment = `Stavke osvježene iz ponude AI asistentom (${previousCount} → ${extraction.items.length}).`
+        + (amountChanged ? ` Iznos: ${formatAmount(previousAmount)} → ${formatAmount(extraction.amount)}.` : '');
+
+      await connection.query(
+        `INSERT INTO RequestStatusHistory
+           (fk_purchase_request, fk_request_status, fk_changed_by_user, comment)
+         VALUES (?, ?, ?, ?)`,
+        [id, statusNow, userId, historyComment]
+      );
+
+      await connection.commit();
+    } catch (error) {
+      await connection.rollback();
+      throw error;
+    } finally {
+      connection.release();
+    }
+
+    const categoryNameById = Object.fromEntries(categories.map((c) => [c.id_item_category, c.name]));
+
+    return res.json({
+      message: 'Stavke su osvježene iz ponude.',
+      previous_count: previousCount,
+      items: extraction.items.map((it) => ({ ...it, category_name: categoryNameById[it.fk_item_category] ?? null })),
+      previous_amount: previousAmount,
+      // null = ponuda iznos ne navodi (ili nije u eurima); iznos zahtjeva je tad ostao kakav je bio.
+      new_amount: extraction.amount,
+      amount_changed: amountChanged,
+      // 'read' | 'missing' | 'foreign_currency' — zašto iznos jest ili nije upisan.
+      amount_status: extraction.amountStatus,
+      quotes_used: quotes.map((q) => q.filename),
+      warnings: [...skipped, ...extraction.warnings],
+      provider: extraction.provider,
+      model: extraction.model,
+      usage: extraction.usage,
+      // Provenijencija prompta: hash i uvjet uvijek, puni tekst samo na
+      // izričit zahtjev (isto zaglavlje koje je koristio mjerni harness).
+      prompt_variant: extraction.prompt_meta.prompt_variant,
+      system_prompt_hash: extraction.prompt_meta.system_prompt_hash,
+      ...(extraction.prompt_meta.category_codebook_sha256
+        ? { category_codebook_sha256: extraction.prompt_meta.category_codebook_sha256 } : {}),
+      ...(extraction.prompt_meta.codebook_excerpt_sha256
+        ? { codebook_excerpt_sha256: extraction.prompt_meta.codebook_excerpt_sha256 } : {}),
+      ...(req.get('X-Include-System-Prompt') === '1'
+        ? { system_prompt: extraction.prompt_meta.system_prompt } : {}),
+    });
+  } catch (error) {
+    if (error instanceof ItemExtractionError) {
+      return res.status(error.status).json({ message: error.message });
+    }
+    console.error('POST /api/requests/:id/ai-items error:', error);
+    return res.status(502).json({ message: 'AI obrada ponude nije uspjela. Pokušajte ponovno.' });
   }
 });
 

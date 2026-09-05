@@ -1,5 +1,15 @@
 # Eval scenariji za AI asistenta (RQ1/RQ2)
 
+> **Status od 5. 9. 2026.** Chat asistenta je uklonjen iz sustava, pa se mjeri
+> ruta `POST /api/requests/:id/ai-items` (čitanje priložene ponude i zamjena
+> stavki), ne razgovor. Od deset scenarija izvode se **sedam** — oni s
+> priloženim dokumentom. Scenariji 8 (ponuda kao tekst e-maila), 9
+> (manipulativan uvod) i 10 (izmjena nakon kreiranja) nemaju što mjeriti na
+> ruti koja polazi od priložene datoteke; njihov ground truth ostaje u
+> `server/eval/ground-truth/` kao zapis, ali se više ne izvodi. Opisi ispod
+> koji spominju razgovor, potvrdu i `create_request` odnose se na uklonjeni
+> chat i zadržani su radi povijesti.
+
 Ovaj dokument opisuje kanonski skup od 10 scenarija za formalno prikupljanje
 podataka o ponašanju AI asistenta (docs/AI.md), korišten u `server/scripts/evalHarness.js`
 i `server/scripts/evalScenarios.js`. Cilj skupa je pokriti četiri ključna
