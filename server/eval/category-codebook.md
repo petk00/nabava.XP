@@ -16,6 +16,11 @@ niti prilagođena.
 modela iz probnog prolaza već bili viđeni. Ta je kontaminacija priznata imenom i ne
 umanjuje se: pravila niže nastala su uz poznavanje jednog probnog prolaza na scenariju 1.
 
+**Dva ispravka dosljednosti, 6. 9. 2026.** — ne mijenjaju prosudbu nego je izjednačuju
+nad istovrsnim stavkama: „IoT komplet ESP32" dobio je iste prihvatljive alternative kao
+opširnije opisani komplet iz druge ponude, a „Ljubičasti laserski modul" usklađen je s
+ostalih jedanaest diskretnih komponenti iz istog para ponuda.
+
 Obrazloženja su **doslovno onako kako ih je autor zapisao** u
 `server/eval/category-assignment.csv`, stupac `napomena`. Nijedno pravilo nije dopisano
 sa strane.
@@ -142,7 +147,7 @@ alternative koje blago bodovanje priznaje.
 ### scenario3_rabat_pdv
 
 **IoT komplet ESP32**
-→ Nastavna i laboratorijska oprema
+→ Nastavna i laboratorijska oprema  ·  prihvatljivo i: Računalna oprema, Mrežna i telekomunikacijska oprema
 > Komplet s mikrokontrolerom za edukacijski/laboratorijski rad.
 
 **Set senzora**
@@ -176,7 +181,7 @@ alternative koje blago bodovanje priznaje.
 ### scenario4_dvije_ponude
 
 **Ljubičasti laserski modul, 12x45mm, 0.5mW, 650nm, linijski**
-→ Nastavna i laboratorijska oprema  ·  prihvatljivo i: Elektronička i elektrotehnička oprema
+→ Elektronička i elektrotehnička oprema  ·  prihvatljivo i: Nastavna i laboratorijska oprema
 > Laserski modul je elektronička komponenta/oprema za eksperimentalni rad.
 
 **28BYJ-48 5V koračni (stepper) motor + ULN2003 motor driver**
@@ -266,14 +271,14 @@ koliko ga puta stavke pokreću. Nije pravilo nego sažetak onoga što je dodjela
 
 | Očekivana | Prihvatljiva alternativa | Stavaka |
 |---|---|---|
-| Elektronička i elektrotehnička oprema | Nastavna i laboratorijska oprema | 14 |
-| Nastavna i laboratorijska oprema | Elektronička i elektrotehnička oprema | 7 |
+| Elektronička i elektrotehnička oprema | Nastavna i laboratorijska oprema | 15 |
+| Nastavna i laboratorijska oprema | Elektronička i elektrotehnička oprema | 6 |
 | Mjerna i ispitna oprema | Nastavna i laboratorijska oprema | 6 |
 | Računalna oprema | Nastavna i laboratorijska oprema | 4 |
 | Računalna oprema | Elektronička i elektrotehnička oprema | 4 |
+| Nastavna i laboratorijska oprema | Računalna oprema | 3 |
+| Nastavna i laboratorijska oprema | Mrežna i telekomunikacijska oprema | 3 |
 | Mrežna i telekomunikacijska oprema | Računalna oprema | 3 |
-| Nastavna i laboratorijska oprema | Računalna oprema | 2 |
-| Nastavna i laboratorijska oprema | Mrežna i telekomunikacijska oprema | 2 |
 | Mrežna i telekomunikacijska oprema | Nastavna i laboratorijska oprema | 2 |
 | Nastavna i laboratorijska oprema | Sitni inventar | 2 |
 | Usluge razvoja i održavanja informacijskih sustava | Usluge održavanja | 2 |
