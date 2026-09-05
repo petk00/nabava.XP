@@ -189,6 +189,11 @@ izmišljeno**, samo krivo dodijeljeno.
 Svako očekivano polje nosi `provenance`: lokator u ulazu (indeks poruke ili datoteka +
 redak) i **doslovan citat**. Citat mora biti bajt-jednak izvoru i to se provjerava strojno.
 
+**Konvencija redaka:** `line` je **nula-indeksiran** redak nad `text.split('\n')` izvučenog
+teksta. Konvencija nigdje nije bila zapisana; utvrđena je 6. 9. 2026. mjerenjem — svih 125
+lokatora koji pokazuju na prilog poklapa se uz nula-bazirano brojanje, nijedan uz jedinično.
+Izvučeni tekst ne počinje praznim retkom, pa razlika nije artefakt vodećeg prijeloma.
+
 ### Zašto strojna provjera citata
 
 Pri izradi je provjera uhvatila dvije greške koje oko ne vidi: u retku
@@ -196,7 +201,40 @@ Pri izradi je provjera uhvatila dvije greške koje oko ne vidi: u retku
 prepisan citat imao je obični. Bez strojne provjere provenance bi tiho pokazivao na
 nepostojeći tekst.
 
-Provjereno: **145 lokatora, nula promašaja.**
+### Skripta
+
+`server/scripts/verifyProvenance.js`. Tekst izvlači **istim putem kojim ga izvlači mjerena
+ruta** (`quoteExtractionService` → `pdfExtractWorker`, `pdf-parse` u zasebnom procesu); bilo
+koji drugi čitač PDF-a dao bi drukčije razmake i prijelome, pa bi provjera ovjeravala tekst
+koji model nikad ne vidi. Za svaki lokator provjerava (1) je li citat doslovan podniz
+izvučenog teksta, bez ikakve normalizacije, i (2) nalazi li se **na navedenom retku** — ne
+samo bilo gdje u dokumentu, jer se isti niz („Ukupno za uplatu") pojavljuje u više ponuda.
+Neslaganja ispisuje s vidljivim nedjeljivim razmakom. Izlazni kod 1 kod ijednog promašaja,
+pa se može zvati iz protokola prije kampanje.
+
+    node scripts/verifyProvenance.js
+
+### Stanje, mjereno 6. 9. 2026.
+
+| Veličina | Broj |
+|---|---|
+| unosa `provenance` ukupno, uključujući ugniježđene u izvedenoj vrijednosti | 209 |
+| **od toga s citatom** | **145** |
+| provjerljivo protiv teksta priloga | 125 |
+| **prolazi** | **125 (sve)** |
+| pada — citat nije doslovan podniz | 0 |
+| pada — citat točan, redak pogrešan | 0 |
+| neprovjerljivo — izvor je poruka razgovora | 20 |
+| bez citata — dodjela iz codebooka | 64 |
+
+Ranija tvrdnja „145 lokatora, nula promašaja" **stoji po broju**, uz dva pojašnjenja koja
+prije nisu bila zapisana. Prvo: 145 je broj lokatora **s citatom**, a ne broj provjerenih —
+provjerljivo protiv dokumenta je njih 125. Preostalih 20 pokazuje na tekst korisnikove
+poruke (`source: turn`), a poruka od uklanjanja chata više nema, pa se ti citati **nemaju
+na čemu provjeriti**; sva se odnose na polja koja se ionako ne boduju (odjel) ili na
+scenarije koji se više ne izvode. Drugo: u 145 ulaze i **dva ugniježđena lokatora** unutar
+izvedenog iznosa scenarija 4 (`total_amount.provenance.from[]`, 95,32 + 524,00); brojanje
+koje gleda samo vršne unose daje 143.
 
 ### Imenovani popis iznimaka
 
