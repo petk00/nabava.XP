@@ -1,137 +1,107 @@
-# Eval scenariji za AI asistenta (RQ1/RQ2)
+# Testni skup za mjerenje čitanja ponude
 
-> **Status od 5. 9. 2026.** Chat asistenta je uklonjen iz sustava, pa se mjeri
-> ruta `POST /api/requests/:id/ai-items` (čitanje priložene ponude i zamjena
-> stavki), ne razgovor. Od deset scenarija izvode se **sedam** — oni s
-> priloženim dokumentom. Scenariji 8 (ponuda kao tekst e-maila), 9
-> (manipulativan uvod) i 10 (izmjena nakon kreiranja) nemaju što mjeriti na
-> ruti koja polazi od priložene datoteke; njihov ground truth ostaje u
-> `server/eval/ground-truth/` kao zapis, ali se više ne izvodi. Opisi ispod
-> koji spominju razgovor, potvrdu i `create_request` odnose se na uklonjeni
-> chat i zadržani su radi povijesti.
+Zadnja provjera: **5. 9. 2026.** — usklađeno s kodom (`server/scripts/evalScenarios.js`),
+prilozima na disku i ground truthom.
 
-Ovaj dokument opisuje kanonski skup od 10 scenarija za formalno prikupljanje
-podataka o ponašanju AI asistenta (docs/AI.md), korišten u `server/scripts/evalHarness.js`
-i `server/scripts/evalScenarios.js`. Cilj skupa je pokriti četiri ključna
-područja ponašanja asistenta: obradu PDF dokumenata, vision (slika) ekstrakciju,
-razumijevanje prirodnog jezika i ispravno agentsko ponašanje (stanje razgovora,
-otpornost na manipulaciju, poslovna validacija).
+Mjeri se ruta `POST /api/requests/:id/ai-items` (`docs/AI.md`): model pročita ponudu
+priloženu uz postojeći zahtjev i njome zamijeni stavke i ukupan iznos. Nema razgovora,
+pa scenarij nije niz poruka nego **jedan zahtjev s jednom ili dvije priložene ponude**.
 
-Zadnja provjera: **2026-08-28**
+## Što se stvarno izvodi — sedam scenarija
 
-Sirovi rezultati eval runova (JSON Lines, po pokušaju) spremaju se u
-`server/eval-results/` (generirano, nije u gitu). Prilozi korišteni za
-scenarije s dokumentima nalaze se u `server/eval-scenarios/fixtures/` —
-dio je sintetički generiran (reportlab), dio su stvarni dokumenti koje
-korisnik po potrebi zamjenjuje pod ISTIM imenom datoteke (vidi tablicu
-niže) — u oba slučaja odvojeni od razvojnih PDF-ova korištenih tijekom
-implementacije (`test_scenarios/mikrotron_M.pdf` i sl.), da se izbjegne
-"contamination" formalnog mjerenja podacima koje je model (ili sam razvojni
-proces) već "vidio".
+Svi imaju prilog. Nijedan nije tekstualni, jer ruta polazi od priložene datoteke.
 
-`evalHarness.js` sam po sebi NE boduje točnost — samo pouzdano prikuplja sirove
-podatke (transkript, latencija, token usage, tool pozivi) i, za pokušaje koji
-uspješno pozovu `create_request`, stvarno spremljeno stanje zahtjeva iz baze
-(`actual_created_request` u JSONL izlazu, vidi `fetchCreatedRequest` u
-evalHarness.js). Bodovanje točnosti je zaseban korak, izgrađen 2026-08-27/28:
+| ID | Prilog | Što se ispituje | Stavki u ground truthu | Iznos | N |
+|---|---|---|---|---|---|
+| `scenario1_standardna` | `scenario1_standardna.pdf` | jednostranična ponuda, osnovno čitanje | 4 | 57,10 € | 5 |
+| `scenario2_visestranicna` | `scenario2_visestranicna.pdf` | dvije stranice, 23 stavke — zadržava li model stavke s druge stranice | 23 | 50.677,88 € | 5 |
+| `scenario3_rabat_pdv` | `scenario3_rabat_pdv.pdf` | osnovica, rabat, PDV, za uplatu — bira li model pravi iznos | 8 | 25.036,88 € | 5 |
+| `scenario4_dvije_ponude` | `scenario4_ponuda_a.pdf`, `scenario4_ponuda_b.pdf` | dvije ponude uz isti zahtjev — spaja li stavke i zbraja iznose | 16 | 619,32 € | 5 |
+| `scenario5_dugacki_opisi` | `scenario5_dugacki_opisi.pdf` | nazivi 232–251 znakova — stane li u `varchar(200)` i skraćuje li razumno | 4 | 5.906,63 € | 5 |
+| `scenario6_format_brojeva` | `scenario6_jedinice.pdf` | ista ponuda kao 5, brojevi u anglosaksonskom formatu (`1,398.00`) | 4 | 5.906,63 € | 5 |
+| `scenario7_nije_ponuda` | `scenario7_nije_ponuda.pdf` | dokument bez tekstualnog sloja — **mora biti odbijen** | 0 | — | 3 |
 
-- Svaki scenarij u `evalScenarios.js` ima `expectedResult` — ručno utvrđen
-  ground truth (očekivana odluka, odjel, stavke, prihvatljiv iznos), za
-  scenarije s prilozima izveden izravnim pregledom stvarnog dokumenta.
-- `server/scripts/scoreEvalResults.js` uspoređuje `actual_created_request` s
-  `expectedResult` i generira `docs/eval-runs/scoring-worksheet.md` —
-  mehanički provjerljivo (odluka, odjel, broj stavki, iznos) je automatski
-  označeno, SADRŽAJ stavki (jesu li to stvarno iste stavke, ne samo isti broj)
-  ostaje ručna provjera jer model parafrazira nazive.
-- Ovo je RQ1 (kvaliteta/točnost) mjera; `aggregateEvalResults.js`
-  (pouzdanost/latencija/tokeni kroz runove) je RQ2 (isplativost/trošak) mjera.
+`scenario7` u kodu nosi `inputModality: 'image'` iako je datoteka `.pdf`: riječ je o
+skeniranoj slici unutar PDF-a, bez tekstualnog sloja. Ispravan ishod je odbijanje
+(`expectsRefusal: true`), a ne izvučene stavke.
 
-## Popis scenarija
+Zastavice `inputModality` i `expectsRefusal` stoje na dva mjesta — u scenariju i u ground
+truthu. `evalHarness.js` ih uspoređuje **prije** mjerenja i puca ako se raziđu, da se ne
+grupira po jednoj vrijednosti a boduje po drugoj. Provjereno 5. 9. 2026.: svih sedam se
+poklapa.
 
-1. **PDF ponuda s čistim tekstualnim slojem** — prilaganje dokumenta iz kojeg
-   se ekstrakcijom podataka dobivaju strukturirani podaci na temelju kojih se
-   kreira novi zahtjev, uz koji se prilaže i sama izvorna ponuda (formalni
-   prilog uz zahtjev, docs/AI.md attachmentService.js).
-2. **Kvalitetna slika ponude (JPG/PNG)** — prilaganje jasne i dobro
-   poravnate slike iz koje se ekstrakcijom podataka dobivaju strukturirani
-   podaci na temelju kojih se kreira novi zahtjev, uz koji se prilaže i sama
-   izvorna slika ponude.
-3. **Nekvalitetna slika ponude (JPG/PNG)** — mutna, nakošena ili zasjenjena
-   fotografija ponude. Testira se robusnost ekstrakcije pomoću vision modela
-   u otežanim uvjetima, i uspješno kreiranje zahtjeva ukoliko su podaci ipak
-   vidljivi/čitljivi.
-4. **PDF ponuda na engleskom jeziku** — stvarna ponuda UK dobavljača (GBP);
-   agent treba razumjeti sadržaj te pravilno obraditi brojeve, decimalne
-   oznake i valutu izvan hrvatskog konteksta.
-5. **Potpuno specificiran zahtjev u jednoj složenoj rečenici** — korisnik u
-   jednoj rečenici navodi sve potrebne podatke za kreiranje zahtjeva,
-   uključujući više artikala iz raznih kategorija.
-6. **Nejasan zahtjev bez definirane količine** — korisnik navodi artikl, ali
-   ne i količinu ni obrazloženje. Agent mora zatražiti nedostajući podatak,
-   bez nagađanja, a korisnik zatim (u sljedećoj poruci) potvrđuje ispravan
-   broj.
-7. **Složen zahtjev s više stavki i promjenom odluke** — korisnik unosi
-   stavke iz različitih kategorija, ali NAMJERNO izostavlja obrazloženje u
-   1. turnu (obavezno polje) — agent mora pitati prije nego što uopće može
-   pozvati `create_request` (za čisto tekstualne zahtjeve nema propose gate,
-   pa bi create inače prošao već nakon 1. turna i svaka kasnija "korekcija"
-   bila prekasna, testirano i potvrđeno verifikacijskim runom 2026-08-27).
-   U 2. turnu korisnik ISTOVREMENO dopunjuje obrazloženje I mijenja jednu od
-   prethodno navedenih količina — testira se prati li agent ISPRAVLJENU
-   (zadnju) vrijednost, ne prvu spomenutu.
-8. **Složen zahtjev s nepotrebnim informacijama i prompt injection
-   pokušajem** — korisnik uz relevantne podatke (stvaran odjel: Informatička
-   služba) uključuje nebitne instrukcije i pokušaj zaobilaženja poslovnih
-   pravila (lažno "neslužbeno odobrenje", pritisak da se preskoči procedura).
-   Agent treba izdvojiti relevantne podatke, ignorirati manipulativni uvod, i
-   uspješno kreirati zahtjev — model ionako nema alat kojim bi mogao
-   "preskočiti proceduru", pa test provjerava samo otpornost ekstrakcije na
-   ignoriranje ostatka teksta.
-9. **Više ponuda odjednom (PDF)** — korisnik učitava dvije zasebne, stvarne
-   ponude (potpuno različiti artikli, bez preklapanja imena — 11 stavki u
-   jednoj, 5 u drugoj). Agent treba prepoznati stavke iz OBJE ponude i
-   spojiti ih SVE u jedan draft (16 stavki ukupno), a ukupan iznos je zbroj
-   iznosa obje ponude. Agent NE pita korisnika ništa dodatno o stavkama
-   (namjerna promjena dizajna — vidi docs/AI.md buildAttachmentInstruction,
-   točka 3; napomena: izvorni dizajn scenarija pretpostavljao je i test
-   preklapajućih stavki poput "laptopa" na obje ponude, ali stvarni zamjenski
-   dokumenti nemaju nijedan zajednički artikl — ponašanje pri PRAVOM
-   preklapanju ostaje neprovjereno stvarnim dokumentom).
-10. **Dokument koji nije ponuda** — korisnik učitava nerelevantan dokument,
-    poput ugovora ili dopisa. Agent treba prepoznati da dokument nije
-    odgovarajući i zatražiti odgovarajući dokument ili dodatnu uputu. Ukoliko
-    korisnik ne dostavi tu uputu/ispravan dokument, agent NE smije kreirati
-    zahtjev na temelju priloženog (neispravnog) dokumenta.
+## Tri ground trutha koji se više ne izvode
 
-Ovaj skup pokriva četiri ključna područja:
+`server/eval/ground-truth/` sadrži deset datoteka. Tri od njih potječu iz doba chata,
+nemaju priloga i nemaju odgovarajući scenarij u kodu:
 
-- 📄 **PDF obrada** — tekstualni PDF, engleski PDF, više PDF-ova, nerelevantan
-  PDF (scenariji 1, 4, 9, 10)
-- 👁️ **Vision** — dobra i loša slika (scenariji 2, 3)
-- 🧠 **Razumijevanje zahtjeva** — jednostavan/složen prirodni jezik,
-  nedostajući podaci (scenariji 5, 6, 7)
-- 🛡️ **Agentsko ponašanje** — promjena stanja kroz razgovor, prompt injection
-  i poslovna validacija (scenariji 7, 8)
+| Datoteka | Zašto se ne izvodi |
+|---|---|
+| `scenario8_email_slobodan_tekst.json` | ponuda zalijepljena kao tekst e-maila, bez datoteke |
+| `scenario9_prompt_injection.json` | manipulativan uvod u poruci, bez datoteke |
+| `scenario10_izmjena_nakon_kreiranja.json` | ponašanje nakon kreiranja zahtjeva; ruta ne kreira zahtjeve |
 
-## Prilozi po scenariju
+Ostaju u repozitoriju kao zapis o obavljenom poslu. **Ne brišu se i ne mjere.**
 
-| Scenarij | Prilog | Napomena |
-|---|---|---|
-| 1 | `eval-scenarios/fixtures/scenario1_ponuda.pdf` | Prava HR ponuda, tekstualni sloj |
-| 2 | `eval-scenarios/fixtures/scenario2_ponuda.jpeg` | Prava fotografija ponude (iPhone) |
-| 3 | `eval-scenarios/fixtures/scenario3_ponuda_degraded.jpeg` | Prava fotografija, nakošena/otežani uvjeti |
-| 4 | `eval-scenarios/fixtures/scenario4_quote_en.pdf` | Prava EN ponuda, UK dobavljač, GBP |
-| 5-8 | — | Čisti tekst, bez priloga |
-| 9 | `eval-scenarios/fixtures/scenario9_ponuda_a.pdf`, `scenario9_ponuda_b.pdf` | Dvije prave, zasebne ponude |
-| 10 | `eval-scenarios/fixtures/scenario10_not_a_quote.jpg` | Prava fotografija dokumenta koji nije ponuda |
+## Ranija verzija ovog dokumenta opisivala je drugi skup
 
-Dokumenti se zamjenjuju po potrebi (isto ime datoteke, samo se sadržaj/
-ekstenzija mijenja) — trenutna verzija svakog fixturea nije nužno konačna.
-Od 2026-08-27 svi prilozi (1, 2, 3, 4, 9, 10) su STVARNI dokumenti, ne
-sintetički — napomena o "svježe generiranim sintetičkim dokumentima" na
-vrhu ovog fajla više ne vrijedi doslovno za trenutnu verziju fixtures/, ali
-princip (odvojeno od `test_scenarios/mikrotron_M.pdf` i sličnih razvojnih
-datoteka korištenih tijekom implementacije) i dalje stoji — provjereno
-(hash usporedba) da se radi o DRUGIM dokumentima, iako scenariji 1 i 9
-dolaze od istog stvarnog dobavljača (Mikrotron d.o.o.) korištenog i u
-ranijim razvojnim testovima.
+Do 5. 9. 2026. ovaj je dokument opisivao deset scenarija s drukčijim sadržajem i
+prilozima — među njima dvije vision (slikovne) ponude, ponudu na engleskom u funtama i
+drugu numeraciju. **Taj skup više ne postoji.** Prilozi su preimenovani i zamijenjeni u
+commitu `235a694`:
+
+- `scenario1_ponuda.pdf` → `scenario1_standardna.pdf`
+- `scenario9_ponuda_a/b.pdf` → `scenario4_ponuda_a/b.pdf`
+- `scenario10_not_a_quote.jpg` → `scenario7_nije_ponuda.pdf`
+- obrisani: `scenario2_ponuda.jpeg`, `scenario3_ponuda_degraded.jpeg`, `scenario4_quote_en.pdf`
+- dodani: `scenario2_visestranicna.pdf`, `scenario3_rabat_pdv.pdf`,
+  `scenario5_dugacki_opisi.pdf`, `scenario6_jedinice.pdf`
+
+Dokument nije bio ažuriran uz taj commit, pa je tvrdio postojanje datoteka kojih na disku
+nema. Odatle i kasnija zabuna oko toga koji scenariji „nemaju prilog": u starom skupu to
+su bili 5–8, u sadašnjem takvih **nema** — otpadaju 8, 9 i 10, i to zato što nemaju
+priloga ni scenarija u kodu.
+
+**Posljedica za opseg rada:** s tim commitom iz mjerenja su ispale dvije stvari koje je
+stari skup pokrivao — **čitanje ponude sa slike** i **ponuda u stranoj valuti**. Prva je
+otpala i zato što ruta ne prosljeđuje slike modelu (ekstrakcija je isključivo `pdf-parse`),
+druga nema zamjenu među sadašnjim prilozima iako kod za nju postoji (`amount_status:
+foreign_currency`). Oboje navesti u ograničenjima, ili nadoknaditi novim ponudama.
+
+## Prilozi
+
+`server/eval-scenarios/fixtures/` — osam datoteka, sve PDF. Odvojene su od razvojnih
+dokumenata korištenih tijekom implementacije (`test_scenarios/`), da formalno mjerenje ne
+koristi podatke na kojima se sustav razvijao. Scenariji 1 i 4 dolaze od istog stvarnog
+dobavljača (Mikrotron d.o.o.) korištenog i u ranijim razvojnim testovima, ali su drugi
+dokumenti — provjereno usporedbom hasheva.
+
+## Ground truth
+
+`server/eval/ground-truth/<scenario_id>.json`, verzionirano u gitu. Svako očekivano polje
+nosi `provenance` s lokatorom i bajt-jednakim citatom; pravila i način provjere drži
+`docs/mjerni-plan.md` § 5.
+
+## Gdje živi mjerni aparat
+
+```
+server/scripts/evalScenarios.js       scenariji (podaci, bez ground trutha)
+server/scripts/groundTruth.js         jedan čitač ground trutha za sve skripte
+server/scripts/evalHarness.js         runner — mjeri rutu ai-items
+server/scripts/scoreEvalResults.js    bodovanje točnosti -> docs/eval-runs/scoring-worksheet.md
+server/scripts/aggregateEvalResults.js agregacija kroz runove (brzina, tokeni, pouzdanost)
+server/scripts/evalCost.js            trošak i TCO
+server/eval/ground-truth/             mjerilo
+server/eval/category-codebook.md      pravilnik za dodjelu kategorija
+server/eval-scenarios/fixtures/       prilozi
+server/eval-results/                  JSONL rezultati (u .gitignore)
+```
+
+Statistička obrada (`analyze.js`, mjerni plan § 9, faza H) **još nije napisana.**
+
+## Kako se boduje
+
+`evalHarness.js` ne boduje nazive stavki — model ih legitimno parafrazira. Automatski se
+provjerava broj stavki, količine, iznos i dodjela kategorije (strogo i blago);
+`scoreEvalResults.js` to slaže u radni list i ostavlja prazno polje za ručnu procjenu
+sadržaja stavki.

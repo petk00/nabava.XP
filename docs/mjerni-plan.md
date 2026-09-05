@@ -30,8 +30,10 @@ Svaki run nosi `run_kind` u `run_manifest.json`:
 | `sensitivity` | kontrolni prolazi (npr. temperatura 1) |
 | `smoke` | provjere ispravnosti; nikad se ne analiziraju |
 
-`scripts/analyze.js` po zadanom obrađuje isključivo `final` i odbija spojiti runove
-različite vrste u istu tablicu.
+`server/scripts/analyze.js` po zadanom obrađuje isključivo `final` i odbija spojiti runove
+različite vrste u istu tablicu — **skripta još nije napisana** (v. § 9, faza H). Do tada
+odabir runova radi čovjek, a `aggregateEvalResults.js` prikazuje raščlambu po runu upravo
+zato da se runovi različite vrste ne pomiješaju nezapaženo.
 
 **Zadana vrijednost je `smoke`.** Run koji ulazi u rad mora biti izričito označen, da probni
 prolaz nikad ne završi u konačnoj tablici zbog zaboravljene zastavice.
@@ -337,7 +339,7 @@ Popis postoji da ne ovisi o pamćenju.
       manifest — bez toga `category_name` nije provjerljiv iz zapisa
 - [ ] sadržaj rezultata alata u `tool_trace_summary` (premješteno iz faze C)
 
-### Faza H — `scripts/analyze.js`
+### Faza H — `server/scripts/analyze.js` *(ne postoji, treba je napisati)*
 - [ ] polazišna vrijednost većinske klase (65,0 %) u istoj tablici kao rezultati
 - [ ] ukupna točnost (mikro) **i** prosjek po kategorijama (makro)
 - [ ] točnost po kategoriji zasebno, uz broj stavaka
