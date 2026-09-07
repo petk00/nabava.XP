@@ -14,6 +14,13 @@
 // prompt-uvjet za definicije kategorija (promptVariant) i ista granica duljine
 // naziva kao requestService.
 //
+// DVA OBLIKA ULAZA. PDF prilog prolazi kroz poslužiteljsku ekstrakciju teksta i obje
+// izvedbe dobivaju ISTI niz znakova. Slikovni prilog ide modelu izravno, u izvornim
+// bajtovima — ondje poslužiteljske ekstrakcije NEMA, pa svaka izvedba radi vlastito
+// očitanje i ulaz VIŠE NIJE IZJEDNAČEN. To je razlika u nacrtu mjerenja, ne tehnički
+// detalj: rezultati slikovnih priloga izvještavaju se u zasebnoj tablici točnosti i
+// tokeni im se broje odvojeno. Zapis pokušaja zato nosi `server_text_extraction`.
+//
 // Ova ruta JEST mjereni put: evalHarness.js mjeri upravo nju (docs/mjerni-plan.md).
 
 const crypto = require('node:crypto');
@@ -102,7 +109,7 @@ ponude izvući stavke koje se nabavljaju i predati ih pozivom alata set_items. N
 korisnikom i ne pišeš objašnjenja — odgovor je poziv alata.
 
 Pravila:
-- Priloženi tekst je JEDINI izvor. Ne izmišljaj stavke, količine ni kategorije kojih u njemu nema.
+- Priloženi dokument je JEDINI izvor. Ne izmišljaj stavke, količine ni kategorije kojih u njemu nema.
 - POPUST/RABAT NIJE STAVKA. Redak s negativnim iznosom ne ide među stavke — već je uračunat u ukupan iznos.
 - NAZIV je sam artikl ili usluga, bez opisa, specifikacija i šifri, najviše ${ITEM_NAME_MAX_LENGTH} znakova.
 - KOLIČINA je cijeli broj veći od 0. Ako ponuda količinu ne navodi, upiši 1.
@@ -115,21 +122,32 @@ Pravila:
 - Ako ponuda iznos uopće ne navodi, izostavi "estimated_amount" — ne računaj ga sam iz cijena stavki.
 - VALUTA: ako iznos nije u eurima, upiši izvorni broj i valutu u "currency" ("USD", "GBP"…). Ne
   preračunavaj. Pazi na zapis: "1,250.00" je tisuću dvjesto pedeset, decimalna točka.
-- Ako priloženi tekst nije ponuda (ugovor, dopis, obavijest), NE pretvaraj ga u stavke — ne pozivaj
-  alat, nego kratko napiši što dokument zapravo jest.
+- Ako priloženi dokument nije ponuda (ugovor, dopis, račun, obavijest), NE pretvaraj ga u stavke —
+  ne pozivaj alat, nego kratko napiši što dokument zapravo jest.
+- SLIKA: ako je ponuda priložena kao slika, čitaj je izravno. Ako je dio teksta nečitljiv, radije
+  izostavi tu stavku nego da nagađaš; nepotpun popis je bolji od izmišljenog.
 
 Kategorije artikala (koristi TOČNO ove ID-eve):
 ${catList}${definitions.text}`;
 }
 
-function buildUserMessage(quotes) {
-  const multiple = quotes.length > 1;
-  const blocks = quotes
-    .map((q, idx) => {
-      const label = multiple ? `Ponuda ${idx + 1} (dokument: ${q.filename})` : `Ponuda (dokument: ${q.filename})`;
-      return `${label} — tekst izvučen iz PDF-a:\n"""\n${q.text}\n"""`;
-    })
-    .join('\n\n');
+/**
+ * Korisnička poruka nosi tekstualne priloge doslovno, a slikovne samo najavljuje —
+ * njihovi bajtovi idu zasebnim putem (`images` na poruci), koji svaki provider
+ * preslikava u svoj oblik (Ollamin `images`, Geminijev `inlineData`).
+ */
+function buildUserMessage(attachments) {
+  const multiple = attachments.length > 1;
+  let imageOrdinal = 0;
+
+  const blocks = attachments.map((a, idx) => {
+    const label = multiple ? `Ponuda ${idx + 1} (dokument: ${a.filename})` : `Ponuda (dokument: ${a.filename})`;
+    if (a.kind === 'image') {
+      imageOrdinal += 1;
+      return `${label} — priložena je kao SLIKA (${imageOrdinal}. slika po redoslijedu), pogledaj je izravno.`;
+    }
+    return [`${label} — tekst izvučen iz PDF-a:`, '"""', a.text, '"""'].join('\n');
+  }).join('\n\n');
 
   return `${blocks}
 
@@ -245,15 +263,18 @@ function normalizePayload(args, categories) {
 /**
  * Pita aktivni model da iz teksta ponuda složi popis stavki.
  *
- * @param {Array<{filename: string, text: string}>} quotes tekst već izvučen iz PDF-a
+ * @param {Array<{filename: string, kind: 'pdf'|'image', text?: string, mimeType?: string, base64?: string}>} attachments
+ *   Prilozi redoslijedom kojim su dodani uz zahtjev. PDF nosi već izvučen `text`;
+ *   slika nosi `mimeType` i `base64` i ide modelu izravno, bez ekstrakcije.
  * @param {Array<{id_item_category: number, name: string}>} categories kategorije POSLOVNE GODINE ZAHTJEVA
  * @param {string} [providerKey] 'ollama' | 'gemini'; bez njega se uzima provider iz postavke
  * @returns {Promise<{ items: Array, amount: number|null, amountStatus: string, warnings: string[],
- *   usage: object, provider: string, model: string|null, prompt_meta: object, text: string|null }>} `amount` je null kad ponuda iznos ne navodi ili nije
+ *   usage: object, server_text_extraction: boolean, input_kinds: string[], provider: string,
+ *   model: string|null, prompt_meta: object, text: string|null }>} `amount` je null kad ponuda iznos ne navodi ili nije
  *   u eurima — tada postojeći iznos zahtjeva ostaje nepromijenjen.
  * @throws {ItemExtractionError}
  */
-async function extractItemsFromQuotes({ quotes, categories, providerKey = null }) {
+async function extractItemsFromQuotes({ attachments, categories, providerKey = null }) {
   if (categories.length === 0) {
     throw new ItemExtractionError(400, 'Poslovna godina ovog zahtjeva nema nijednu aktivnu kategoriju artikala.');
   }
@@ -289,9 +310,18 @@ async function extractItemsFromQuotes({ quotes, categories, providerKey = null }
     system_prompt: systemPrompt,
   };
 
+  // Slike putuju kao dio korisnikove poruke, ne kao zasebna poruka — to je oblik koji
+  // oba providera nativno razumiju (Ollamin `images`, Geminijev `inlineData`).
+  const images = attachments
+    .filter((a) => a.kind === 'image')
+    .map((a) => ({ mimeType: a.mimeType, data: a.base64 }));
+
+  const userMessage = { role: 'user', content: buildUserMessage(attachments) };
+  if (images.length > 0) userMessage.images = images;
+
   const convo = [
     { role: 'system', content: systemPrompt },
-    { role: 'user', content: buildUserMessage(quotes) },
+    userMessage,
   ];
 
   const usage = {
@@ -343,6 +373,10 @@ async function extractItemsFromQuotes({ quotes, categories, providerKey = null }
         amountStatus: normalized.amountStatus,
         warnings: normalized.warnings,
         usage,
+        // Je li model dobio tekst koji je izvukao poslužitelj, ili je sam čitao sliku.
+        // Kad je false, ulaz NIJE izjednačen među izvedbama — vidi napomenu na vrhu.
+        server_text_extraction: images.length === 0,
+        input_kinds: attachments.map((a) => a.kind),
         provider: resolvedKey,
         model: capabilities.model ?? null,
         prompt_meta: promptMeta,

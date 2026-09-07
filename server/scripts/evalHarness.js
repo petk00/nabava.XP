@@ -541,6 +541,11 @@ async function runOneAttempt(scenario, prepared, token, provider, attemptNumber,
       }))
       : null,
     previous_count: body?.previous_count ?? null,
+    // Je li model dobio tekst koji je izvukao poslužitelj (PDF) ili je sam čitao
+    // sliku. Kad je false, ulaz NIJE izjednačen među izvedbama i rezultat ide u
+    // zasebnu tablicu točnosti, s odvojenim brojanjem tokena.
+    server_text_extraction: body?.server_text_extraction ?? null,
+    input_kinds: body?.input_kinds ?? null,
     amount_read: body?.new_amount ?? null,
     amount_status: body?.amount_status ?? null,
     warnings: body?.warnings ?? [],

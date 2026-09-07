@@ -2,7 +2,7 @@
   "scenario_id": "scenario7_nije_ponuda",
   "expected_decision": "refuse",
   "expects_refusal": true,
-  "input_modality": "image",
+  "input_modality": "pdf",
   "attachments": [
     "scenario7_nije_ponuda.pdf"
   ],

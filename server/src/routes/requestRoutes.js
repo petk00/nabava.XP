@@ -10,6 +10,7 @@ const fs = require('fs');
 const path = require('path');
 const rateLimit = require('express-rate-limit');
 const { extractQuoteText, QuoteExtractionError } = require('../services/quoteExtractionService');
+const { detectMimeTypeFromBuffer } = require('../services/fileTypeService');
 const { extractItemsFromQuotes, ItemExtractionError } = require('../services/itemExtractionService');
 const { PROVIDER_KEYS } = require('../services/llm/providerSelector');
 
@@ -900,6 +901,10 @@ router.put('/:id', authenticateToken, async (req, res) => {
    zaključan zahtjev se ne dira, a korisnik koji nije administrator smije
    mijenjati samo svoj zahtjev i samo dok je vraćen na dopunu.
 
+   PDF prilog prolazi kroz poslužiteljsku ekstrakciju teksta; slikovni prilog
+   (JPG/PNG) ide modelu IZRAVNO, bez ekstrakcije, pa kod njega ulaz nije
+   izjednačen među izvedbama — odgovor zato nosi `server_text_extraction`.
+
    Mijenjaju se stavke i ukupan iznos — oboje piše u ponudi. Odjel,
    obrazloženje i status ostaju kakvi jesu: ponuda o njima ili ne govori ili
    bi ih ovaj poziv mijenjao mimo korisnikove namjere. Iznos se NE dira kad ga
@@ -912,6 +917,10 @@ router.put('/:id', authenticateToken, async (req, res) => {
 const AI_ITEMS_UPLOADS_DIR = path.resolve(process.env.UPLOADS_DIR || path.join(__dirname, '../../uploads'));
 const resolveAttachmentPath = (filePath) =>
   (path.isAbsolute(filePath) ? filePath : path.join(AI_ITEMS_UPLOADS_DIR, filePath));
+
+// Slikovni formati koje ruta prosljeđuje modelu izravno. Isti popis koji
+// requestAttachmentRoutes.js dopušta pri uploadu priloga.
+const IMAGE_MIME_TYPES = ['image/jpeg', 'image/png'];
 
 // Limiter stoji uz rutu, a ne u index.js uz ostale: veže se na jednu putanju
 // s parametrom (app.use tamo ne bi pogodio /:id) i štiti od uzastopnog
@@ -979,7 +988,7 @@ router.post('/:id/ai-items', authenticateToken, aiItemsLimiter, async (req, res)
       return res.status(400).json({ message: 'Uz zahtjev nije priložena nijedna ponuda.' });
     }
 
-    const quotes = [];
+    const usable = [];
     const skipped = [];
     for (const attachment of attachmentRows) {
       const diskPath = resolveAttachmentPath(attachment.file_path);
@@ -990,12 +999,33 @@ router.post('/:id/ai-items', authenticateToken, aiItemsLimiter, async (req, res)
         skipped.push(`"${attachment.file_name}": datoteka nije pronađena na poslužitelju.`);
         continue;
       }
+
+      // Vrsta se utvrđuje iz MAGIČNIH BAJTOVA, ne iz nastavka ni iz prijavljenog
+      // tipa — isti obrazac kao pri uploadu priloga.
+      const mime = await detectMimeTypeFromBuffer(buffer).catch(() => null);
+
+      if (IMAGE_MIME_TYPES.includes(mime)) {
+        // Slika ide modelu u izvornim bajtovima. Poslužiteljske ekstrakcije nema,
+        // pa svaka izvedba radi vlastito očitanje — vidi itemExtractionService.js.
+        usable.push({
+          filename: attachment.file_name,
+          kind: 'image',
+          mimeType: mime,
+          base64: buffer.toString('base64'),
+        });
+        continue;
+      }
+
       try {
-        quotes.push({ filename: attachment.file_name, text: await extractQuoteText(buffer) });
+        usable.push({
+          filename: attachment.file_name,
+          kind: 'pdf',
+          text: await extractQuoteText(buffer),
+        });
       } catch (error) {
         if (error instanceof QuoteExtractionError) {
-          // Ponuda može biti .docx, slika ili skenirani PDF bez tekstualnog
-          // sloja — to nije greška poziva dok postoji barem jedna čitljiva.
+          // Prilog može biti .docx ili skenirani PDF bez tekstualnog sloja — to
+          // nije greška poziva dok postoji barem jedan upotrebljiv.
           skipped.push(`"${attachment.file_name}": ${error.message}`);
           continue;
         }
@@ -1003,9 +1033,9 @@ router.post('/:id/ai-items', authenticateToken, aiItemsLimiter, async (req, res)
       }
     }
 
-    if (quotes.length === 0) {
+    if (usable.length === 0) {
       return res.status(400).json({
-        message: `Nijedna priložena ponuda nije čitljiv PDF. ${skipped.join(' ')}`.trim(),
+        message: `Nijedan priloženi dokument nije čitljiv PDF ni slika. ${skipped.join(' ')}`.trim(),
       });
     }
 
@@ -1020,7 +1050,7 @@ router.post('/:id/ai-items', authenticateToken, aiItemsLimiter, async (req, res)
       [fyId]
     );
 
-    const extraction = await extractItemsFromQuotes({ quotes, categories, providerKey });
+    const extraction = await extractItemsFromQuotes({ attachments: usable, categories, providerKey });
 
     // Tek sada transakcija: model je znao trajati minutama, a konekcija se ne
     // drži zaključana dok on razmišlja.
@@ -1121,7 +1151,11 @@ router.post('/:id/ai-items', authenticateToken, aiItemsLimiter, async (req, res)
       amount_changed: amountChanged,
       // 'read' | 'missing' | 'foreign_currency' — zašto iznos jest ili nije upisan.
       amount_status: extraction.amountStatus,
-      quotes_used: quotes.map((q) => q.filename),
+      quotes_used: usable.map((a) => a.filename),
+      // Slikovni prilog ne prolazi poslužiteljsku ekstrakciju, pa se rezultati
+      // takvih pokušaja izvještavaju odvojeno od tekstualnih.
+      server_text_extraction: extraction.server_text_extraction,
+      input_kinds: extraction.input_kinds,
       warnings: [...skipped, ...extraction.warnings],
       provider: extraction.provider,
       model: extraction.model,

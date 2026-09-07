@@ -11,12 +11,12 @@
 // pojašnjenja: nema sugovornika kojem bi se odgovaralo. Ostaje ono što se i
 // dalje mjeri — čita li model ponudu točno.
 //
-// ŠTO JE ISPALO IZ MJERENJA. Tri scenarija bez priloga (8 — ponuda kao tekst
-// e-maila, 9 — manipulativan uvod, 10 — izmjena nakon kreiranja) nemaju što
-// mjeriti na ovoj ruti, jer ona polazi od priložene datoteke. Njihov ground
-// truth namjerno OSTAJE u eval/ground-truth/ kao zapis o obavljenom poslu, ali
-// se više ne izvodi. To se mora navesti u Metodologiji kao suženje opsega, ne
-// prešutjeti.
+// SKUP OD 6. 9. 2026.: deset scenarija. Devet ide kroz poslužiteljsku ekstrakciju
+// teksta iz PDF-a; scenarij 8 je slika i ide modelu izravno, bez ekstrakcije, pa se
+// njegovi rezultati izvještavaju odvojeno (ulaz ondje nije izjednačen).
+//
+// Ground truth ranijih scenarija koji su ispali (chat-era tekstualni scenariji i
+// raniji sastav skupa) ostaje u eval/ground-truth/ kao zapis, ali se ne izvodi.
 //
 // Format:
 //   id                — kratki identifikator; ujedno ime datoteke ground trutha
@@ -25,7 +25,8 @@
 //                        koji harness stvori prije mjerenja, kao formalni
 //                        dokument tipa "Ponuda" (isti put kao ručni upload)
 //   repeatCount       — koliko puta ponoviti (default 5, promjenjivo po scenariju)
-//   inputModality     — 'pdf' | 'image'; mora se poklapati s ground truthom
+//   inputModality     — 'pdf' | 'image'; mora se poklapati s ground truthom.
+//                        'image' znači BEZ poslužiteljske ekstrakcije teksta.
 //   expectsRefusal    — je li ispravan ishod da stavke NE budu izvučene.
 //                        Mora se poklapati s ground truthom; evalHarness.js to
 //                        provjerava prije mjerenja i puca ako se raziđu.
@@ -41,7 +42,7 @@ const SCENARIOS = [
     id: 'scenario1_standardna',
     inputModality: 'pdf',
     expectsRefusal: false,
-    description: 'Standardna jednostranična PDF ponuda — osnovno čitanje stavki i konačnog iznosa.',
+    description: 'Normalna ponuda s četiri stavke — osnovno čitanje stavki i konačnog iznosa.',
     attachments: [path.join(FIXTURES_DIR, 'scenario1_standardna.pdf')],
     repeatCount: 5,
   },
@@ -49,7 +50,7 @@ const SCENARIOS = [
     id: 'scenario2_visestranicna',
     inputModality: 'pdf',
     expectsRefusal: false,
-    description: 'Ponuda kroz dvije stranice, 23 stavke — zadržava li model stavke s druge stranice.',
+    description: 'Višestranična ponuda s dvadesetak stavki — zadržava li model stavke s druge stranice.',
     attachments: [path.join(FIXTURES_DIR, 'scenario2_visestranicna.pdf')],
     repeatCount: 5,
   },
@@ -57,7 +58,7 @@ const SCENARIOS = [
     id: 'scenario3_rabat_pdv',
     inputModality: 'pdf',
     expectsRefusal: false,
-    description: 'Složena struktura cijena (osnovica, rabat, PDV, za uplatu) — bira li model pravi iznos.',
+    description: 'Ponuda s rabatom — bira li model konačan iznos za uplatu, a ne osnovicu ni međuzbroj.',
     attachments: [path.join(FIXTURES_DIR, 'scenario3_rabat_pdv.pdf')],
     repeatCount: 5,
   },
@@ -76,7 +77,7 @@ const SCENARIOS = [
     id: 'scenario5_dugacki_opisi',
     inputModality: 'pdf',
     expectsRefusal: false,
-    description: 'Nazivi stavki 232-251 znakova — stane li u item_name varchar(200) i skraćuje li model razumno.',
+    description: 'Ponuda s dugačkim opisima stavki — stane li naziv u item_name varchar(200).',
     attachments: [path.join(FIXTURES_DIR, 'scenario5_dugacki_opisi.pdf')],
     repeatCount: 5,
   },
@@ -84,17 +85,49 @@ const SCENARIOS = [
     id: 'scenario6_format_brojeva',
     inputModality: 'pdf',
     expectsRefusal: false,
-    description: 'Ista ponuda kao scenarij 5, ali brojevi u anglosaksonskom formatu (1,398.00) — čita li ih model točno.',
+    description: 'Ponuda s drugim formatom zapisa cijene (anglosaksonski, 1,398.00) — čita li ga model točno.',
     attachments: [path.join(FIXTURES_DIR, 'scenario6_jedinice.pdf')],
     repeatCount: 5,
   },
   {
     id: 'scenario7_nije_ponuda',
-    inputModality: 'image',
+    inputModality: 'pdf',
     expectsRefusal: true,
-    description: 'PDF bez tekstualnog sloja (skenirana slika) — sustav ga mora odbiti s jasnom porukom.',
+    description: 'Dokument sa stavkama i iznosima koji NIJE ponuda — prepoznaje li model o čemu je riječ.',
     attachments: [path.join(FIXTURES_DIR, 'scenario7_nije_ponuda.pdf')],
-    repeatCount: 3,
+    repeatCount: 5,
+  },
+  {
+    // JEDINI scenarij bez poslužiteljske ekstrakcije: slika ide modelu izravno,
+    // pa svaka izvedba radi vlastito očitanje i ulaz nije izjednačen. Rezultati
+    // se izvještavaju u zasebnoj tablici i tokeni se broje odvojeno.
+    id: 'scenario8_slika',
+    inputModality: 'image',
+    expectsRefusal: false,
+    description: 'Ponuda priložena kao slika (JPG) — čitanje bez poslužiteljske ekstrakcije teksta.',
+    attachments: [path.join(FIXTURES_DIR, 'scenario8_slika.jpg')],
+    repeatCount: 5,
+  },
+  {
+    id: 'scenario9_negativ',
+    inputModality: 'pdf',
+    expectsRefusal: false,
+    description: 'Ponuda s negativnom stavkom (odbitak) — izostavlja li je model iz popisa stavki.',
+    attachments: [path.join(FIXTURES_DIR, 'scenario9_negativ.pdf')],
+    repeatCount: 5,
+  },
+  {
+    id: 'scenario10_cetiri_ponude',
+    inputModality: 'pdf',
+    expectsRefusal: false,
+    description: 'Četiri ponude uz isti zahtjev — spaja li model stavke iz svih i zbraja li iznose.',
+    attachments: [
+      path.join(FIXTURES_DIR, 'scenario10_ponuda1.pdf'),
+      path.join(FIXTURES_DIR, 'scenario10_ponuda2.pdf'),
+      path.join(FIXTURES_DIR, 'scenario10_ponuda3.pdf'),
+      path.join(FIXTURES_DIR, 'scenario10_ponuda4.pdf'),
+    ],
+    repeatCount: 5,
   },
 ];
 
