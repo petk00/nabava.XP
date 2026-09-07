@@ -1,0 +1,1905 @@
+{
+  "scenario_id": "scenario10_cetiri_ponude",
+  "expected_decision": "create",
+  "expects_refusal": false,
+  "input_modality": "pdf",
+  "attachments": [
+    "scenario10_ponuda1.pdf",
+    "scenario10_ponuda2.pdf",
+    "scenario10_ponuda3.pdf",
+    "scenario10_ponuda4.pdf"
+  ],
+  "fields": {
+    "total_amount": {
+      "value": 75867.18,
+      "acceptable": [
+        75867.18
+      ],
+      "provenance": {
+        "source": "derived",
+        "operation": "sum",
+        "from": [
+          {
+            "source": "attachment",
+            "file": "scenario10_ponuda1.pdf",
+            "line": 42,
+            "quote": "Ukupno za uplatu | 95,32 €",
+            "value": 95.32
+          },
+          {
+            "source": "attachment",
+            "file": "scenario10_ponuda2.pdf",
+            "line": 23,
+            "quote": "Za uplatu | 25 036,88 €",
+            "value": 25036.88
+          },
+          {
+            "source": "attachment",
+            "file": "scenario10_ponuda3.pdf",
+            "line": 35,
+            "quote": "Ukupno za uplatu | 57,10 €",
+            "value": 57.1
+          },
+          {
+            "source": "attachment",
+            "file": "scenario10_ponuda4.pdf",
+            "line": 79,
+            "quote": "Ukupno za platiti | 50 677,88 €",
+            "value": 50677.88
+          }
+        ],
+        "note": "75867.18 se kao broj ne pojavljuje ni u jednom prilogu — zbroj je četiriju iznosa za uplatu."
+      }
+    },
+    "items": [
+      {
+        "item_name": {
+          "value": "Ljubičasti laserski modul, 12x45mm, 0.5mW, 650nm, linijski",
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario10_ponuda1.pdf",
+            "line": 29,
+            "quote": "00001 | Ljubičasti laserski modul, 12x45mm, 0.5mW, 650nm, linijski [12938] | 1 | 40,00 € | 40,00 €"
+          }
+        },
+        "quantity": {
+          "value": 1,
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario10_ponuda1.pdf",
+            "line": 29,
+            "quote": "00001 | Ljubičasti laserski modul, 12x45mm, 0.5mW, 650nm, linijski [12938] | 1 | 40,00 € | 40,00 €",
+            "form": "digit"
+          }
+        },
+        "category_name": {
+          "value": "Elektronička i elektrotehnička oprema",
+          "acceptable_categories": [
+            "Elektronička i elektrotehnička oprema",
+            "Nastavna i laboratorijska oprema"
+          ],
+          "ambiguous": true,
+          "acceptable_reason_type": null,
+          "acceptable_reason": null,
+          "rule": null,
+          "note": "Laserski modul je elektronička komponenta/oprema za eksperimentalni rad.",
+          "provenance": {
+            "source": "codebook",
+            "table": "ItemCategory",
+            "document": "server/eval/category-codebook.md",
+            "sha256_16": "08f7e418f4e86c46"
+          },
+          "assignment": "author"
+        }
+      },
+      {
+        "item_name": {
+          "value": "28BYJ-48 5V koračni (stepper) motor + ULN2003 motor driver",
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario10_ponuda1.pdf",
+            "line": 30,
+            "quote": "00002 | 28BYJ-48 5V koračni (stepper) motor + ULN2003 motor driver [10167] | 2 | 4,00 € | 8,00 €"
+          }
+        },
+        "quantity": {
+          "value": 2,
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario10_ponuda1.pdf",
+            "line": 30,
+            "quote": "00002 | 28BYJ-48 5V koračni (stepper) motor + ULN2003 motor driver [10167] | 2 | 4,00 € | 8,00 €",
+            "form": "digit"
+          }
+        },
+        "category_name": {
+          "value": "Elektronička i elektrotehnička oprema",
+          "acceptable_categories": [
+            "Elektronička i elektrotehnička oprema",
+            "Nastavna i laboratorijska oprema"
+          ],
+          "ambiguous": true,
+          "acceptable_reason_type": null,
+          "acceptable_reason": null,
+          "rule": null,
+          "note": "Koračni motor i driver čine elektrotehničku komponentu.",
+          "provenance": {
+            "source": "codebook",
+            "table": "ItemCategory",
+            "document": "server/eval/category-codebook.md",
+            "sha256_16": "08f7e418f4e86c46"
+          },
+          "assignment": "author"
+        }
+      },
+      {
+        "item_name": {
+          "value": "STSPIN220 stepper motor driver",
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario10_ponuda1.pdf",
+            "line": 31,
+            "quote": "00003 | STSPIN220 stepper motor driver [12939] | 2 | 1,92 € | 3,84 €"
+          }
+        },
+        "quantity": {
+          "value": 2,
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario10_ponuda1.pdf",
+            "line": 31,
+            "quote": "00003 | STSPIN220 stepper motor driver [12939] | 2 | 1,92 € | 3,84 €",
+            "form": "digit"
+          }
+        },
+        "category_name": {
+          "value": "Elektronička i elektrotehnička oprema",
+          "acceptable_categories": [
+            "Elektronička i elektrotehnička oprema",
+            "Nastavna i laboratorijska oprema"
+          ],
+          "ambiguous": true,
+          "acceptable_reason_type": null,
+          "acceptable_reason": null,
+          "rule": null,
+          "note": "Driver za koračni motor je elektronička komponenta.",
+          "provenance": {
+            "source": "codebook",
+            "table": "ItemCategory",
+            "document": "server/eval/category-codebook.md",
+            "sha256_16": "08f7e418f4e86c46"
+          },
+          "assignment": "author"
+        }
+      },
+      {
+        "item_name": {
+          "value": "TPS6216DSG regulator napona",
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario10_ponuda1.pdf",
+            "line": 32,
+            "quote": "00004 | TPS6216DSG regulator napona [12940] | 1 | 2,20 € | 2,20 €"
+          }
+        },
+        "quantity": {
+          "value": 1,
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario10_ponuda1.pdf",
+            "line": 32,
+            "quote": "00004 | TPS6216DSG regulator napona [12940] | 1 | 2,20 € | 2,20 €",
+            "form": "digit"
+          }
+        },
+        "category_name": {
+          "value": "Elektronička i elektrotehnička oprema",
+          "acceptable_categories": [
+            "Elektronička i elektrotehnička oprema",
+            "Nastavna i laboratorijska oprema"
+          ],
+          "ambiguous": true,
+          "acceptable_reason_type": null,
+          "acceptable_reason": null,
+          "rule": null,
+          "note": "Regulator napona je elektronička komponenta.",
+          "provenance": {
+            "source": "codebook",
+            "table": "ItemCategory",
+            "document": "server/eval/category-codebook.md",
+            "sha256_16": "08f7e418f4e86c46"
+          },
+          "assignment": "author"
+        }
+      },
+      {
+        "item_name": {
+          "value": "QRE1113 fototranzistor",
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario10_ponuda1.pdf",
+            "line": 33,
+            "quote": "00005 | QRE1113 fototranzistor [12941] | 2 | 0,72 € | 1,44 €"
+          }
+        },
+        "quantity": {
+          "value": 2,
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario10_ponuda1.pdf",
+            "line": 33,
+            "quote": "00005 | QRE1113 fototranzistor [12941] | 2 | 0,72 € | 1,44 €",
+            "form": "digit"
+          }
+        },
+        "category_name": {
+          "value": "Elektronička i elektrotehnička oprema",
+          "acceptable_categories": [
+            "Elektronička i elektrotehnička oprema",
+            "Nastavna i laboratorijska oprema"
+          ],
+          "ambiguous": true,
+          "acceptable_reason_type": null,
+          "acceptable_reason": null,
+          "rule": null,
+          "note": "Fototranzistor je elektronička komponenta.",
+          "provenance": {
+            "source": "codebook",
+            "table": "ItemCategory",
+            "document": "server/eval/category-codebook.md",
+            "sha256_16": "08f7e418f4e86c46"
+          },
+          "assignment": "author"
+        }
+      },
+      {
+        "item_name": {
+          "value": "NTR4501NT1G MOSFETs 20V 3.2A N-Channel",
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario10_ponuda1.pdf",
+            "line": 34,
+            "quote": "00006 | NTR4501NT1G MOSFETs 20V 3.2A N-Channel [12942] | 1 | 0,50 € | 0,50 €"
+          }
+        },
+        "quantity": {
+          "value": 1,
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario10_ponuda1.pdf",
+            "line": 34,
+            "quote": "00006 | NTR4501NT1G MOSFETs 20V 3.2A N-Channel [12942] | 1 | 0,50 € | 0,50 €",
+            "form": "digit"
+          }
+        },
+        "category_name": {
+          "value": "Elektronička i elektrotehnička oprema",
+          "acceptable_categories": [
+            "Elektronička i elektrotehnička oprema",
+            "Nastavna i laboratorijska oprema"
+          ],
+          "ambiguous": true,
+          "acceptable_reason_type": null,
+          "acceptable_reason": null,
+          "rule": null,
+          "note": "MOSFET je elektronička komponenta.",
+          "provenance": {
+            "source": "codebook",
+            "table": "ItemCategory",
+            "document": "server/eval/category-codebook.md",
+            "sha256_16": "08f7e418f4e86c46"
+          },
+          "assignment": "author"
+        }
+      },
+      {
+        "item_name": {
+          "value": "EVPAA602W SMD taktilni prekidač",
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario10_ponuda1.pdf",
+            "line": 35,
+            "quote": "00007 | EVPAA602W SMD taktilni prekidač [12943] | 2 | 0,88 € | 1,76 €"
+          }
+        },
+        "quantity": {
+          "value": 2,
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario10_ponuda1.pdf",
+            "line": 35,
+            "quote": "00007 | EVPAA602W SMD taktilni prekidač [12943] | 2 | 0,88 € | 1,76 €",
+            "form": "digit"
+          }
+        },
+        "category_name": {
+          "value": "Elektronička i elektrotehnička oprema",
+          "acceptable_categories": [
+            "Elektronička i elektrotehnička oprema",
+            "Nastavna i laboratorijska oprema"
+          ],
+          "ambiguous": true,
+          "acceptable_reason_type": null,
+          "acceptable_reason": null,
+          "rule": null,
+          "note": "SMD taktilni prekidač je elektronička komponenta.",
+          "provenance": {
+            "source": "codebook",
+            "table": "ItemCategory",
+            "document": "server/eval/category-codebook.md",
+            "sha256_16": "08f7e418f4e86c46"
+          },
+          "assignment": "author"
+        }
+      },
+      {
+        "item_name": {
+          "value": "EEEHBH220UAP elektrolitski kondenzator",
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario10_ponuda1.pdf",
+            "line": 36,
+            "quote": "00008 | EEEHBH220UAP elektrolitski kondenzator [12944] | 2 | 0,68 € | 1,36 €"
+          }
+        },
+        "quantity": {
+          "value": 2,
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario10_ponuda1.pdf",
+            "line": 36,
+            "quote": "00008 | EEEHBH220UAP elektrolitski kondenzator [12944] | 2 | 0,68 € | 1,36 €",
+            "form": "digit"
+          }
+        },
+        "category_name": {
+          "value": "Elektronička i elektrotehnička oprema",
+          "acceptable_categories": [
+            "Elektronička i elektrotehnička oprema",
+            "Nastavna i laboratorijska oprema"
+          ],
+          "ambiguous": true,
+          "acceptable_reason_type": null,
+          "acceptable_reason": null,
+          "rule": null,
+          "note": "Elektrolitski kondenzator je elektronička komponenta.",
+          "provenance": {
+            "source": "codebook",
+            "table": "ItemCategory",
+            "document": "server/eval/category-codebook.md",
+            "sha256_16": "08f7e418f4e86c46"
+          },
+          "assignment": "author"
+        }
+      },
+      {
+        "item_name": {
+          "value": "Mikrofon MAX9814",
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario10_ponuda1.pdf",
+            "line": 37,
+            "quote": "00009 | Mikrofon MAX9814 [12945] | 1 | 9,80 € | 9,80 €"
+          }
+        },
+        "quantity": {
+          "value": 1,
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario10_ponuda1.pdf",
+            "line": 37,
+            "quote": "00009 | Mikrofon MAX9814 [12945] | 1 | 9,80 € | 9,80 €",
+            "form": "digit"
+          }
+        },
+        "category_name": {
+          "value": "Elektronička i elektrotehnička oprema",
+          "acceptable_categories": [
+            "Elektronička i elektrotehnička oprema",
+            "Nastavna i laboratorijska oprema",
+            "Audio-vizualna oprema"
+          ],
+          "ambiguous": true,
+          "acceptable_reason_type": null,
+          "acceptable_reason": null,
+          "rule": null,
+          "note": "Mikrofon je elektronička komponenta; može se klasificirati i kao AV oprema prema namjeni.",
+          "provenance": {
+            "source": "codebook",
+            "table": "ItemCategory",
+            "document": "server/eval/category-codebook.md",
+            "sha256_16": "08f7e418f4e86c46"
+          },
+          "assignment": "author"
+        }
+      },
+      {
+        "item_name": {
+          "value": "Li-ion baterija 1200mAh 3.7V",
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario10_ponuda1.pdf",
+            "line": 38,
+            "quote": "00010 | Li-ion baterija 1200mAh 3.7V [12003] | 1 | 6,00 € | 6,00 €"
+          }
+        },
+        "quantity": {
+          "value": 1,
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario10_ponuda1.pdf",
+            "line": 38,
+            "quote": "00010 | Li-ion baterija 1200mAh 3.7V [12003] | 1 | 6,00 € | 6,00 €",
+            "form": "digit"
+          }
+        },
+        "category_name": {
+          "value": "Elektronička i elektrotehnička oprema",
+          "acceptable_categories": [
+            "Elektronička i elektrotehnička oprema",
+            "Nastavna i laboratorijska oprema"
+          ],
+          "ambiguous": true,
+          "acceptable_reason_type": null,
+          "acceptable_reason": null,
+          "rule": null,
+          "note": "Baterija je elektrotehnička komponenta/napajanje.",
+          "provenance": {
+            "source": "codebook",
+            "table": "ItemCategory",
+            "document": "server/eval/category-codebook.md",
+            "sha256_16": "08f7e418f4e86c46"
+          },
+          "assignment": "author"
+        }
+      },
+      {
+        "item_name": {
+          "value": "MOSFETs N-Ch 30V 50A DPAK-2 OptiMOS-T2",
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario10_ponuda1.pdf",
+            "line": 39,
+            "quote": "00011 | MOSFETs N-Ch 30V 50A DPAK-2 OptiMOS-T2 [12946] | 1 | 1,36 € | 1,36 €"
+          }
+        },
+        "quantity": {
+          "value": 1,
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario10_ponuda1.pdf",
+            "line": 39,
+            "quote": "00011 | MOSFETs N-Ch 30V 50A DPAK-2 OptiMOS-T2 [12946] | 1 | 1,36 € | 1,36 €",
+            "form": "digit"
+          }
+        },
+        "category_name": {
+          "value": "Elektronička i elektrotehnička oprema",
+          "acceptable_categories": [
+            "Elektronička i elektrotehnička oprema",
+            "Nastavna i laboratorijska oprema"
+          ],
+          "ambiguous": true,
+          "acceptable_reason_type": null,
+          "acceptable_reason": null,
+          "rule": null,
+          "note": "MOSFET je elektronička komponenta.",
+          "provenance": {
+            "source": "codebook",
+            "table": "ItemCategory",
+            "document": "server/eval/category-codebook.md",
+            "sha256_16": "08f7e418f4e86c46"
+          },
+          "assignment": "author"
+        }
+      },
+      {
+        "item_name": {
+          "value": "IoT komplet ESP32",
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario10_ponuda2.pdf",
+            "line": 12,
+            "quote": "IoT komplet ESP32 | 30 | 89,00 | 2 670,00 | 25,00 %"
+          }
+        },
+        "quantity": {
+          "value": 30,
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario10_ponuda2.pdf",
+            "line": 12,
+            "quote": "IoT komplet ESP32 | 30 | 89,00 | 2 670,00 | 25,00 %",
+            "form": "digit"
+          }
+        },
+        "category_name": {
+          "value": "Nastavna i laboratorijska oprema",
+          "acceptable_categories": [
+            "Nastavna i laboratorijska oprema",
+            "Računalna oprema",
+            "Mrežna i telekomunikacijska oprema"
+          ],
+          "ambiguous": true,
+          "acceptable_reason_type": null,
+          "acceptable_reason": null,
+          "rule": null,
+          "note": "Komplet s mikrokontrolerom za edukacijski/laboratorijski rad.",
+          "provenance": {
+            "source": "codebook",
+            "table": "ItemCategory",
+            "document": "server/eval/category-codebook.md",
+            "sha256_16": "08f7e418f4e86c46"
+          },
+          "assignment": "author"
+        }
+      },
+      {
+        "item_name": {
+          "value": "Set senzora",
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario10_ponuda2.pdf",
+            "line": 13,
+            "quote": "Set senzora | 30 | 59,00 | 1 770,00 | 25,00 %"
+          }
+        },
+        "quantity": {
+          "value": 30,
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario10_ponuda2.pdf",
+            "line": 13,
+            "quote": "Set senzora | 30 | 59,00 | 1 770,00 | 25,00 %",
+            "form": "digit"
+          }
+        },
+        "category_name": {
+          "value": "Mjerna i ispitna oprema",
+          "acceptable_categories": [
+            "Mjerna i ispitna oprema",
+            "Nastavna i laboratorijska oprema"
+          ],
+          "ambiguous": true,
+          "acceptable_reason_type": null,
+          "acceptable_reason": null,
+          "rule": null,
+          "note": "Senzori služe mjerenju fizikalnih veličina.",
+          "provenance": {
+            "source": "codebook",
+            "table": "ItemCategory",
+            "document": "server/eval/category-codebook.md",
+            "sha256_16": "08f7e418f4e86c46"
+          },
+          "assignment": "author"
+        }
+      },
+      {
+        "item_name": {
+          "value": "Raspberry Pi 5",
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario10_ponuda2.pdf",
+            "line": 14,
+            "quote": "Raspberry Pi 5 | 20 | 129,00 | 2 580,00 | 25,00 %"
+          }
+        },
+        "quantity": {
+          "value": 20,
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario10_ponuda2.pdf",
+            "line": 14,
+            "quote": "Raspberry Pi 5 | 20 | 129,00 | 2 580,00 | 25,00 %",
+            "form": "digit"
+          }
+        },
+        "category_name": {
+          "value": "Računalna oprema",
+          "acceptable_categories": [
+            "Računalna oprema",
+            "Nastavna i laboratorijska oprema"
+          ],
+          "ambiguous": true,
+          "acceptable_reason_type": null,
+          "acceptable_reason": null,
+          "rule": null,
+          "note": "Raspberry Pi je računalna platforma.",
+          "provenance": {
+            "source": "codebook",
+            "table": "ItemCategory",
+            "document": "server/eval/category-codebook.md",
+            "sha256_16": "08f7e418f4e86c46"
+          },
+          "assignment": "author"
+        }
+      },
+      {
+        "item_name": {
+          "value": "LoRaWAN gateway",
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario10_ponuda2.pdf",
+            "line": 15,
+            "quote": "LoRaWAN gateway | 4 | 329,00 | 1 316,00 | 25,00 %"
+          }
+        },
+        "quantity": {
+          "value": 4,
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario10_ponuda2.pdf",
+            "line": 15,
+            "quote": "LoRaWAN gateway | 4 | 329,00 | 1 316,00 | 25,00 %",
+            "form": "digit"
+          }
+        },
+        "category_name": {
+          "value": "Mrežna i telekomunikacijska oprema",
+          "acceptable_categories": [
+            "Mrežna i telekomunikacijska oprema",
+            "Nastavna i laboratorijska oprema"
+          ],
+          "ambiguous": true,
+          "acceptable_reason_type": null,
+          "acceptable_reason": null,
+          "rule": null,
+          "note": "LoRaWAN gateway je mrežna komunikacijska oprema.",
+          "provenance": {
+            "source": "codebook",
+            "table": "ItemCategory",
+            "document": "server/eval/category-codebook.md",
+            "sha256_16": "08f7e418f4e86c46"
+          },
+          "assignment": "author"
+        }
+      },
+      {
+        "item_name": {
+          "value": "Osciloskop Rigol",
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario10_ponuda2.pdf",
+            "line": 16,
+            "quote": "Osciloskop Rigol | 6 | 549,00 | 3 294,00 | 25,00 %"
+          }
+        },
+        "quantity": {
+          "value": 6,
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario10_ponuda2.pdf",
+            "line": 16,
+            "quote": "Osciloskop Rigol | 6 | 549,00 | 3 294,00 | 25,00 %",
+            "form": "digit"
+          }
+        },
+        "category_name": {
+          "value": "Mjerna i ispitna oprema",
+          "acceptable_categories": [
+            "Mjerna i ispitna oprema",
+            "Nastavna i laboratorijska oprema"
+          ],
+          "ambiguous": true,
+          "acceptable_reason_type": null,
+          "acceptable_reason": null,
+          "rule": null,
+          "note": "Osciloskop je mjerna i ispitna oprema.",
+          "provenance": {
+            "source": "codebook",
+            "table": "ItemCategory",
+            "document": "server/eval/category-codebook.md",
+            "sha256_16": "08f7e418f4e86c46"
+          },
+          "assignment": "author"
+        }
+      },
+      {
+        "item_name": {
+          "value": "Lemna stanica",
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario10_ponuda2.pdf",
+            "line": 17,
+            "quote": "Lemna stanica | 12 | 145,00 | 1 740,00 | 25,00 %"
+          }
+        },
+        "quantity": {
+          "value": 12,
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario10_ponuda2.pdf",
+            "line": 17,
+            "quote": "Lemna stanica | 12 | 145,00 | 1 740,00 | 25,00 %",
+            "form": "digit"
+          }
+        },
+        "category_name": {
+          "value": "Nastavna i laboratorijska oprema",
+          "acceptable_categories": [
+            "Nastavna i laboratorijska oprema",
+            "Elektronička i elektrotehnička oprema"
+          ],
+          "ambiguous": true,
+          "acceptable_reason_type": null,
+          "acceptable_reason": null,
+          "rule": null,
+          "note": "Lemna stanica je specijalizirana laboratorijska oprema.",
+          "provenance": {
+            "source": "codebook",
+            "table": "ItemCategory",
+            "document": "server/eval/category-codebook.md",
+            "sha256_16": "08f7e418f4e86c46"
+          },
+          "assignment": "author"
+        }
+      },
+      {
+        "item_name": {
+          "value": "Radna stanica",
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario10_ponuda2.pdf",
+            "line": 18,
+            "quote": "Radna stanica | 15 | 469,00 | 7 035,00 | 25,00 %"
+          }
+        },
+        "quantity": {
+          "value": 15,
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario10_ponuda2.pdf",
+            "line": 18,
+            "quote": "Radna stanica | 15 | 469,00 | 7 035,00 | 25,00 %",
+            "form": "digit"
+          }
+        },
+        "category_name": {
+          "value": "Računalna oprema",
+          "acceptable_categories": [
+            "Računalna oprema",
+            "Nastavna i laboratorijska oprema"
+          ],
+          "ambiguous": true,
+          "acceptable_reason_type": null,
+          "acceptable_reason": null,
+          "rule": null,
+          "note": "Radna stanica je računalna oprema.",
+          "provenance": {
+            "source": "codebook",
+            "table": "ItemCategory",
+            "document": "server/eval/category-codebook.md",
+            "sha256_16": "08f7e418f4e86c46"
+          },
+          "assignment": "author"
+        }
+      },
+      {
+        "item_name": {
+          "value": "Instalacija i edukacija",
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario10_ponuda2.pdf",
+            "line": 19,
+            "quote": "Instalacija i edukacija | 1 | 1 850,00 | 1 850,00 | 25,00 %"
+          }
+        },
+        "quantity": {
+          "value": 1,
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario10_ponuda2.pdf",
+            "line": 19,
+            "quote": "Instalacija i edukacija | 1 | 1 850,00 | 1 850,00 | 25,00 %",
+            "form": "digit"
+          }
+        },
+        "category_name": {
+          "value": "Usluge razvoja i održavanja informacijskih sustava",
+          "acceptable_categories": [
+            "Usluge razvoja i održavanja informacijskih sustava",
+            "Edukacije i stručno usavršavanje",
+            "Usluge održavanja"
+          ],
+          "ambiguous": true,
+          "acceptable_reason_type": null,
+          "acceptable_reason": null,
+          "rule": null,
+          "note": "Kombinirana usluga instalacije i edukacije; dominantna je IT instalacija/podešavanje.",
+          "provenance": {
+            "source": "codebook",
+            "table": "ItemCategory",
+            "document": "server/eval/category-codebook.md",
+            "sha256_16": "08f7e418f4e86c46"
+          },
+          "assignment": "author"
+        }
+      },
+      {
+        "item_name": {
+          "value": "Univerzalni strujni adapter 230V/3-12V DC max. 27W 2,25A",
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario10_ponuda3.pdf",
+            "line": 29,
+            "quote": "00001 | Univerzalni strujni adapter 230V/3-12V DC max. 27W 2,25A [12947] | 1 | 26,40 € | 26,40 €"
+          }
+        },
+        "quantity": {
+          "value": 1,
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario10_ponuda3.pdf",
+            "line": 29,
+            "quote": "00001 | Univerzalni strujni adapter 230V/3-12V DC max. 27W 2,25A [12947] | 1 | 26,40 € | 26,40 €",
+            "form": "digit"
+          }
+        },
+        "category_name": {
+          "value": "Elektronička i elektrotehnička oprema",
+          "acceptable_categories": [
+            "Elektronička i elektrotehnička oprema",
+            "Nastavna i laboratorijska oprema",
+            "Mjerna i ispitna oprema"
+          ],
+          "ambiguous": true,
+          "acceptable_reason_type": null,
+          "acceptable_reason": null,
+          "rule": null,
+          "note": "Napajanje/adapterski uređaj; primarno elektronička oprema.",
+          "provenance": {
+            "source": "codebook",
+            "table": "ItemCategory",
+            "document": "server/eval/category-codebook.md",
+            "sha256_16": "08f7e418f4e86c46"
+          },
+          "assignment": "author"
+        }
+      },
+      {
+        "item_name": {
+          "value": "Eksperimentalna pločica (breadboard) s 400 rupica",
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario10_ponuda3.pdf",
+            "line": 30,
+            "quote": "00002 | Eksperimentalna pločica (breadboard) s 400 rupica [10560] | 2 | 2,92 € | 5,84 €"
+          }
+        },
+        "quantity": {
+          "value": 2,
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario10_ponuda3.pdf",
+            "line": 30,
+            "quote": "00002 | Eksperimentalna pločica (breadboard) s 400 rupica [10560] | 2 | 2,92 € | 5,84 €",
+            "form": "digit"
+          }
+        },
+        "category_name": {
+          "value": "Nastavna i laboratorijska oprema",
+          "acceptable_categories": [
+            "Nastavna i laboratorijska oprema"
+          ],
+          "ambiguous": false,
+          "acceptable_reason_type": null,
+          "acceptable_reason": null,
+          "rule": null,
+          "note": "Komponenta za eksperimentalni rad.",
+          "provenance": {
+            "source": "codebook",
+            "table": "ItemCategory",
+            "document": "server/eval/category-codebook.md",
+            "sha256_16": "08f7e418f4e86c46"
+          },
+          "assignment": "author"
+        }
+      },
+      {
+        "item_name": {
+          "value": "Eksperimentalna pločica (breadboard) s 830 rupica",
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario10_ponuda3.pdf",
+            "line": 31,
+            "quote": "00003 | Eksperimentalna pločica (breadboard) s 830 rupica [10706] | 2 | 3,60 € | 7,20 €"
+          }
+        },
+        "quantity": {
+          "value": 2,
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario10_ponuda3.pdf",
+            "line": 31,
+            "quote": "00003 | Eksperimentalna pločica (breadboard) s 830 rupica [10706] | 2 | 3,60 € | 7,20 €",
+            "form": "digit"
+          }
+        },
+        "category_name": {
+          "value": "Nastavna i laboratorijska oprema",
+          "acceptable_categories": [
+            "Nastavna i laboratorijska oprema"
+          ],
+          "ambiguous": false,
+          "acceptable_reason_type": null,
+          "acceptable_reason": null,
+          "rule": null,
+          "note": "Komponenta za eksperimentalni rad.",
+          "provenance": {
+            "source": "codebook",
+            "table": "ItemCategory",
+            "document": "server/eval/category-codebook.md",
+            "sha256_16": "08f7e418f4e86c46"
+          },
+          "assignment": "author"
+        }
+      },
+      {
+        "item_name": {
+          "value": "Kabeli za eksperimentalnu pločicu (breadboard) - 65 komada",
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario10_ponuda3.pdf",
+            "line": 32,
+            "quote": "00004 | Kabeli za eksperimentalnu pločicu (breadboard) - 65 komada [10272] | 2 | 3,12 € | 6,24 €"
+          }
+        },
+        "quantity": {
+          "value": 2,
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario10_ponuda3.pdf",
+            "line": 32,
+            "quote": "00004 | Kabeli za eksperimentalnu pločicu (breadboard) - 65 komada [10272] | 2 | 3,12 € | 6,24 €",
+            "form": "digit"
+          }
+        },
+        "category_name": {
+          "value": "Nastavna i laboratorijska oprema",
+          "acceptable_categories": [
+            "Nastavna i laboratorijska oprema",
+            "Elektronička i elektrotehnička oprema"
+          ],
+          "ambiguous": true,
+          "acceptable_reason_type": null,
+          "acceptable_reason": null,
+          "rule": null,
+          "note": "Povezni pribor za eksperimentalne pločice.",
+          "provenance": {
+            "source": "codebook",
+            "table": "ItemCategory",
+            "document": "server/eval/category-codebook.md",
+            "sha256_16": "08f7e418f4e86c46"
+          },
+          "assignment": "author"
+        }
+      },
+      {
+        "item_name": {
+          "value": "IoT edukacijski komplet ESP32-S3 DevKit s modulima i pločicom",
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario10_ponuda4.pdf",
+            "line": 12,
+            "quote": "IoT edukacijski komplet ESP32-S3 DevKit"
+          }
+        },
+        "quantity": {
+          "value": 30,
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario10_ponuda4.pdf",
+            "line": 12,
+            "quote": "IoT edukacijski komplet ESP32-S3 DevKit",
+            "form": "digit"
+          }
+        },
+        "category_name": {
+          "value": "Nastavna i laboratorijska oprema",
+          "acceptable_categories": [
+            "Nastavna i laboratorijska oprema",
+            "Računalna oprema",
+            "Mrežna i telekomunikacijska oprema"
+          ],
+          "ambiguous": true,
+          "acceptable_reason_type": null,
+          "acceptable_reason": null,
+          "rule": null,
+          "note": "Razvojni edukacijski komplet s mikrokontrolerom i modulima.",
+          "provenance": {
+            "source": "codebook",
+            "table": "ItemCategory",
+            "document": "server/eval/category-codebook.md",
+            "sha256_16": "08f7e418f4e86c46"
+          },
+          "assignment": "author"
+        }
+      },
+      {
+        "item_name": {
+          "value": "Laboratorijski set senzora (temp., vlaga, tlak, IMU, svjetlo)",
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario10_ponuda4.pdf",
+            "line": 15,
+            "quote": "Laboratorijski set senzora (temp., vlaga,"
+          }
+        },
+        "quantity": {
+          "value": 30,
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario10_ponuda4.pdf",
+            "line": 15,
+            "quote": "Laboratorijski set senzora (temp., vlaga,",
+            "form": "word"
+          }
+        },
+        "category_name": {
+          "value": "Mjerna i ispitna oprema",
+          "acceptable_categories": [
+            "Mjerna i ispitna oprema",
+            "Nastavna i laboratorijska oprema"
+          ],
+          "ambiguous": true,
+          "acceptable_reason_type": null,
+          "acceptable_reason": null,
+          "rule": null,
+          "note": "Senzorski set služi mjerenju fizikalnih veličina.",
+          "provenance": {
+            "source": "codebook",
+            "table": "ItemCategory",
+            "document": "server/eval/category-codebook.md",
+            "sha256_16": "08f7e418f4e86c46"
+          },
+          "assignment": "author"
+        }
+      },
+      {
+        "item_name": {
+          "value": "Raspberry Pi 5 8GB s kućištem, napajanjem i microSD 64GB",
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario10_ponuda4.pdf",
+            "line": 18,
+            "quote": "Raspberry Pi 5 8GB s kućištem,"
+          }
+        },
+        "quantity": {
+          "value": 20,
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario10_ponuda4.pdf",
+            "line": 18,
+            "quote": "Raspberry Pi 5 8GB s kućištem,",
+            "form": "digit"
+          }
+        },
+        "category_name": {
+          "value": "Računalna oprema",
+          "acceptable_categories": [
+            "Računalna oprema",
+            "Nastavna i laboratorijska oprema"
+          ],
+          "ambiguous": true,
+          "acceptable_reason_type": null,
+          "acceptable_reason": null,
+          "rule": null,
+          "note": "Jednoplatformsko računalo s priborom; namjena je računalna.",
+          "provenance": {
+            "source": "codebook",
+            "table": "ItemCategory",
+            "document": "server/eval/category-codebook.md",
+            "sha256_16": "08f7e418f4e86c46"
+          },
+          "assignment": "author"
+        }
+      },
+      {
+        "item_name": {
+          "value": "LoRaWAN gateway RAK7268CV2 indoor, 868 MHz",
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario10_ponuda4.pdf",
+            "line": 21,
+            "quote": "LoRaWAN gateway RAK7268CV2 indoor,"
+          }
+        },
+        "quantity": {
+          "value": 4,
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario10_ponuda4.pdf",
+            "line": 21,
+            "quote": "LoRaWAN gateway RAK7268CV2 indoor,",
+            "form": "digit"
+          }
+        },
+        "category_name": {
+          "value": "Mrežna i telekomunikacijska oprema",
+          "acceptable_categories": [
+            "Mrežna i telekomunikacijska oprema",
+            "Nastavna i laboratorijska oprema"
+          ],
+          "ambiguous": true,
+          "acceptable_reason_type": null,
+          "acceptable_reason": null,
+          "rule": null,
+          "note": "LoRaWAN gateway je mrežna komunikacijska oprema.",
+          "provenance": {
+            "source": "codebook",
+            "table": "ItemCategory",
+            "document": "server/eval/category-codebook.md",
+            "sha256_16": "08f7e418f4e86c46"
+          },
+          "assignment": "author"
+        }
+      },
+      {
+        "item_name": {
+          "value": "LoRa razvojni čvor RAK4631 WisBlock Starter Kit",
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario10_ponuda4.pdf",
+            "line": 24,
+            "quote": "LoRa razvojni čvor RAK4631 WisBlock"
+          }
+        },
+        "quantity": {
+          "value": 25,
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario10_ponuda4.pdf",
+            "line": 24,
+            "quote": "LoRa razvojni čvor RAK4631 WisBlock",
+            "form": "digit"
+          }
+        },
+        "category_name": {
+          "value": "Nastavna i laboratorijska oprema",
+          "acceptable_categories": [
+            "Nastavna i laboratorijska oprema",
+            "Mrežna i telekomunikacijska oprema"
+          ],
+          "ambiguous": true,
+          "acceptable_reason_type": null,
+          "acceptable_reason": null,
+          "rule": null,
+          "note": "Razvojni LoRa čvor namijenjen laboratorijskom/edukacijskom radu.",
+          "provenance": {
+            "source": "codebook",
+            "table": "ItemCategory",
+            "document": "server/eval/category-codebook.md",
+            "sha256_16": "08f7e418f4e86c46"
+          },
+          "assignment": "author"
+        }
+      },
+      {
+        "item_name": {
+          "value": "Digitalni osciloskop Rigol DHO814, 100 MHz, 4 kanala",
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario10_ponuda4.pdf",
+            "line": 27,
+            "quote": "Digitalni osciloskop Rigol DHO814, 100"
+          }
+        },
+        "quantity": {
+          "value": 6,
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario10_ponuda4.pdf",
+            "line": 27,
+            "quote": "Digitalni osciloskop Rigol DHO814, 100",
+            "form": "digit"
+          }
+        },
+        "category_name": {
+          "value": "Mjerna i ispitna oprema",
+          "acceptable_categories": [
+            "Mjerna i ispitna oprema",
+            "Nastavna i laboratorijska oprema"
+          ],
+          "ambiguous": true,
+          "acceptable_reason_type": null,
+          "acceptable_reason": null,
+          "rule": null,
+          "note": "Digitalni osciloskop je mjerna i ispitna oprema.",
+          "provenance": {
+            "source": "codebook",
+            "table": "ItemCategory",
+            "document": "server/eval/category-codebook.md",
+            "sha256_16": "08f7e418f4e86c46"
+          },
+          "assignment": "author"
+        }
+      },
+      {
+        "item_name": {
+          "value": "Laboratorijsko napajanje Rigol DP832, 3 kanala",
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario10_ponuda4.pdf",
+            "line": 30,
+            "quote": "Laboratorijsko napajanje Rigol DP832, 3"
+          }
+        },
+        "quantity": {
+          "value": 6,
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario10_ponuda4.pdf",
+            "line": 30,
+            "quote": "Laboratorijsko napajanje Rigol DP832, 3",
+            "form": "digit"
+          }
+        },
+        "category_name": {
+          "value": "Mjerna i ispitna oprema",
+          "acceptable_categories": [
+            "Mjerna i ispitna oprema",
+            "Nastavna i laboratorijska oprema"
+          ],
+          "ambiguous": true,
+          "acceptable_reason_type": null,
+          "acceptable_reason": null,
+          "rule": null,
+          "note": "Laboratorijsko napajanje je mjerna/laboratorijska oprema.",
+          "provenance": {
+            "source": "codebook",
+            "table": "ItemCategory",
+            "document": "server/eval/category-codebook.md",
+            "sha256_16": "08f7e418f4e86c46"
+          },
+          "assignment": "author"
+        }
+      },
+      {
+        "item_name": {
+          "value": "Digitalni multimetar Fluke 117 s priborom",
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario10_ponuda4.pdf",
+            "line": 33,
+            "quote": "Digitalni multimetar Fluke 117 s priborom | 10 | 219,00 | 2 190,00 | 547,50 (25.00%)"
+          }
+        },
+        "quantity": {
+          "value": 10,
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario10_ponuda4.pdf",
+            "line": 33,
+            "quote": "Digitalni multimetar Fluke 117 s priborom | 10 | 219,00 | 2 190,00 | 547,50 (25.00%)",
+            "form": "digit"
+          }
+        },
+        "category_name": {
+          "value": "Mjerna i ispitna oprema",
+          "acceptable_categories": [
+            "Mjerna i ispitna oprema",
+            "Nastavna i laboratorijska oprema"
+          ],
+          "ambiguous": true,
+          "acceptable_reason_type": null,
+          "acceptable_reason": null,
+          "rule": null,
+          "note": "Digitalni multimetar je mjerna i ispitna oprema.",
+          "provenance": {
+            "source": "codebook",
+            "table": "ItemCategory",
+            "document": "server/eval/category-codebook.md",
+            "sha256_16": "08f7e418f4e86c46"
+          },
+          "assignment": "author"
+        }
+      },
+      {
+        "item_name": {
+          "value": "Lemna stanica Weller WE1010 s kompletom vrhova",
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario10_ponuda4.pdf",
+            "line": 34,
+            "quote": "Lemna stanica Weller WE1010 s"
+          }
+        },
+        "quantity": {
+          "value": 12,
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario10_ponuda4.pdf",
+            "line": 34,
+            "quote": "Lemna stanica Weller WE1010 s",
+            "form": "digit"
+          }
+        },
+        "category_name": {
+          "value": "Nastavna i laboratorijska oprema",
+          "acceptable_categories": [
+            "Nastavna i laboratorijska oprema",
+            "Elektronička i elektrotehnička oprema"
+          ],
+          "ambiguous": true,
+          "acceptable_reason_type": null,
+          "acceptable_reason": null,
+          "rule": null,
+          "note": "Lemna stanica za laboratorijski rad.",
+          "provenance": {
+            "source": "codebook",
+            "table": "ItemCategory",
+            "document": "server/eval/category-codebook.md",
+            "sha256_16": "08f7e418f4e86c46"
+          },
+          "assignment": "author"
+        }
+      },
+      {
+        "item_name": {
+          "value": "Odsis dima za lemljenje s filtrom, stolni",
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario10_ponuda4.pdf",
+            "line": 37,
+            "quote": "Odsis dima za lemljenje s filtrom, stolni | 6 | 89,00 | 534,00 | 133,50 (25.00%)"
+          }
+        },
+        "quantity": {
+          "value": 6,
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario10_ponuda4.pdf",
+            "line": 37,
+            "quote": "Odsis dima za lemljenje s filtrom, stolni | 6 | 89,00 | 534,00 | 133,50 (25.00%)",
+            "form": "digit"
+          }
+        },
+        "category_name": {
+          "value": "Nastavna i laboratorijska oprema",
+          "acceptable_categories": [
+            "Nastavna i laboratorijska oprema",
+            "Elektronička i elektrotehnička oprema"
+          ],
+          "ambiguous": true,
+          "acceptable_reason_type": null,
+          "acceptable_reason": null,
+          "rule": null,
+          "note": "Odsis dima je specijalizirana oprema radnog mjesta za lemljenje.",
+          "provenance": {
+            "source": "codebook",
+            "table": "ItemCategory",
+            "document": "server/eval/category-codebook.md",
+            "sha256_16": "08f7e418f4e86c46"
+          },
+          "assignment": "author"
+        }
+      },
+      {
+        "item_name": {
+          "value": "3D pisač Prusa MK4S s kompletom filamenata",
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario10_ponuda4.pdf",
+            "line": 38,
+            "quote": "3D pisač Prusa MK4S s kompletom"
+          }
+        },
+        "quantity": {
+          "value": 2,
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario10_ponuda4.pdf",
+            "line": 38,
+            "quote": "3D pisač Prusa MK4S s kompletom",
+            "form": "digit"
+          }
+        },
+        "category_name": {
+          "value": "Nastavna i laboratorijska oprema",
+          "acceptable_categories": [
+            "Nastavna i laboratorijska oprema",
+            "Računalna oprema"
+          ],
+          "ambiguous": true,
+          "acceptable_reason_type": null,
+          "acceptable_reason": null,
+          "rule": null,
+          "note": "3D pisač je laboratorijska/nastavna oprema; može se tretirati i kao računalno upravljani uređaj.",
+          "provenance": {
+            "source": "codebook",
+            "table": "ItemCategory",
+            "document": "server/eval/category-codebook.md",
+            "sha256_16": "08f7e418f4e86c46"
+          },
+          "assignment": "author"
+        }
+      },
+      {
+        "item_name": {
+          "value": "PoE preklopnik Ubiquiti USW-24-PoE, 24 porta",
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario10_ponuda4.pdf",
+            "line": 41,
+            "quote": "PoE preklopnik Ubiquiti USW-24-PoE, 24"
+          }
+        },
+        "quantity": {
+          "value": 2,
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario10_ponuda4.pdf",
+            "line": 41,
+            "quote": "PoE preklopnik Ubiquiti USW-24-PoE, 24",
+            "form": "digit"
+          }
+        },
+        "category_name": {
+          "value": "Mrežna i telekomunikacijska oprema",
+          "acceptable_categories": [
+            "Mrežna i telekomunikacijska oprema",
+            "Računalna oprema"
+          ],
+          "ambiguous": true,
+          "acceptable_reason_type": null,
+          "acceptable_reason": null,
+          "rule": null,
+          "note": "PoE preklopnik je mrežna oprema.",
+          "provenance": {
+            "source": "codebook",
+            "table": "ItemCategory",
+            "document": "server/eval/category-codebook.md",
+            "sha256_16": "08f7e418f4e86c46"
+          },
+          "assignment": "author"
+        }
+      },
+      {
+        "item_name": {
+          "value": "Wi-Fi 6 pristupna točka Ubiquiti U6-Pro",
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario10_ponuda4.pdf",
+            "line": 44,
+            "quote": "Wi-Fi 6 pristupna točka Ubiquiti U6-Pro | 6 | 179,00 | 1 074,00 | 268,50 (25.00%)"
+          }
+        },
+        "quantity": {
+          "value": 6,
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario10_ponuda4.pdf",
+            "line": 44,
+            "quote": "Wi-Fi 6 pristupna točka Ubiquiti U6-Pro | 6 | 179,00 | 1 074,00 | 268,50 (25.00%)",
+            "form": "digit"
+          }
+        },
+        "category_name": {
+          "value": "Mrežna i telekomunikacijska oprema",
+          "acceptable_categories": [
+            "Mrežna i telekomunikacijska oprema",
+            "Računalna oprema"
+          ],
+          "ambiguous": true,
+          "acceptable_reason_type": null,
+          "acceptable_reason": null,
+          "rule": null,
+          "note": "Wi‑Fi pristupna točka je mrežna oprema.",
+          "provenance": {
+            "source": "codebook",
+            "table": "ItemCategory",
+            "document": "server/eval/category-codebook.md",
+            "sha256_16": "08f7e418f4e86c46"
+          },
+          "assignment": "author"
+        }
+      },
+      {
+        "item_name": {
+          "value": "Poslužitelj za edge računarstvo Dell PowerEdge R250",
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario10_ponuda4.pdf",
+            "line": 45,
+            "quote": "Poslužitelj za edge računarstvo Dell"
+          }
+        },
+        "quantity": {
+          "value": 1,
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario10_ponuda4.pdf",
+            "line": 45,
+            "quote": "Poslužitelj za edge računarstvo Dell",
+            "form": "word"
+          }
+        },
+        "category_name": {
+          "value": "Računalna oprema",
+          "acceptable_categories": [
+            "Računalna oprema",
+            "Mrežna i telekomunikacijska oprema"
+          ],
+          "ambiguous": true,
+          "acceptable_reason_type": null,
+          "acceptable_reason": null,
+          "rule": null,
+          "note": "Poslužitelj je računalna oprema.",
+          "provenance": {
+            "source": "codebook",
+            "table": "ItemCategory",
+            "document": "server/eval/category-codebook.md",
+            "sha256_16": "08f7e418f4e86c46"
+          },
+          "assignment": "author"
+        }
+      },
+      {
+        "item_name": {
+          "value": "Komunikacijski ormar 19\" 22U s policama i PDU letvom",
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario10_ponuda4.pdf",
+            "line": 48,
+            "quote": "Komunikacijski ormar 19\" 22U s policama"
+          }
+        },
+        "quantity": {
+          "value": 2,
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario10_ponuda4.pdf",
+            "line": 48,
+            "quote": "Komunikacijski ormar 19\" 22U s policama",
+            "form": "digit"
+          }
+        },
+        "category_name": {
+          "value": "Mrežna i telekomunikacijska oprema",
+          "acceptable_categories": [
+            "Mrežna i telekomunikacijska oprema",
+            "Računalna oprema",
+            "Namještaj"
+          ],
+          "ambiguous": true,
+          "acceptable_reason_type": null,
+          "acceptable_reason": null,
+          "rule": null,
+          "note": "Komunikacijski ormar je prvenstveno infrastruktura za mrežnu opremu; može se tretirati kao namještaj prema načinu evidencije.",
+          "provenance": {
+            "source": "codebook",
+            "table": "ItemCategory",
+            "document": "server/eval/category-codebook.md",
+            "sha256_16": "08f7e418f4e86c46"
+          },
+          "assignment": "author"
+        }
+      },
+      {
+        "item_name": {
+          "value": "Studentska radna stanica (računalo, monitor 24\", periferija)",
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario10_ponuda4.pdf",
+            "line": 51,
+            "quote": "Studentska radna stanica (računalo,"
+          }
+        },
+        "quantity": {
+          "value": 15,
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario10_ponuda4.pdf",
+            "line": 51,
+            "quote": "Studentska radna stanica (računalo,",
+            "form": "word"
+          }
+        },
+        "category_name": {
+          "value": "Računalna oprema",
+          "acceptable_categories": [
+            "Računalna oprema",
+            "Nastavna i laboratorijska oprema"
+          ],
+          "ambiguous": true,
+          "acceptable_reason_type": null,
+          "acceptable_reason": null,
+          "rule": null,
+          "note": "Računalo, monitor i periferija čine radnu računalnu cjelinu.",
+          "provenance": {
+            "source": "codebook",
+            "table": "ItemCategory",
+            "document": "server/eval/category-codebook.md",
+            "sha256_16": "08f7e418f4e86c46"
+          },
+          "assignment": "author"
+        }
+      },
+      {
+        "item_name": {
+          "value": "Set alata za elektroniku (odvijači, pincete, rezači, mjerni vodovi)",
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario10_ponuda4.pdf",
+            "line": 54,
+            "quote": "Set alata za elektroniku (odvijači, pincete,"
+          }
+        },
+        "quantity": {
+          "value": 15,
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario10_ponuda4.pdf",
+            "line": 54,
+            "quote": "Set alata za elektroniku (odvijači, pincete,",
+            "form": "word"
+          }
+        },
+        "category_name": {
+          "value": "Nastavna i laboratorijska oprema",
+          "acceptable_categories": [
+            "Nastavna i laboratorijska oprema",
+            "Elektronička i elektrotehnička oprema",
+            "Sitni inventar"
+          ],
+          "ambiguous": true,
+          "acceptable_reason_type": null,
+          "acceptable_reason": null,
+          "rule": null,
+          "note": "Specijalizirani alat za laboratorij elektronike.",
+          "provenance": {
+            "source": "codebook",
+            "table": "ItemCategory",
+            "document": "server/eval/category-codebook.md",
+            "sha256_16": "08f7e418f4e86c46"
+          },
+          "assignment": "author"
+        }
+      },
+      {
+        "item_name": {
+          "value": "Ormarić za pohranu kompleta, s bravom, 12 pretinaca",
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario10_ponuda4.pdf",
+            "line": 57,
+            "quote": "Ormarić za pohranu kompleta, s bravom,"
+          }
+        },
+        "quantity": {
+          "value": 4,
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario10_ponuda4.pdf",
+            "line": 57,
+            "quote": "Ormarić za pohranu kompleta, s bravom,",
+            "form": "word"
+          }
+        },
+        "category_name": {
+          "value": "Namještaj",
+          "acceptable_categories": [
+            "Namještaj",
+            "Sitni inventar"
+          ],
+          "ambiguous": true,
+          "acceptable_reason_type": null,
+          "acceptable_reason": null,
+          "rule": null,
+          "note": "Ormarić za pohranu je namještaj; sitni inventar je moguća alternativa ovisno o vrijednosnom pragu.",
+          "provenance": {
+            "source": "codebook",
+            "table": "ItemCategory",
+            "document": "server/eval/category-codebook.md",
+            "sha256_16": "08f7e418f4e86c46"
+          },
+          "assignment": "author"
+        }
+      },
+      {
+        "item_name": {
+          "value": "Akademska licenca IoT platforme, 200 uređaja, 12 mjeseci",
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario10_ponuda4.pdf",
+            "line": 61,
+            "quote": "Akademska licenca IoT platforme, 200"
+          }
+        },
+        "quantity": {
+          "value": 1,
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario10_ponuda4.pdf",
+            "line": 61,
+            "quote": "Akademska licenca IoT platforme, 200",
+            "form": "digit"
+          }
+        },
+        "category_name": {
+          "value": "Programska oprema i licence",
+          "acceptable_categories": [
+            "Programska oprema i licence"
+          ],
+          "ambiguous": false,
+          "acceptable_reason_type": null,
+          "acceptable_reason": null,
+          "rule": null,
+          "note": "Vremenski ograničena akademska licenca.",
+          "provenance": {
+            "source": "codebook",
+            "table": "ItemCategory",
+            "document": "server/eval/category-codebook.md",
+            "sha256_16": "08f7e418f4e86c46"
+          },
+          "assignment": "author"
+        }
+      },
+      {
+        "item_name": {
+          "value": "Instalacija, umrežavanje i puštanje laboratorija u rad",
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario10_ponuda4.pdf",
+            "line": 64,
+            "quote": "Instalacija, umrežavanje i puštanje"
+          }
+        },
+        "quantity": {
+          "value": 1,
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario10_ponuda4.pdf",
+            "line": 64,
+            "quote": "Instalacija, umrežavanje i puštanje",
+            "form": "word"
+          }
+        },
+        "category_name": {
+          "value": "Usluge razvoja i održavanja informacijskih sustava",
+          "acceptable_categories": [
+            "Usluge razvoja i održavanja informacijskih sustava",
+            "Usluge održavanja"
+          ],
+          "ambiguous": true,
+          "acceptable_reason_type": null,
+          "acceptable_reason": null,
+          "rule": null,
+          "note": "Instalacija, umrežavanje i puštanje IT/laboratorijske infrastrukture u rad.",
+          "provenance": {
+            "source": "codebook",
+            "table": "ItemCategory",
+            "document": "server/eval/category-codebook.md",
+            "sha256_16": "08f7e418f4e86c46"
+          },
+          "assignment": "author"
+        }
+      },
+      {
+        "item_name": {
+          "value": "Izrada 10 laboratorijskih vježbi i nastavnih materijala",
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario10_ponuda4.pdf",
+            "line": 67,
+            "quote": "Izrada 10 laboratorijskih vježbi i"
+          }
+        },
+        "quantity": {
+          "value": 1,
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario10_ponuda4.pdf",
+            "line": 67,
+            "quote": "Izrada 10 laboratorijskih vježbi i",
+            "form": "digit"
+          }
+        },
+        "category_name": {
+          "value": "Stručne i savjetodavne usluge",
+          "acceptable_categories": [
+            "Stručne i savjetodavne usluge",
+            "Edukacije i stručno usavršavanje",
+            "Nastavne potrepštine"
+          ],
+          "ambiguous": true,
+          "acceptable_reason_type": null,
+          "acceptable_reason": null,
+          "rule": null,
+          "note": "Izrada laboratorijskih vježbi i nastavnih materijala je stručna usluga; dio sadržaja je nastavnog karaktera.",
+          "provenance": {
+            "source": "codebook",
+            "table": "ItemCategory",
+            "document": "server/eval/category-codebook.md",
+            "sha256_16": "08f7e418f4e86c46"
+          },
+          "assignment": "author"
+        }
+      },
+      {
+        "item_name": {
+          "value": "Edukacija nastavnog osoblja, 3 dana, do 12 polaznika",
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario10_ponuda4.pdf",
+            "line": 70,
+            "quote": "Edukacija nastavnog osoblja, 3 dana, do 12"
+          }
+        },
+        "quantity": {
+          "value": 1,
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario10_ponuda4.pdf",
+            "line": 70,
+            "quote": "Edukacija nastavnog osoblja, 3 dana, do 12",
+            "form": "digit"
+          }
+        },
+        "category_name": {
+          "value": "Edukacije i stručno usavršavanje",
+          "acceptable_categories": [
+            "Edukacije i stručno usavršavanje",
+            "Stručne i savjetodavne usluge"
+          ],
+          "ambiguous": true,
+          "acceptable_reason_type": null,
+          "acceptable_reason": null,
+          "rule": null,
+          "note": "Izravno predstavlja edukaciju nastavnog osoblja.",
+          "provenance": {
+            "source": "codebook",
+            "table": "ItemCategory",
+            "document": "server/eval/category-codebook.md",
+            "sha256_16": "08f7e418f4e86c46"
+          },
+          "assignment": "author"
+        }
+      },
+      {
+        "item_name": {
+          "value": "Produljeno jamstvo i tehnička podrška 36 mjeseci",
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario10_ponuda4.pdf",
+            "line": 73,
+            "quote": "Produljeno jamstvo i tehnička podrška 36"
+          }
+        },
+        "quantity": {
+          "value": 1,
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario10_ponuda4.pdf",
+            "line": 73,
+            "quote": "Produljeno jamstvo i tehnička podrška 36",
+            "form": "digit"
+          }
+        },
+        "category_name": {
+          "value": "Usluge održavanja",
+          "acceptable_categories": [
+            "Usluge održavanja",
+            "Ostale usluge"
+          ],
+          "ambiguous": true,
+          "acceptable_reason_type": null,
+          "acceptable_reason": null,
+          "rule": null,
+          "note": "Produljeno jamstvo i tehnička podrška; ako je riječ o zasebnoj servisnoj usluzi, održavanje je najbliže.",
+          "provenance": {
+            "source": "codebook",
+            "table": "ItemCategory",
+            "document": "server/eval/category-codebook.md",
+            "sha256_16": "08f7e418f4e86c46"
+          },
+          "assignment": "author"
+        }
+      }
+    ]
+  },
+  "notes": "Četiri priloga su BAJT-JEDNAKE kopije dokumenata scenarija 4a, 3, 1 i 2 — provjereno hashevima. Scenarij zato NE mjeri čitanje ponude nego spajanje i zbrajanje preko četiriju dokumenata. Boduje se samo po dvama mjerilima: ukupan broj stavki (46) i je li iznos zbroj svih četiriju ponuda. Pojedinačna točnost stavki NE pribraja se ukupnoj — te su stavke već mjerene u svojim izvornim scenarijima.",
+  "_schema": "ground-truth/v2-derived",
+  "category_codebook_sha256_16": "08f7e418f4e86c46"
+}

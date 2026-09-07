@@ -114,7 +114,7 @@ async function main() {
   const tally = {
     total: 0, withQuote: 0, checked: 0, passed: 0,
     failedQuote: 0, failedLine: 0,
-    skippedCodebook: 0, skippedTurn: 0, unreadable: 0,
+    skippedCodebook: 0, skippedTurn: 0, skippedImage: 0, unreadable: 0,
   };
   const failures = [];
   const perScenario = [];
@@ -124,13 +124,20 @@ async function main() {
     const locators = [];
     collectLocators(gt, '', locators);
 
-    const s = { id: gt.scenario_id, total: locators.length, checked: 0, passed: 0, failed: 0, turn: 0, codebook: 0 };
+    const s = { id: gt.scenario_id, total: locators.length, checked: 0, passed: 0, failed: 0, turn: 0, codebook: 0, image: 0 };
 
     for (const { fieldPath, prov } of locators) {
       tally.total += 1;
 
       if (prov.source === 'codebook') {
         tally.skippedCodebook += 1; s.codebook += 1;
+        continue;
+      }
+      if (prov.source === 'image') {
+        // Slikovni prilog nema izdvojen tekst, pa ni lokator prema retku ni
+        // bajt-jednak citat. Vrijednost je očitana s fotografije i provjerava se
+        // okom, ne strojno — broji se zasebno da ne ispadne iz zbroja.
+        tally.skippedImage += 1; s.image += 1;
         continue;
       }
       if (typeof prov.quote !== 'string') {
@@ -208,11 +215,11 @@ async function main() {
   if (!quiet) {
     console.log('Provjera provenancea — citat mora biti bajt-jednak tekstu koji izvuče mjerena ruta.');
     console.log('Redak (`line`) je nula-indeksiran nad text.split(\'\\n\').\n');
-    console.log('scenarij                            lokatora  provjereno  prolazi  pada  turn  codebook');
+    console.log('scenarij                            lokatora  provjereno  prolazi  pada  turn  codebook  slika');
     for (const s of perScenario) {
       console.log(
         `${s.id.padEnd(34)} ${String(s.total).padStart(8)} ${String(s.checked).padStart(11)} `
-        + `${String(s.passed).padStart(8)} ${String(s.failed).padStart(5)} ${String(s.turn).padStart(5)} ${String(s.codebook).padStart(9)}`
+        + `${String(s.passed).padStart(8)} ${String(s.failed).padStart(5)} ${String(s.turn).padStart(5)} ${String(s.codebook).padStart(9)} ${String(s.image).padStart(6)}`
       );
     }
     console.log();
@@ -238,6 +245,7 @@ async function main() {
   console.log(`  pada — citat točan, redak pogrešan                                 : ${tally.failedLine}`);
   console.log(`  neprovjerljivo — izvor je poruka razgovora (chat uklonjen)         : ${tally.skippedTurn}`);
   console.log(`  bez citata — dodjela iz codebooka                                  : ${tally.skippedCodebook}`);
+  console.log(`  bez citata — očitano sa slike (nema izdvojenog teksta)             : ${tally.skippedImage}`);
   console.log(`  prilog nečitljiv                                                   : ${tally.unreadable}`);
 
   const failed = tally.failedQuote + tally.failedLine + tally.unreadable;

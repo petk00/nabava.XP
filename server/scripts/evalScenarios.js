@@ -101,11 +101,14 @@ const SCENARIOS = [
     // JEDINI scenarij bez poslužiteljske ekstrakcije: slika ide modelu izravno,
     // pa svaka izvedba radi vlastito očitanje i ulaz nije izjednačen. Rezultati
     // se izvještavaju u zasebnoj tablici i tokeni se broje odvojeno.
+    //
+    // Dokument je SAMOSTALNA ponuda (biooprema d.o.o. 225/2025), ne fotografija
+    // ponude iz scenarija 1 — uparene probe „isti dokument, dva kanala" nema.
     id: 'scenario8_slika',
     inputModality: 'image',
     expectsRefusal: false,
-    description: 'Ponuda priložena kao slika (JPG) — čitanje bez poslužiteljske ekstrakcije teksta.',
-    attachments: [path.join(FIXTURES_DIR, 'scenario8_slika.jpg')],
+    description: 'Ponuda fotografirana s papira (JPEG) — čitanje bez poslužiteljske ekstrakcije teksta.',
+    attachments: [path.join(FIXTURES_DIR, 'scenario8_slika.jpeg')],
     repeatCount: 5,
   },
   {

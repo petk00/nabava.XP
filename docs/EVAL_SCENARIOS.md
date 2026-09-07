@@ -7,28 +7,52 @@ Mjeri se ruta `POST /api/requests/:id/ai-items` (`docs/AI.md`): model pročita p
 priloženu uz postojeći zahtjev i njome zamijeni stavke i ukupan iznos. Nema razgovora,
 pa scenarij nije niz poruka nego **jedan zahtjev s jednom ili dvije priložene ponude**.
 
-## Što se stvarno izvodi — sedam scenarija
+## Što se stvarno izvodi — deset scenarija
 
-Svi imaju prilog. Nijedan nije tekstualni, jer ruta polazi od priložene datoteke.
-
-| ID | Prilog | Što se ispituje | Stavki u ground truthu | Iznos | N |
+| # | ID | Ispituje | Prilog | Stavki | Iznos |
 |---|---|---|---|---|---|
-| `scenario1_standardna` | `scenario1_standardna.pdf` | jednostranična ponuda, osnovno čitanje | 4 | 57,10 € | 5 |
-| `scenario2_visestranicna` | `scenario2_visestranicna.pdf` | dvije stranice, 23 stavke — zadržava li model stavke s druge stranice | 23 | 50.677,88 € | 5 |
-| `scenario3_rabat_pdv` | `scenario3_rabat_pdv.pdf` | osnovica, rabat, PDV, za uplatu — bira li model pravi iznos | 8 | 25.036,88 € | 5 |
-| `scenario4_dvije_ponude` | `scenario4_ponuda_a.pdf`, `scenario4_ponuda_b.pdf` | dvije ponude uz isti zahtjev — spaja li stavke i zbraja iznose | 16 | 619,32 € | 5 |
-| `scenario5_dugacki_opisi` | `scenario5_dugacki_opisi.pdf` | nazivi 232–251 znakova — stane li u `varchar(200)` i skraćuje li razumno | 4 | 5.906,63 € | 5 |
-| `scenario6_format_brojeva` | `scenario6_jedinice.pdf` | ista ponuda kao 5, brojevi u anglosaksonskom formatu (`1,398.00`) | 4 | 5.906,63 € | 5 |
-| `scenario7_nije_ponuda` | `scenario7_nije_ponuda.pdf` | dokument bez tekstualnog sloja — **mora biti odbijen** | 0 | — | 3 |
+| 1 | `scenario1_standardna` | normalna ponuda, četiri stavke | `scenario1_standardna.pdf` | 4 | 57,10 € |
+| 2 | `scenario2_visestranicna` | dvije stranice, 23 stavke | `scenario2_visestranicna.pdf` | 23 | 50.677,88 € |
+| 3 | `scenario3_rabat_pdv` | rabat i PDV — bira li konačan iznos za uplatu | `scenario3_rabat_pdv.pdf` | 8 | 25.036,88 € |
+| 4 | `scenario4_dvije_ponude` | dvije ponude, iznos je zbroj | `scenario4_ponuda_a.pdf`, `_b.pdf` | 16 | 619,32 € |
+| 5 | `scenario5_dugacki_opisi` | nazivi dulji od 200 znakova | `scenario5_dugacki_opisi.pdf` | 4 | 5.906,63 € |
+| 6 | `scenario6_format_brojeva` | isti sadržaj, anglosaksonski zapis | `scenario6_jedinice.pdf` | 4 | 5.906,63 € |
+| 7 | `scenario7_nije_ponuda` | račun za komunalne usluge — **mora biti odbijen** | `scenario7_nije_ponuda.pdf` | 0 | — |
+| 8 | `scenario8_slika` | ponuda s fotografije, **bez ekstrakcije** | `scenario8_slika.jpeg` | 5 | 109,94 € |
+| 9 | `scenario9_negativ` | negativna stavka (odbitak) se izostavlja | `scenario9_negativ.pdf` | 3 | 2.575,00 € |
+| 10 | `scenario10_cetiri_ponude` | četiri ponude, iznos je zbroj | `scenario10_ponuda1–4.pdf` | 46 | 75.867,18 € |
 
-`scenario7` u kodu nosi `inputModality: 'image'` iako je datoteka `.pdf`: riječ je o
-skeniranoj slici unutar PDF-a, bez tekstualnog sloja. Ispravan ishod je odbijanje
-(`expectsRefusal: true`), a ne izvučene stavke.
+### Scenariji 5 i 6 — uparena proba s jednom promjenjivom
 
-Zastavice `inputModality` i `expectsRefusal` stoje na dva mjesta — u scenariju i u ground
-truthu. `evalHarness.js` ih uspoređuje **prije** mjerenja i puca ako se raziđu, da se ne
-grupira po jednoj vrijednosti a boduje po drugoj. Provjereno 5. 9. 2026.: svih sedam se
-poklapa.
+Isti sadržaj u dva zapisa broja. Izdvojeni tekst je jednake duljine (2.056 znakova, 53
+retka) i razlikuje se u dvanaest redaka, a svaka je razlika samo decimalni i tisućni
+razdjelnik (`4 974,00 €` naspram `4,974.00 €`). **Nisu dva neovisna uzorka** — u
+agregaciji se broje kao par, ne kao dvije mjere.
+
+### Scenarij 8 — jedini bez izjednačenog ulaza
+
+Slika ide modelu izravno, bez poslužiteljske ekstrakcije, pa **svaka izvedba radi vlastito
+očitanje**. Zapis pokušaja nosi `server_text_extraction: false`. Rezultati idu u zasebnu
+tablicu točnosti i tokeni se broje odvojeno; ista slika daje 368 ulaznih tokena lokalno i
+1.227 kod udaljene usluge, pa zbrajanje nema smisla. Ground truth nema lokatore prema
+retku — vrijednosti su očitane s fotografije i provjeravaju se okom, ne strojno.
+
+Dokument je samostalna ponuda (biooprema d.o.o. 225/2025), **ne fotografija ponude iz
+scenarija 1**, pa uparene probe „isti dokument, dva kanala" nema.
+
+### Scenarij 10 — mjeri spajanje, ne čitanje
+
+Njegova četiri priloga su **bajt-jednake kopije** dokumenata scenarija 4a, 3, 1 i 2 —
+provjereno hashevima. Model te stavke čita i drugdje, pa se njihova pojedinačna točnost
+**ne pribraja ukupnoj**. Boduje se samo po dvama mjerilima: ukupan broj stavki (46) i je
+li iznos zbroj svih četiriju ponuda (75.867,18 €, broj koji se ne pojavljuje ni u jednom
+prilogu).
+
+### Scenarij 7 se reže
+
+Dokument ima 11.650 znakova, a `MAX_QUOTE_TEXT_LEN` reže na 8.000 — **model vidi 69 %
+teksta**. Jedini je dokument u skupu koji prelazi granicu. Postavka se namjerno ne mijenja
+prije kampanje, jer bi se time mjerio drugi sustav.
 
 ## Tri ground trutha koji se više ne izvode
 
