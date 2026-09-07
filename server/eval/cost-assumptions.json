@@ -72,9 +72,10 @@
     ]
   },
   "tecaj": {
-    "_napomena": "Cjenik je u USD, a trošak se iskazuje u EUR. Tečaj MORA imati datum i izvor; dok je null, evalCost.js ne računa trošak udaljene izvedbe.",
-    "usd_u_eur": null,
-    "datum": null,
-    "izvor": null
+    "_napomena": "Cjenik je u USD, trošak se iskazuje u EUR. usd_u_eur je IZVEDEN iz objavljenog tečaja (1 / eur_u_usd) i tako ga koristi evalCost.js.",
+    "eur_u_usd": 1.1622,
+    "usd_u_eur": 0.8604371,
+    "datum": "2026-09-04",
+    "izvor": "Referentni tečaj Europske središnje banke, https://www.ecb.europa.eu/stats/policy_and_exchange_rates/euro_reference_exchange_rates/"
   }
 }

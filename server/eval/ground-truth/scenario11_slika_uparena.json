@@ -1,0 +1,180 @@
+{
+  "scenario_id": "scenario11_slika_uparena",
+  "expected_decision": "create",
+  "expects_refusal": false,
+  "input_modality": "image",
+  "server_text_extraction": false,
+  "attachments": [
+    "scenario11_.jpeg"
+  ],
+  "paired_with": "scenario1_standardna",
+  "fields": {
+    "total_amount": {
+      "value": 57.1,
+      "acceptable": [
+        57.1
+      ],
+      "provenance": {
+        "source": "image",
+        "file": "scenario11_.jpeg",
+        "note": "Prilog je slika: poslužiteljske ekstrakcije teksta nema, pa nema ni lokatora prema retku niti bajt-jednakog citata. Vrijednost je PREUZETA iz zlatnog standarda scenarija 1 — isti dokument, drugi ulazni kanal. Na slici: „Ukupno za uplatu  57,10 €\""
+      }
+    },
+    "items": [
+      {
+        "item_name": {
+          "value": "Univerzalni strujni adapter 230V/3-12V DC max. 27W 2,25A",
+          "provenance": {
+            "source": "image",
+            "file": "scenario11_.jpeg",
+            "note": "Prilog je slika: poslužiteljske ekstrakcije teksta nema, pa nema ni lokatora prema retku niti bajt-jednakog citata. Vrijednost je PREUZETA iz zlatnog standarda scenarija 1 — isti dokument, drugi ulazni kanal. Na slici: redak 1, stupac „Proizvod\""
+          }
+        },
+        "quantity": {
+          "value": 1,
+          "provenance": {
+            "source": "image",
+            "file": "scenario11_.jpeg",
+            "note": "Prilog je slika: poslužiteljske ekstrakcije teksta nema, pa nema ni lokatora prema retku niti bajt-jednakog citata. Vrijednost je PREUZETA iz zlatnog standarda scenarija 1 — isti dokument, drugi ulazni kanal. Na slici: redak 1, stupac „Količina\" = 1"
+          },
+          "form": "digit"
+        },
+        "category_name": {
+          "value": "Elektronička i elektrotehnička oprema",
+          "acceptable_categories": [
+            "Elektronička i elektrotehnička oprema",
+            "Nastavna i laboratorijska oprema",
+            "Mjerna i ispitna oprema"
+          ],
+          "ambiguous": true,
+          "acceptable_reason_type": null,
+          "acceptable_reason": null,
+          "rule": null,
+          "note": "Napajanje/adapterski uređaj; primarno elektronička oprema.",
+          "provenance": {
+            "source": "codebook",
+            "table": "ItemCategory",
+            "document": "server/eval/category-codebook.md",
+            "sha256_16": "be6c9b1400f6598e"
+          },
+          "assignment": "author"
+        }
+      },
+      {
+        "item_name": {
+          "value": "Eksperimentalna pločica (breadboard) s 400 rupica",
+          "provenance": {
+            "source": "image",
+            "file": "scenario11_.jpeg",
+            "note": "Prilog je slika: poslužiteljske ekstrakcije teksta nema, pa nema ni lokatora prema retku niti bajt-jednakog citata. Vrijednost je PREUZETA iz zlatnog standarda scenarija 1 — isti dokument, drugi ulazni kanal. Na slici: redak 2, stupac „Proizvod\""
+          }
+        },
+        "quantity": {
+          "value": 2,
+          "provenance": {
+            "source": "image",
+            "file": "scenario11_.jpeg",
+            "note": "Prilog je slika: poslužiteljske ekstrakcije teksta nema, pa nema ni lokatora prema retku niti bajt-jednakog citata. Vrijednost je PREUZETA iz zlatnog standarda scenarija 1 — isti dokument, drugi ulazni kanal. Na slici: redak 2, stupac „Količina\" = 2"
+          },
+          "form": "digit"
+        },
+        "category_name": {
+          "value": "Nastavna i laboratorijska oprema",
+          "acceptable_categories": [
+            "Nastavna i laboratorijska oprema"
+          ],
+          "ambiguous": false,
+          "acceptable_reason_type": null,
+          "acceptable_reason": null,
+          "rule": null,
+          "note": "Komponenta za eksperimentalni rad.",
+          "provenance": {
+            "source": "codebook",
+            "table": "ItemCategory",
+            "document": "server/eval/category-codebook.md",
+            "sha256_16": "be6c9b1400f6598e"
+          },
+          "assignment": "author"
+        }
+      },
+      {
+        "item_name": {
+          "value": "Eksperimentalna pločica (breadboard) s 830 rupica",
+          "provenance": {
+            "source": "image",
+            "file": "scenario11_.jpeg",
+            "note": "Prilog je slika: poslužiteljske ekstrakcije teksta nema, pa nema ni lokatora prema retku niti bajt-jednakog citata. Vrijednost je PREUZETA iz zlatnog standarda scenarija 1 — isti dokument, drugi ulazni kanal. Na slici: redak 3, stupac „Proizvod\""
+          }
+        },
+        "quantity": {
+          "value": 2,
+          "provenance": {
+            "source": "image",
+            "file": "scenario11_.jpeg",
+            "note": "Prilog je slika: poslužiteljske ekstrakcije teksta nema, pa nema ni lokatora prema retku niti bajt-jednakog citata. Vrijednost je PREUZETA iz zlatnog standarda scenarija 1 — isti dokument, drugi ulazni kanal. Na slici: redak 3, stupac „Količina\" = 2"
+          },
+          "form": "digit"
+        },
+        "category_name": {
+          "value": "Nastavna i laboratorijska oprema",
+          "acceptable_categories": [
+            "Nastavna i laboratorijska oprema"
+          ],
+          "ambiguous": false,
+          "acceptable_reason_type": null,
+          "acceptable_reason": null,
+          "rule": null,
+          "note": "Komponenta za eksperimentalni rad.",
+          "provenance": {
+            "source": "codebook",
+            "table": "ItemCategory",
+            "document": "server/eval/category-codebook.md",
+            "sha256_16": "be6c9b1400f6598e"
+          },
+          "assignment": "author"
+        }
+      },
+      {
+        "item_name": {
+          "value": "Kabeli za eksperimentalnu pločicu (breadboard) - 65 komada",
+          "provenance": {
+            "source": "image",
+            "file": "scenario11_.jpeg",
+            "note": "Prilog je slika: poslužiteljske ekstrakcije teksta nema, pa nema ni lokatora prema retku niti bajt-jednakog citata. Vrijednost je PREUZETA iz zlatnog standarda scenarija 1 — isti dokument, drugi ulazni kanal. Na slici: redak 4, stupac „Proizvod\""
+          }
+        },
+        "quantity": {
+          "value": 2,
+          "provenance": {
+            "source": "image",
+            "file": "scenario11_.jpeg",
+            "note": "Prilog je slika: poslužiteljske ekstrakcije teksta nema, pa nema ni lokatora prema retku niti bajt-jednakog citata. Vrijednost je PREUZETA iz zlatnog standarda scenarija 1 — isti dokument, drugi ulazni kanal. Na slici: redak 4, stupac „Količina\" = 2"
+          },
+          "form": "digit"
+        },
+        "category_name": {
+          "value": "Nastavna i laboratorijska oprema",
+          "acceptable_categories": [
+            "Nastavna i laboratorijska oprema",
+            "Elektronička i elektrotehnička oprema"
+          ],
+          "ambiguous": true,
+          "acceptable_reason_type": null,
+          "acceptable_reason": null,
+          "rule": null,
+          "note": "Povezni pribor za eksperimentalne pločice.",
+          "provenance": {
+            "source": "codebook",
+            "table": "ItemCategory",
+            "document": "server/eval/category-codebook.md",
+            "sha256_16": "be6c9b1400f6598e"
+          },
+          "assignment": "author"
+        }
+      }
+    ]
+  },
+  "notes": "UPARENA PROBA ULAZNOG KANALA sa scenarijem 1. Isti dokument (Mikrotron d.o.o., ponuda 14852), jedina razlika je ulazi li kroz poslužiteljsko izdvajanje teksta (scenarij 1) ili kao slika (ovaj scenarij). Zlatni standard je doslovan prijepis scenarija 1: iste četiri stavke, iste količine, isti iznos 57,10 €. Njegove stavke NE ulaze u polazišnu vrijednost ni u ukupnu točnost — countsTowardOverall je false. Napomena o prilogu: fotografija je snimljena sa ZASLONA na kojem je dokument otvoren u pregledniku, ne s ispisanog papira; degradacija je moiré, ne artefakti ispisa i skeniranja. To navesti u opisu testnog skupa.",
+  "_schema": "ground-truth/v2-image",
+  "category_codebook_sha256_16": "be6c9b1400f6598e"
+}

@@ -7,7 +7,7 @@ Mjeri se ruta `POST /api/requests/:id/ai-items` (`docs/AI.md`): model pročita p
 priloženu uz postojeći zahtjev i njome zamijeni stavke i ukupan iznos. Nema razgovora,
 pa scenarij nije niz poruka nego **jedan zahtjev s jednom ili dvije priložene ponude**.
 
-## Što se stvarno izvodi — deset scenarija
+## Što se stvarno izvodi — jedanaest scenarija
 
 | # | ID | Ispituje | Prilog | Stavki | Iznos |
 |---|---|---|---|---|---|
@@ -21,6 +21,7 @@ pa scenarij nije niz poruka nego **jedan zahtjev s jednom ili dvije priložene p
 | 8 | `scenario8_slika` | ponuda s fotografije, **bez ekstrakcije** | `scenario8_slika.jpeg` | 5 | 109,94 € |
 | 9 | `scenario9_negativ` | negativna stavka (odbitak) se izostavlja | `scenario9_negativ.pdf` | 3 | 2.575,00 € |
 | 10 | `scenario10_cetiri_ponude` | četiri ponude, iznos je zbroj | `scenario10_ponuda1–4.pdf` | 46 | 75.867,18 € |
+| 11 | `scenario11_slika_uparena` | ponuda scenarija 1 kao **slika** — uparena proba kanala | `scenario11_.jpeg` | 4 | 57,10 € |
 
 ### Scenariji 5 i 6 — uparena proba s jednom promjenjivom
 
@@ -39,6 +40,23 @@ retku — vrijednosti su očitane s fotografije i provjeravaju se okom, ne stroj
 
 Dokument je samostalna ponuda (biooprema d.o.o. 225/2025), **ne fotografija ponude iz
 scenarija 1**, pa uparene probe „isti dokument, dva kanala" nema.
+
+### Scenariji 1 i 11 — uparena proba ulaznog kanala
+
+Isti dokument (Mikrotron d.o.o., ponuda 14852), dva ulaza. Scenarij 1 ulazi kao PDF i
+prolazi kroz poslužiteljsko izdvajanje teksta, pa obje izvedbe dobivaju **identičan niz
+znakova**. Scenarij 11 ulazi kao slika i ide modelu izravno, pa **svaka izvedba radi
+vlastito očitanje**. Sve ostalo je isto — isti prompt, ista shema alata, isti zlatni
+standard: četiri stavke, iste količine, 57,10 €.
+
+Razlika u točnosti između ta dva scenarija mjeri **cijenu ulaznog kanala**, ne sposobnost
+čitanja ponude. Stavke scenarija 11 su prijepis, pa **ne ulaze u ukupnu točnost ni u
+raspodjelu kategorija** (`countsTowardOverall: false`).
+
+Napomena o prilogu: fotografija je snimljena **sa zaslona** na kojem je dokument otvoren u
+pregledniku, ne s ispisanog papira. Degradacija je zato moiré, a ne artefakti ispisa i
+skeniranja. To ograničava koliko se nalaz smije poopćiti na stvarne fotografije papirnatih
+ponuda — vidi scenarij 8, koji jest snimka papira.
 
 ### Scenarij 10 — mjeri spajanje, ne čitanje
 

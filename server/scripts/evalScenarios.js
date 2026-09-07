@@ -143,6 +143,20 @@ const SCENARIOS = [
     ],
     repeatCount: 5,
   },
+  {
+    // UPARENA PROBA ULAZNOG KANALA sa scenarijem 1: isti dokument, jedina
+    // razlika je ulazi li kroz poslužiteljsko izdvajanje teksta ili kao slika.
+    // Zlatni standard je prijepis scenarija 1, pa stavke NE ulaze u ukupnu
+    // točnost ni u raspodjelu — inače bi ista četiri artikla ušla dvaput.
+    id: 'scenario11_slika_uparena',
+    inputModality: 'image',
+    expectsRefusal: false,
+    countsTowardOverall: false,
+    pairedWith: 'scenario1_standardna',
+    description: 'Ponuda scenarija 1 kao slika — uparena proba ulaznog kanala, bez poslužiteljske ekstrakcije.',
+    attachments: [path.join(FIXTURES_DIR, 'scenario11_.jpeg')],
+    repeatCount: 5,
+  },
 ];
 
 // Scenariji čije stavke NE ulaze u ukupnu točnost ni u raspodjelu kategorija.
