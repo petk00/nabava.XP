@@ -64,7 +64,7 @@
             "source": "codebook",
             "table": "ItemCategory",
             "document": "server/eval/category-codebook.md",
-            "sha256_16": "08f7e418f4e86c46"
+            "sha256_16": "be6c9b1400f6598e"
           },
           "assignment": "author"
         }
@@ -103,7 +103,7 @@
             "source": "codebook",
             "table": "ItemCategory",
             "document": "server/eval/category-codebook.md",
-            "sha256_16": "08f7e418f4e86c46"
+            "sha256_16": "be6c9b1400f6598e"
           },
           "assignment": "author"
         }
@@ -142,7 +142,7 @@
             "source": "codebook",
             "table": "ItemCategory",
             "document": "server/eval/category-codebook.md",
-            "sha256_16": "08f7e418f4e86c46"
+            "sha256_16": "be6c9b1400f6598e"
           },
           "assignment": "author"
         }
@@ -182,7 +182,7 @@
             "source": "codebook",
             "table": "ItemCategory",
             "document": "server/eval/category-codebook.md",
-            "sha256_16": "08f7e418f4e86c46"
+            "sha256_16": "be6c9b1400f6598e"
           },
           "assignment": "author"
         }
@@ -192,5 +192,5 @@
   "notes": "Referentni scenarij — najlakši slučaj. Zamka je u izvučenom tekstu, gdje se stupci spajaju: \"[12947]126,40 €26,40 €\" je količina 1 po 26,40 €, a ne 12 × 6,40 €.",
   "_schema": "nabava.XP eval ground truth v1",
   "_note": "Očekivani ishod scenarija, s provenanceom po polju. Provenance je lokator u ULAZU (poruka ili prilog) plus doslovan citat — citat mora biti bajt-jednak izvoru, uključujući nedjeljive razmake. category_name NIJE dio provjere utemeljenosti (vrijednost je iz šifrarnika, ne može biti izmišljena) nego zasebne mjere točnosti dodjele.",
-  "category_codebook_sha256_16": "08f7e418f4e86c46"
+  "category_codebook_sha256_16": "be6c9b1400f6598e"
 }

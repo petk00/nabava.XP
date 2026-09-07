@@ -64,7 +64,7 @@
             "source": "codebook",
             "table": "ItemCategory",
             "document": "server/eval/category-codebook.md",
-            "sha256_16": "08f7e418f4e86c46"
+            "sha256_16": "be6c9b1400f6598e"
           },
           "assignment": "author"
         }
@@ -104,7 +104,7 @@
             "source": "codebook",
             "table": "ItemCategory",
             "document": "server/eval/category-codebook.md",
-            "sha256_16": "08f7e418f4e86c46"
+            "sha256_16": "be6c9b1400f6598e"
           },
           "assignment": "author"
         }
@@ -144,7 +144,7 @@
             "source": "codebook",
             "table": "ItemCategory",
             "document": "server/eval/category-codebook.md",
-            "sha256_16": "08f7e418f4e86c46"
+            "sha256_16": "be6c9b1400f6598e"
           },
           "assignment": "author"
         }
@@ -184,7 +184,7 @@
             "source": "codebook",
             "table": "ItemCategory",
             "document": "server/eval/category-codebook.md",
-            "sha256_16": "08f7e418f4e86c46"
+            "sha256_16": "be6c9b1400f6598e"
           },
           "assignment": "author"
         }
@@ -224,7 +224,7 @@
             "source": "codebook",
             "table": "ItemCategory",
             "document": "server/eval/category-codebook.md",
-            "sha256_16": "08f7e418f4e86c46"
+            "sha256_16": "be6c9b1400f6598e"
           },
           "assignment": "author"
         }
@@ -264,7 +264,7 @@
             "source": "codebook",
             "table": "ItemCategory",
             "document": "server/eval/category-codebook.md",
-            "sha256_16": "08f7e418f4e86c46"
+            "sha256_16": "be6c9b1400f6598e"
           },
           "assignment": "author"
         }
@@ -304,7 +304,7 @@
             "source": "codebook",
             "table": "ItemCategory",
             "document": "server/eval/category-codebook.md",
-            "sha256_16": "08f7e418f4e86c46"
+            "sha256_16": "be6c9b1400f6598e"
           },
           "assignment": "author"
         }
@@ -345,7 +345,7 @@
             "source": "codebook",
             "table": "ItemCategory",
             "document": "server/eval/category-codebook.md",
-            "sha256_16": "08f7e418f4e86c46"
+            "sha256_16": "be6c9b1400f6598e"
           },
           "assignment": "author"
         }
@@ -355,5 +355,5 @@
   "notes": "Ponuda nudi ČETIRI iznosa: osnovica 22.255,00 / rabat -2.225,50 / PDV 5.007,38 / za uplatu 25.036,88. Točan je isključivo zadnji.",
   "_schema": "nabava.XP eval ground truth v1",
   "_note": "Očekivani ishod scenarija, s provenanceom po polju. Provenance je lokator u ULAZU (poruka ili prilog) plus doslovan citat — citat mora biti bajt-jednak izvoru, uključujući nedjeljive razmake. category_name NIJE dio provjere utemeljenosti (vrijednost je iz šifrarnika, ne može biti izmišljena) nego zasebne mjere točnosti dodjele.",
-  "category_codebook_sha256_16": "08f7e418f4e86c46"
+  "category_codebook_sha256_16": "be6c9b1400f6598e"
 }

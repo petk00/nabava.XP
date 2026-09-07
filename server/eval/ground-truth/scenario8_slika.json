@@ -39,20 +39,23 @@
           "form": "digit"
         },
         "category_name": {
-          "value": null,
-          "acceptable_categories": [],
-          "ambiguous": null,
+          "value": "Uredski materijal",
+          "acceptable_categories": [
+            "Uredski materijal",
+            "Tiskani materijali"
+          ],
+          "ambiguous": true,
           "acceptable_reason_type": null,
           "acceptable_reason": null,
           "rule": null,
-          "note": null,
+          "note": "prema namjeni kao potrošni materijal za označavanje i administraciju dokumenata.",
           "provenance": {
             "source": "codebook",
             "table": "ItemCategory",
             "document": "server/eval/category-codebook.md",
-            "sha256_16": null
+            "sha256_16": "be6c9b1400f6598e"
           },
-          "assignment": "nedodijeljeno"
+          "assignment": "author"
         }
       },
       {
@@ -74,20 +77,23 @@
           "form": "digit"
         },
         "category_name": {
-          "value": null,
-          "acceptable_categories": [],
-          "ambiguous": null,
+          "value": "Uredski materijal",
+          "acceptable_categories": [
+            "Uredski materijal",
+            "Tiskani materijali"
+          ],
+          "ambiguous": true,
           "acceptable_reason_type": null,
           "acceptable_reason": null,
           "rule": null,
-          "note": null,
+          "note": "prema fizičkoj prirodi kao papirni potrošni materijal za uredsku upotrebu.",
           "provenance": {
             "source": "codebook",
             "table": "ItemCategory",
             "document": "server/eval/category-codebook.md",
-            "sha256_16": null
+            "sha256_16": "be6c9b1400f6598e"
           },
-          "assignment": "nedodijeljeno"
+          "assignment": "author"
         }
       },
       {
@@ -109,20 +115,23 @@
           "form": "digit"
         },
         "category_name": {
-          "value": null,
-          "acceptable_categories": [],
-          "ambiguous": null,
+          "value": "Nastavne potrepštine",
+          "acceptable_categories": [
+            "Nastavne potrepštine",
+            "Uredska oprema i potrepštine"
+          ],
+          "ambiguous": true,
           "acceptable_reason_type": null,
           "acceptable_reason": null,
           "rule": null,
-          "note": null,
+          "note": "prema primarnoj namjeni za rad i označavanje na nastavnim pločama.",
           "provenance": {
             "source": "codebook",
             "table": "ItemCategory",
             "document": "server/eval/category-codebook.md",
-            "sha256_16": null
+            "sha256_16": "be6c9b1400f6598e"
           },
-          "assignment": "nedodijeljeno"
+          "assignment": "author"
         }
       },
       {
@@ -144,20 +153,23 @@
           "form": "digit"
         },
         "category_name": {
-          "value": null,
-          "acceptable_categories": [],
-          "ambiguous": null,
+          "value": "Uredski materijal",
+          "acceptable_categories": [
+            "Uredski materijal",
+            "Uredska oprema i potrepštine"
+          ],
+          "ambiguous": true,
           "acceptable_reason_type": null,
           "acceptable_reason": null,
           "rule": null,
-          "note": null,
+          "note": "prema namjeni za organizaciju, zaštitu i pohranu službene dokumentacije.",
           "provenance": {
             "source": "codebook",
             "table": "ItemCategory",
             "document": "server/eval/category-codebook.md",
-            "sha256_16": null
+            "sha256_16": "be6c9b1400f6598e"
           },
-          "assignment": "nedodijeljeno"
+          "assignment": "author"
         }
       },
       {
@@ -179,25 +191,28 @@
           "form": "digit"
         },
         "category_name": {
-          "value": null,
-          "acceptable_categories": [],
-          "ambiguous": null,
+          "value": "Uredski materijal",
+          "acceptable_categories": [
+            "Uredski materijal",
+            "Nastavne potrepštine"
+          ],
+          "ambiguous": true,
           "acceptable_reason_type": null,
           "acceptable_reason": null,
           "rule": null,
-          "note": null,
+          "note": "prema mogućnosti korištenja kao potrošni materijal u nastavnom i administrativnom radu.",
           "provenance": {
             "source": "codebook",
             "table": "ItemCategory",
             "document": "server/eval/category-codebook.md",
-            "sha256_16": null
+            "sha256_16": "be6c9b1400f6598e"
           },
-          "assignment": "nedodijeljeno"
+          "assignment": "author"
         }
       }
     ]
   },
   "notes": "Ponuda 225/2025, biooprema d.o.o., 27. 11. 2025. Samostalan dokument, NIJE fotografija ponude iz scenarija 1 — uparene probe na razini ulaznog kanala nema. Prilog je slika, pa poslužiteljske ekstrakcije teksta nema i ulaz nije izjednačen među izvedbama; rezultati idu u zasebnu tablicu točnosti, s odvojenim brojanjem tokena. Uz točnost se bilježi i je li izvedba uopće izvukla ijednu stavku — prazan rezultat na slici valjan je nalaz.",
   "_schema": "ground-truth/v2-image",
-  "category_codebook_sha256_16": null
+  "category_codebook_sha256_16": "be6c9b1400f6598e"
 }

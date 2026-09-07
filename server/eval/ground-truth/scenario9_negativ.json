@@ -42,20 +42,23 @@
           }
         },
         "category_name": {
-          "value": null,
-          "acceptable_categories": [],
-          "ambiguous": null,
+          "value": "Računalna oprema",
+          "acceptable_categories": [
+            "Računalna oprema",
+            "Elektronička i elektrotehnička oprema"
+          ],
+          "ambiguous": true,
           "acceptable_reason_type": null,
           "acceptable_reason": null,
           "rule": null,
-          "note": null,
+          "note": "Prijenosno računalo Business Pro 15” — prema tome da je riječ o elektroničkom uređaju koji služi za obradu i pohranu podataka.",
           "provenance": {
             "source": "codebook",
             "table": "ItemCategory",
             "document": "server/eval/category-codebook.md",
-            "sha256_16": null
+            "sha256_16": "be6c9b1400f6598e"
           },
-          "assignment": "nedodijeljeno"
+          "assignment": "author"
         }
       },
       {
@@ -80,20 +83,23 @@
           }
         },
         "category_name": {
-          "value": null,
-          "acceptable_categories": [],
-          "ambiguous": null,
+          "value": "Programska oprema i licence",
+          "acceptable_categories": [
+            "Programska oprema i licence",
+            "Usluge razvoja i održavanja informacijskih sustava"
+          ],
+          "ambiguous": true,
           "acceptable_reason_type": null,
           "acceptable_reason": null,
           "rule": null,
-          "note": null,
+          "note": "prema tome da se nabavlja kao digitalna usluga/licenca potrebna za rad informacijskog sustava.",
           "provenance": {
             "source": "codebook",
             "table": "ItemCategory",
             "document": "server/eval/category-codebook.md",
-            "sha256_16": null
+            "sha256_16": "be6c9b1400f6598e"
           },
-          "assignment": "nedodijeljeno"
+          "assignment": "author"
         }
       },
       {
@@ -118,25 +124,28 @@
           }
         },
         "category_name": {
-          "value": null,
-          "acceptable_categories": [],
-          "ambiguous": null,
+          "value": "Računalna oprema",
+          "acceptable_categories": [
+            "Računalna oprema",
+            "Elektronička i elektrotehnička oprema"
+          ],
+          "ambiguous": true,
           "acceptable_reason_type": null,
           "acceptable_reason": null,
           "rule": null,
-          "note": null,
+          "note": "prema tome da predstavljaju periferne uređaje koji proširuju funkcionalnost računala.",
           "provenance": {
             "source": "codebook",
             "table": "ItemCategory",
             "document": "server/eval/category-codebook.md",
-            "sha256_16": null
+            "sha256_16": "be6c9b1400f6598e"
           },
-          "assignment": "nedodijeljeno"
+          "assignment": "author"
         }
       }
     ]
   },
   "notes": "Ponuda PON-2026-089 s negativnom stavkom. Redak 4 „Zamjena starog hardvera (Kompenzacija / Otkup starih uređaja)\" s iznosom -150,00 NIJE stavka — odbitak je, kao i rabat, a shema stavke ionako nema polje za cijenu. Ispravan ishod su TRI stavke. Iznos je SVEUKUPNO ZA PLATITI (2.575,00 €), ne osnovica (2.060,00 €) ni PDV (515,00 €). Nazivi stavki su doslovni oblici iz ponude; kraće radne verzije autora („prijenosno računalo\", „uredski programski paket\", „set bežične tipkovnice i miša\") ne ulaze u mjerilo.",
   "_schema": "ground-truth/v2",
-  "category_codebook_sha256_16": "08f7e418f4e86c46"
+  "category_codebook_sha256_16": "be6c9b1400f6598e"
 }

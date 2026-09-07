@@ -79,7 +79,7 @@
             "source": "codebook",
             "table": "ItemCategory",
             "document": "server/eval/category-codebook.md",
-            "sha256_16": "08f7e418f4e86c46"
+            "sha256_16": "be6c9b1400f6598e"
           },
           "assignment": "author"
         }
@@ -119,7 +119,7 @@
             "source": "codebook",
             "table": "ItemCategory",
             "document": "server/eval/category-codebook.md",
-            "sha256_16": "08f7e418f4e86c46"
+            "sha256_16": "be6c9b1400f6598e"
           },
           "assignment": "author"
         }
@@ -159,7 +159,7 @@
             "source": "codebook",
             "table": "ItemCategory",
             "document": "server/eval/category-codebook.md",
-            "sha256_16": "08f7e418f4e86c46"
+            "sha256_16": "be6c9b1400f6598e"
           },
           "assignment": "author"
         }
@@ -199,7 +199,7 @@
             "source": "codebook",
             "table": "ItemCategory",
             "document": "server/eval/category-codebook.md",
-            "sha256_16": "08f7e418f4e86c46"
+            "sha256_16": "be6c9b1400f6598e"
           },
           "assignment": "author"
         }
@@ -239,7 +239,7 @@
             "source": "codebook",
             "table": "ItemCategory",
             "document": "server/eval/category-codebook.md",
-            "sha256_16": "08f7e418f4e86c46"
+            "sha256_16": "be6c9b1400f6598e"
           },
           "assignment": "author"
         }
@@ -279,7 +279,7 @@
             "source": "codebook",
             "table": "ItemCategory",
             "document": "server/eval/category-codebook.md",
-            "sha256_16": "08f7e418f4e86c46"
+            "sha256_16": "be6c9b1400f6598e"
           },
           "assignment": "author"
         }
@@ -319,7 +319,7 @@
             "source": "codebook",
             "table": "ItemCategory",
             "document": "server/eval/category-codebook.md",
-            "sha256_16": "08f7e418f4e86c46"
+            "sha256_16": "be6c9b1400f6598e"
           },
           "assignment": "author"
         }
@@ -359,7 +359,7 @@
             "source": "codebook",
             "table": "ItemCategory",
             "document": "server/eval/category-codebook.md",
-            "sha256_16": "08f7e418f4e86c46"
+            "sha256_16": "be6c9b1400f6598e"
           },
           "assignment": "author"
         }
@@ -400,7 +400,7 @@
             "source": "codebook",
             "table": "ItemCategory",
             "document": "server/eval/category-codebook.md",
-            "sha256_16": "08f7e418f4e86c46"
+            "sha256_16": "be6c9b1400f6598e"
           },
           "assignment": "author"
         }
@@ -440,7 +440,7 @@
             "source": "codebook",
             "table": "ItemCategory",
             "document": "server/eval/category-codebook.md",
-            "sha256_16": "08f7e418f4e86c46"
+            "sha256_16": "be6c9b1400f6598e"
           },
           "assignment": "author"
         }
@@ -480,7 +480,7 @@
             "source": "codebook",
             "table": "ItemCategory",
             "document": "server/eval/category-codebook.md",
-            "sha256_16": "08f7e418f4e86c46"
+            "sha256_16": "be6c9b1400f6598e"
           },
           "assignment": "author"
         }
@@ -520,7 +520,7 @@
             "source": "codebook",
             "table": "ItemCategory",
             "document": "server/eval/category-codebook.md",
-            "sha256_16": "08f7e418f4e86c46"
+            "sha256_16": "be6c9b1400f6598e"
           },
           "assignment": "author"
         }
@@ -560,7 +560,7 @@
             "source": "codebook",
             "table": "ItemCategory",
             "document": "server/eval/category-codebook.md",
-            "sha256_16": "08f7e418f4e86c46"
+            "sha256_16": "be6c9b1400f6598e"
           },
           "assignment": "author"
         }
@@ -600,7 +600,7 @@
             "source": "codebook",
             "table": "ItemCategory",
             "document": "server/eval/category-codebook.md",
-            "sha256_16": "08f7e418f4e86c46"
+            "sha256_16": "be6c9b1400f6598e"
           },
           "assignment": "author"
         }
@@ -640,7 +640,7 @@
             "source": "codebook",
             "table": "ItemCategory",
             "document": "server/eval/category-codebook.md",
-            "sha256_16": "08f7e418f4e86c46"
+            "sha256_16": "be6c9b1400f6598e"
           },
           "assignment": "author"
         }
@@ -680,7 +680,7 @@
             "source": "codebook",
             "table": "ItemCategory",
             "document": "server/eval/category-codebook.md",
-            "sha256_16": "08f7e418f4e86c46"
+            "sha256_16": "be6c9b1400f6598e"
           },
           "assignment": "author"
         }
@@ -690,5 +690,5 @@
   "notes": "11 stavki iz ponude A + 5 iz ponude B = 16. Iznos je ZBROJ obiju: 95,32 € + 524,00 € = 619,32 €. Svaka ponuda pridonosi svojim stavkama, bez spajanja.\nPonude su NADOPUNJUJUĆE: isti dobavljač (Mikrotron d.o.o.), različiti projekti (\"Laser Light Show\" i \"Mind Racer\"), pa je zbrajanje poslovno ispravno i usklađeno s BASE_SYSTEM_PROMPT-om. Slučaj KONKURENTSKIH ponuda — iste stavke od različitih dobavljača, gdje agent treba nabrojiti opcije i pustiti korisnika da bira — je DRUGI scenarij, za koji trenutno nema dokumenta. (kriterij_bodovanja.md opisuje taj drugi slučaj pod starom numeracijom; ne odnosi se na ovaj scenarij.)",
   "_schema": "nabava.XP eval ground truth v1",
   "_note": "Očekivani ishod scenarija, s provenanceom po polju. Provenance je lokator u ULAZU (poruka ili prilog) plus doslovan citat — citat mora biti bajt-jednak izvoru, uključujući nedjeljive razmake. category_name NIJE dio provjere utemeljenosti (vrijednost je iz šifrarnika, ne može biti izmišljena) nego zasebne mjere točnosti dodjele.",
-  "category_codebook_sha256_16": "08f7e418f4e86c46"
+  "category_codebook_sha256_16": "be6c9b1400f6598e"
 }

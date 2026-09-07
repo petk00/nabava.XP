@@ -54,14 +54,14 @@ scenario5_dugacki_opisi + scenario6_format_brojeva,1,Procesor AMD Ryzen 9 9950X3
 scenario5_dugacki_opisi + scenario6_format_brojeva,2,Grafička kartica GeForce RTX 5090 32GB GDDR7,1,Računalna oprema,Računalna oprema,Elektronička i elektrotehnička oprema,Grafička kartica je računalna komponenta.,prenesena
 scenario5_dugacki_opisi + scenario6_format_brojeva,3,"Matična ploča ASUS ROG Crosshair X870E Hero (AM5, EATX)",1,Računalna oprema,Računalna oprema,Elektronička i elektrotehnička oprema,Matična ploča je računalna komponenta.,prenesena
 scenario5_dugacki_opisi + scenario6_format_brojeva,4,Memorija G.Skill Trident Z5 Neo RGB 64 GB (2×32 GB) DDR5-6400 CL32,2,Računalna oprema,Računalna oprema,Elektronička i elektrotehnička oprema,RAM je računalna komponenta.,prenesena
-scenario8_slika,1,"ETIK.45,7x21,2mm A4 1/100",5,,,,,nova
-scenario8_slika,2,TRG.PAPIR A3 VK 1/200,5,,,,,nova
-scenario8_slika,3,FL.MARKER EDING 360 ZA PLOČU CRNI,10,,,,,nova
-scenario8_slika,4,GT-U-147/NP OMOT SPISA,50,,,,,nova
-scenario8_slika,5,LJEPILO U STIKU STAEDTLER 20g,5,,,,,nova
-scenario9_negativ,1,"Prijenosno računalo Business Pro 15""",2,,,,,nova
-scenario9_negativ,2,Uredski paket Microsoft Office 365 (Godišnja pretplata),2,,,,,nova
-scenario9_negativ,3,Bežična tipkovnica i miš set,2,,,,,nova
+scenario8_slika,1,"ETIK.45,7x21,2mm A4 1/100",5,,Uredski materijal,Tiskani materijali,prema namjeni kao potrošni materijal za označavanje i administraciju dokumenata.,nova
+scenario8_slika,2,TRG.PAPIR A3 VK 1/200,5,,Uredski materijal,Tiskani materijali,prema fizičkoj prirodi kao papirni potrošni materijal za uredsku upotrebu.,nova
+scenario8_slika,3,FL.MARKER EDING 360 ZA PLOČU CRNI,10,,Nastavne potrepštine,Uredska oprema i potrepštine,prema primarnoj namjeni za rad i označavanje na nastavnim pločama.,nova
+scenario8_slika,4,GT-U-147/NP OMOT SPISA,50,,Uredski materijal,Uredska oprema i potrepštine,"prema namjeni za organizaciju, zaštitu i pohranu službene dokumentacije.",nova
+scenario8_slika,5,LJEPILO U STIKU STAEDTLER 20g,5,,Uredski materijal,Nastavne potrepštine,prema mogućnosti korištenja kao potrošni materijal u nastavnom i administrativnom radu.,nova
+scenario9_negativ,1,"Prijenosno računalo Business Pro 15""",2,,Računalna oprema,Elektronička i elektrotehnička oprema,Prijenosno računalo Business Pro 15” — prema tome da je riječ o elektroničkom uređaju koji služi za obradu i pohranu podataka.,nova
+scenario9_negativ,2,Uredski paket Microsoft Office 365 (Godišnja pretplata),2,,Programska oprema i licence,Usluge razvoja i održavanja informacijskih sustava,prema tome da se nabavlja kao digitalna usluga/licenca potrebna za rad informacijskog sustava.,nova
+scenario9_negativ,3,Bežična tipkovnica i miš set,2,,Računalna oprema,Elektronička i elektrotehnička oprema,prema tome da predstavljaju periferne uređaje koji proširuju funkcionalnost računala.,nova
 scenario10_cetiri_ponude,1,"Ljubičasti laserski modul, 12x45mm, 0.5mW, 650nm, linijski",1,,Elektronička i elektrotehnička oprema,Nastavna i laboratorijska oprema,Laserski modul je elektronička komponenta/oprema za eksperimentalni rad.,prenesena
 scenario10_cetiri_ponude,2,28BYJ-48 5V koračni (stepper) motor + ULN2003 motor driver,2,,Elektronička i elektrotehnička oprema,Nastavna i laboratorijska oprema,Koračni motor i driver čine elektrotehničku komponentu.,prenesena
 scenario10_cetiri_ponude,3,STSPIN220 stepper motor driver,2,,Elektronička i elektrotehnička oprema,Nastavna i laboratorijska oprema,Driver za koračni motor je elektronička komponenta.,prenesena
