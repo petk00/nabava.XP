@@ -233,8 +233,15 @@ async function chat(messages, tools = []) {
   // gemma4:e4b isključivanje razmišljanja ubija pozivanje alata, a kod
   // gemma4:e2b ga popravlja i ubrzava 4-7×. Izostavlja se iz tijela zahtjeva
   // kad katalog ne kaže ništa, da se ne mijenja zadano ponašanje modela.
-  if (typeof model.think === 'boolean') {
-    body.think = model.think;
+  // OLLAMA_THINK je MJERNI PREKIDAČ, ne pogonska postavka: postoji da se
+  // odluka o razmišljanju može provjeriti probom bez diranja kataloga
+  // (docs/mjerni-plan.md, odluka O2). Bez varijable vrijedi katalog.
+  const thinkOverride = process.env.OLLAMA_THINK;
+  const think = thinkOverride === undefined
+    ? model.think
+    : !['0', 'false', 'no'].includes(thinkOverride.trim().toLowerCase());
+  if (typeof think === 'boolean') {
+    body.think = think;
   }
   // Orchestrator kod modela bez alata šalje prazan `tools`, ali provjera
   // ostaje i ovdje: `tools` poslan takvom modelu je tvrdi HTTP 400 iz Ollame,
@@ -297,4 +304,15 @@ async function chat(messages, tools = []) {
   };
 }
 
-module.exports = { chat, getCapabilities, OLLAMA_NUM_CTX, OLLAMA_KEEP_ALIVE };
+/** Efektivna vrijednost `think` za aktivni model — za zapis u manifest. */
+async function getEffectiveThink() {
+  const model = await getActiveModel();
+  const o = process.env.OLLAMA_THINK;
+  if (o === undefined) return { think: model.think ?? null, source: 'katalog (ollamaModels.js)' };
+  return {
+    think: !['0', 'false', 'no'].includes(o.trim().toLowerCase()),
+    source: `okolina OLLAMA_THINK=${o}`,
+  };
+}
+
+module.exports = { chat, getCapabilities, getEffectiveThink, OLLAMA_NUM_CTX, OLLAMA_KEEP_ALIVE };

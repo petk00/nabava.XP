@@ -842,6 +842,9 @@ async function main() {
     ollama_model: provider === 'ollama' ? ollamaModelName : null,
     ollama_model_source: provider === 'ollama' ? ollamaModelSource : null,
     ollama_temperature_note: temperatureNote,
+    // Razmišljanje je predmet odluke O2; bilježi se efektivna vrijednost i
+    // odakle dolazi, da se probni prolaz može pripisati postavci.
+    ollama_think: provider === 'ollama' ? await require('../src/services/llm/ollamaProvider').getEffectiveThink() : null,
     scenarios: scenarios.map((s) => ({
       id: s.id,
       description: s.description,
