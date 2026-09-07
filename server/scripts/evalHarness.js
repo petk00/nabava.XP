@@ -80,6 +80,11 @@ let ollamaModelSource = `katalog default (pretpostavka — run nije proslijedio 
 // default, čeka koliko mu kažemo preko "timeout" opcije.
 const AI_REQUEST_TIMEOUT_MS = 11 * 60 * 1000;
 
+// Hlađenje između pokušaja (docs/mjerni-plan.md). Bez njega pokušaji ulaze
+// jedan drugome u rep: lokalna izvedba ostavlja model vruć i zauzet, a mjerena
+// veličina postaje i to koliko je prethodni pokušaj upravo završio.
+const COOLDOWN_MS = Number(process.env.EVAL_COOLDOWN_MS ?? 2000);
+
 /**
  * HTTP poziv prema aplikaciji preko node:http (vidi napomenu gore zašto ne
  * fetch). Isti put koristi i dugi poziv /ai-items i kratke pripremne pozive,
@@ -869,6 +874,7 @@ async function main() {
       expects_refusal: s.expectsRefusal,
     })),
     total_attempts: totalAttempts,
+    cooldown_ms: COOLDOWN_MS,
   };
   fs.writeFileSync(metaFile, JSON.stringify(manifest, null, 2));
 
@@ -925,6 +931,9 @@ async function main() {
       } else {
         console.log(`FAIL (${record.error})`);
       }
+      // Hlađenje ide POSLIJE zapisa, prije sljedećeg pokušaja.
+      await new Promise((r) => { setTimeout(r, COOLDOWN_MS); });
+
       if (record.truncated) {
         truncatedAttempts.push(`${scenario.id}#${attempt}`);
         console.warn('[evalHarness] !!! ODREZAN ODGOVOR — pokušaj je udario u max_output_tokens. '

@@ -117,16 +117,27 @@ function main() {
   const cloud = stats.gemini;
   let cloudPerQuote = null;
   console.log('\nUDALJENA IZVEDBA');
+  // Cjenik je u USD, a trošak se iskazuje u EUR. Bez tečaja s datumom i izvorom
+  // brojka ne bi imala provjerljivu vrijednost, pa se ne računa.
+  const fx = a.tecaj || {};
+  const needsFx = String(price.valuta_cjenika || '').toUpperCase() !== 'EUR';
   if (price.ulaz == null || price.izlaz == null) {
     console.log(`  cijena tokena za "${modelKey}" NIJE upisana u cost-assumptions.json.`);
     console.log('  Trošak udaljene izvedbe i točka pokrića se NE računaju — brojka bez izvora ne ide u rad.');
+  } else if (needsFx && fx.usd_u_eur == null) {
+    console.log(`  cijena je u ${price.valuta_cjenika} (${price.ulaz} / ${price.izlaz} po milijunu, `
+      + `cjenik ${price.datum_provjere}, ${price.izvor}),`);
+    console.log('  ali TEČAJ nije upisan (cost-assumptions.json -> tecaj). Trošak i točka pokrića se NE računaju.');
   } else if (!cloud?.promptMedian) {
     console.log('  nema izmjerenih tokena za gemini u ovim runovima');
   } else {
-    cloudPerQuote = (cloud.promptMedian * price.ulaz + cloud.completionMedian * price.izlaz) / 1e6;
+    const rate = needsFx ? fx.usd_u_eur : 1;
+    cloudPerQuote = ((cloud.promptMedian * price.ulaz + cloud.completionMedian * price.izlaz) / 1e6) * rate;
     console.log(`  trošak po ponudi        : ${cloudPerQuote.toFixed(6)} EUR  `
-      + `(${cloud.promptMedian} ulaznih × ${price.ulaz} + ${cloud.completionMedian} izlaznih × ${price.izlaz} po milijunu)`);
+      + `(${cloud.promptMedian} ulaznih × ${price.ulaz} + ${cloud.completionMedian} izlaznih × ${price.izlaz} `
+      + `${price.valuta_cjenika}/M${needsFx ? `, tečaj ${rate}` : ''})`);
     console.log(`  cjenik provjeren        : ${price.datum_provjere || '—'} | izvor: ${price.izvor || '—'}`);
+    if (needsFx) console.log(`  tečaj                   : ${fx.datum || '—'} | izvor: ${fx.izvor || '—'}`);
   }
 
   // ── krivulja isplativosti ──

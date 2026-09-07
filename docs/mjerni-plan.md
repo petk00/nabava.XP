@@ -57,8 +57,21 @@ Jedan izvor istine: `server/src/services/llm/samplingConfig.js`.
 |---|---|---|---|
 | `temperature` | 0 | da | da |
 | `top_p` | 1 | da | da |
-| `max_output_tokens` | 4096 | `num_predict` | `maxOutputTokens` |
+| `max_output_tokens` | **16384** | `num_predict` | `maxOutputTokens` |
 | `seed` | 42 | da | **ne postoji u API-ju** |
+
+### Promjena granice izlaza prije kampanje
+
+`max_output_tokens` podignut je s **4096 na 16384** 7. 9. 2026., **jednako za obje
+izvedbe**. Prijašnja vrijednost postavljena je prema pilot runovima, gdje najduži odgovor
+lokalnog modela nije prelazio ~1140 tokena. Probni prolaz cijelog skupa tu je pretpostavku
+oborio: **tri pokušaja udarila su u granicu**, a scenarij 10 sa 46 stavki potrošio je
+**11.191 izlazni token** na lokalnoj izvedbi. Uz `num_ctx` 32768 nema razloga za nižu
+granicu, a odsijecanje kod `--kind=final` po protokolu poništava cijeli run.
+
+**Mjerenja s prijašnjom granicom ne uspoređuju se izravno s kampanjom.** To se odnosi na
+probu odluke O2 (§ 7) i na probni prolaz cijelog skupa od 7. 9. 2026. — obje su vrtjele na
+4096 i u radu se navode kao pilot, ne kao rezultat.
 
 `sampling_equalized_keys` obuhvaća samo prva tri. Determinizam **nije** izjednačen i to se
 ne prešućuje.

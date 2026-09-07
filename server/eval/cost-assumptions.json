@@ -9,12 +9,13 @@
     "_jedinica": "EUR za 1.000.000 tokena",
     "_napomena": "Cjenik se mijenja i ovisi o razini računa i regiji; zato datum i izvor.",
     "gemini-3.5-flash": {
-      "ulaz": null,
-      "izlaz": null,
-      "datum_provjere": null,
-      "izvor": null,
-      "valuta_cjenika": null,
-      "tecaj_ako_nije_eur": null
+      "ulaz": 1.5,
+      "izlaz": 9.0,
+      "valuta_cjenika": "USD",
+      "jedinica": "po 1.000.000 tokena",
+      "razina": "standardna — nije batch niti context caching",
+      "datum_provjere": "2026-09-07",
+      "izvor": "https://ai.google.dev/gemini-api/docs/pricing"
     }
   },
   "hardver": {
@@ -69,5 +70,11 @@
       1.75,
       2.0
     ]
+  },
+  "tecaj": {
+    "_napomena": "Cjenik je u USD, a trošak se iskazuje u EUR. Tečaj MORA imati datum i izvor; dok je null, evalCost.js ne računa trošak udaljene izvedbe.",
+    "usd_u_eur": null,
+    "datum": null,
+    "izvor": null
   }
 }

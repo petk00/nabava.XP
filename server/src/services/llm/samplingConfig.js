@@ -25,15 +25,21 @@
  * veličina batcha; u oblaku nema seeda ni jamstva da je iza endpointa ista
  * verzija modela između poziva. Vidi docs/mjerni-plan.md.
  *
- * max_output_tokens: 4096 je namjerno velikodušno. Izmjereno na pilot
- * runovima, najduži pojedinačni odgovor gemma4:e2b bio je ~1140 tokena, pa
- * granica ne reže sadržaj — postoji da odbjegli odgovor ne troši budžet i
- * vrijeme, ne da ograničava model.
+ * max_output_tokens: 16384 od 7. 9. 2026. Prijašnjih 4096 bilo je postavljeno
+ * prema pilot runovima, gdje najduži odgovor gemma4:e2b nije prelazio ~1140
+ * tokena. Probni prolaz cijelog skupa oborio je tu pretpostavku: TRI pokušaja
+ * udarila su u granicu, a scenarij 10 sa 46 stavki potrošio je 11.191 izlazni
+ * token na lokalnoj izvedbi. Uz num_ctx 32768 nema razloga za nižu granicu, a
+ * odsijecanje kod --kind=final poništava cijeli run.
+ *
+ * VRIJEDNOST JE ISTA ZA OBJE IZVEDBE. Mjerenja s prijašnjom granicom (proba
+ * think i probni prolaz) NE uspoređuju se izravno s kampanjom — vidi
+ * docs/mjerni-plan.md § 2.
  */
 const DEFAULTS = {
   temperature: 0,
   top_p: 1,
-  max_output_tokens: 4096,
+  max_output_tokens: 16384,
   seed: 42,
 };
 
