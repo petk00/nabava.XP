@@ -135,7 +135,7 @@ function parseArgs() {
     const eq = raw.indexOf('=');
     const key = eq === -1 ? raw : raw.slice(0, eq);
     const value = eq === -1 ? '' : raw.slice(eq + 1);
-    if (key === 'provider') args.provider = value;
+    if (key === 'provider') args.provider = value;  // može biti popis: ollama,gemini
     if (key === 'kind') args.kind = value;
     // --attempts je alias za --repeat (brief traži oba naziva)
     if (key === 'attempts') args.repeat = Number(value) || null;
@@ -514,6 +514,9 @@ async function runOneAttempt(scenario, prepared, token, provider, attemptNumber,
     input_modality: scenario.inputModality,
     expects_refusal: scenario.expectsRefusal,
     timestamp: startedAt,
+    // Kraj pokušaja izričito, da spajanje s vanjskim uzorkovačem (powermetrics)
+    // ne ovisi o računanju iz trajanja.
+    finished_at: new Date().toISOString(),
     latency_ms: latencyMs,
     http_status: res?.status ?? null,
     success: ok,
@@ -753,10 +756,18 @@ async function main() {
   const metaFile = path.join(outputDir, `run_${runStartedAt}.meta.json`);
   const manifestFile = path.join(outputDir, `run_${runStartedAt}.run_manifest.json`);
 
-  const provider = args.provider;
-  if (!['ollama', 'gemini'].includes(provider)) {
-    throw new Error(`--provider mora biti ollama ili gemini (dobiveno: "${provider}")`);
+  // Izvedbe se IZMJENJUJU unutar runa, ne grupiraju. Uređaj se pod opterećenjem
+  // grije, pa bi kod grupiranja porast latencije kroz run pripao samo onoj koja
+  // se vrti druga. Uz --provider=ollama,gemini svaki krug prolazi obje, a
+  // redoslijed se u svakom krugu obrće da ni jedna nije sustavno prva.
+  const providers = String(args.provider).split(',').map((p) => p.trim()).filter(Boolean);
+  for (const p of providers) {
+    if (!['ollama', 'gemini'].includes(p)) {
+      throw new Error(`--provider mora biti ollama i/ili gemini (dobiveno: "${p}")`);
+    }
   }
+  if (providers.length === 0) throw new Error('--provider je obavezan');
+  const provider = providers[0];
 
   console.log(`[evalHarness] Prijava kao ${ADMIN_EMAIL}...`);
   const token = await login(ADMIN_EMAIL, ADMIN_PASSWORD);
@@ -768,9 +779,11 @@ async function main() {
     ollamaModelSource = modelSetHere ? 'settings API (postavljeno ovim runom)' : 'settings API (očitano)';
   }
 
-  const temperatureNote = provider === 'ollama' ? await getOllamaTemperatureNote() : { source: 'n/a (provider nije ollama)', temperature: null };
-  console.log(`[evalHarness] Izvedba: ${provider} (šalje se uz svaki poziv, postavka poslužitelja se ne dira)`);
-  console.log(`[evalHarness] Model: ${provider === 'ollama' ? ollamaModelName : geminiModel}`);
+  const temperatureNote = providers.includes('ollama') ? await getOllamaTemperatureNote() : { source: 'n/a (provider nije ollama)', temperature: null };
+  console.log(`[evalHarness] Izvedbe: ${providers.join(' + ')}`
+    + (providers.length > 1 ? ' — IZMJENJUJU se unutar runa' : '')
+    + ' (šalju se uz svaki poziv, postavka poslužitelja se ne dira)');
+  console.log(`[evalHarness] Modeli: ${providers.map((p) => (p === 'ollama' ? ollamaModelName : geminiModel)).join(' + ')}`);
   console.log(`[evalHarness] Temperature napomena: ${JSON.stringify(temperatureNote)}`);
 
   // run_kind odlučuje ulazi li run u rad. Default je NAMJERNO 'smoke': mjerenje
@@ -801,7 +814,7 @@ async function main() {
 
   const sampling = getSamplingConfig();
   const equalized = equalizedKeys();
-  const totalAttempts = scenarios.reduce((sum, s) => sum + s.repeatCount, 0);
+  const totalAttempts = scenarios.reduce((sum, s) => sum + s.repeatCount, 0) * providers.length;
   console.log(`[evalHarness] Scenariji: ${scenarios.map((s) => s.id).join(', ')}`);
   console.log(`[evalHarness] Ukupno pokušaja: ${totalAttempts}`);
   console.log(`[evalHarness] Izlaz: ${outputFile}`);
@@ -825,9 +838,11 @@ async function main() {
     codebooks,
     db_state_before: dbBefore,
     provider,
+    providers,
+    provider_order: providers.length > 1 ? 'izmjenično po krugu, redoslijed se obrće' : 'jedna izvedba',
     // Izvedba se šalje uz svaki poziv; runtime postavka poslužitelja nije dirana.
     provider_selection: 'per-request',
-    gemini_model: provider === 'gemini' ? geminiModel : null,
+    gemini_model: providers.includes('gemini') ? geminiModel : null,
     // Parametri uzorkovanja stvarno primijenjeni na OBA pružatelja
     // (llm/samplingConfig.js). `sampling_equalized` je true samo za parametre
     // koje oba podržavaju — Gemini nema seed, pa determinizam nije izjednačen
@@ -839,12 +854,12 @@ async function main() {
     sampling_unequalized: UNEQUALIZED_NOTE,
     // Bez ovoga se JSONL redovi ne mogu pripisati konkretnom lokalnom modelu
     // (od uvođenja AppSetting.ollama_model provider više ne implicira model).
-    ollama_model: provider === 'ollama' ? ollamaModelName : null,
-    ollama_model_source: provider === 'ollama' ? ollamaModelSource : null,
+    ollama_model: providers.includes('ollama') ? ollamaModelName : null,
+    ollama_model_source: providers.includes('ollama') ? ollamaModelSource : null,
     ollama_temperature_note: temperatureNote,
     // Razmišljanje je predmet odluke O2; bilježi se efektivna vrijednost i
     // odakle dolazi, da se probni prolaz može pripisati postavci.
-    ollama_think: provider === 'ollama' ? await require('../src/services/llm/ollamaProvider').getEffectiveThink() : null,
+    ollama_think: providers.includes('ollama') ? await require('../src/services/llm/ollamaProvider').getEffectiveThink() : null,
     scenarios: scenarios.map((s) => ({
       id: s.id,
       description: s.description,
@@ -870,7 +885,7 @@ async function main() {
   manifest.reference = reference;
   manifest.prepared_requests = preparedByScenario;
 
-  const warmup = await warmUpModel(provider, ollamaModelName);
+  const warmup = await warmUpModel(providers.includes('ollama') ? 'ollama' : providers[0], ollamaModelName);
   console.log(`[evalHarness] Zagrijavanje: ${warmup.performed ? `${warmup.ms} ms` : `preskočeno (${warmup.reason})`}`);
   manifest.warmup = warmup;
 
@@ -888,13 +903,17 @@ async function main() {
   const maxRounds = Math.max(...scenarios.map((s) => s.repeatCount));
   for (let round = 1; round <= maxRounds; round++) {
     console.log(`\n[evalHarness] ===== KRUG ${round}/${maxRounds} =====`);
+    // Redoslijed izvedbi se obrće svaki drugi krug — inače bi ista izvedba
+    // uvijek išla prva i uvijek zaticala hladniji uređaj.
+    const roundProviders = round % 2 === 1 ? providers : [...providers].reverse();
     for (const scenario of scenarios) {
       if (round > scenario.repeatCount) continue;
+      for (const activeProvider of roundProviders) {
       const attempt = round;
       completed += 1;
-      process.stdout.write(`[evalHarness] (${completed}/${totalAttempts}) krug ${round} — ${scenario.id} pokušaj ${attempt}/${scenario.repeatCount}... `);
+      process.stdout.write(`[evalHarness] (${completed}/${totalAttempts}) krug ${round} — ${scenario.id} [${activeProvider}] pokušaj ${attempt}/${scenario.repeatCount}... `);
       const record = await runOneAttempt(
-        scenario, preparedByScenario[scenario.id], token, provider, attempt, runId, promptStore
+        scenario, preparedByScenario[scenario.id], token, activeProvider, attempt, runId, promptStore
       );
       record.round = round;
       record.position_in_run = completed;
@@ -908,8 +927,9 @@ async function main() {
       }
       if (record.truncated) {
         truncatedAttempts.push(`${scenario.id}#${attempt}`);
-        console.warn(`[evalHarness] !!! ODREZAN ODGOVOR (${record.finish_reasons.join(',')}) — `
-          + `pokušaj je udario u max_output_tokens. Bodovanje bi to zabilježilo kao grešku modela.`);
+        console.warn('[evalHarness] !!! ODREZAN ODGOVOR — pokušaj je udario u max_output_tokens. '
+          + 'Bodovanje bi to zabilježilo kao grešku modela.');
+      }
       }
     }
   }

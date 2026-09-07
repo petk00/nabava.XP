@@ -95,7 +95,11 @@ Mjeri se ruta `POST /api/requests/:id/ai-items`.
 | `server/eval-scenarios/fixtures/` | prilozi — 8 datoteka, **sve PDF**; slikovnih više nema |
 | `server/eval-results/` | JSONL po pokušaju (generirano, nije u gitu) |
 | `docs/eval-runs/scoring-worksheet.md` | izlaz bodovanja |
-| `server/eval/cost-assumptions.json` | pretpostavke troška — **još ne postoji** |
+| `server/eval/cost-assumptions.json` | pretpostavke troška — cijene tokena čekaju autora |
+| `server/scripts/verifyProvenance.js` | strojna provjera citata u zlatnom standardu |
+| `server/scripts/sampleResources.js` | uzorkovač memorije i procesora (GPU izvan njega) |
+| `server/scripts/concurrencyProbe.js` | istodobne obrade 1/3/5 |
+| `server/scripts/appLatencyProbe.js` | odziv aplikacije u mirovanju i pod obradom |
 
 Sustav koji se mjeri:
 

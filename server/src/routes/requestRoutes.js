@@ -1173,7 +1173,24 @@ router.post('/:id/ai-items', authenticateToken, aiItemsLimiter, async (req, res)
     });
   } catch (error) {
     if (error instanceof ItemExtractionError) {
-      return res.status(error.status).json({ message: error.message });
+      // Odbijanje je valjan ishod mjerenja, pa nosi iste mjerne podatke kao
+      // uspjeh. Bez toga scenarij koji odbijanje OČEKUJE gubi trajanje i
+      // tokene za svaki pokušaj.
+      const pm = error.promptMeta;
+      return res.status(error.status).json({
+        message: error.message,
+        ...(error.usage ? { usage: error.usage } : {}),
+        ...(error.provider ? { provider: error.provider } : {}),
+        ...(error.model ? { model: error.model } : {}),
+        ...(error.serverTextExtraction !== null ? { server_text_extraction: error.serverTextExtraction } : {}),
+        ...(error.inputKinds ? { input_kinds: error.inputKinds } : {}),
+        ...(pm ? {
+          prompt_variant: pm.prompt_variant,
+          system_prompt_hash: pm.system_prompt_hash,
+          ...(pm.category_codebook_sha256 ? { category_codebook_sha256: pm.category_codebook_sha256 } : {}),
+          ...(req.get('X-Include-System-Prompt') === '1' ? { system_prompt: pm.system_prompt } : {}),
+        } : {}),
+      });
     }
     console.error('POST /api/requests/:id/ai-items error:', error);
     return res.status(502).json({ message: 'AI obrada ponude nije uspjela. Pokušajte ponovno.' });

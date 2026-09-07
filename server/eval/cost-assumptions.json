@@ -1,0 +1,60 @@
+{
+  "_naputak": [
+    "Sve vrijednosti koje ulaze u izračun troška stoje OVDJE, ne u kodu.",
+    "Polja s null MORA popuniti autor iz službenog izvora i upisati datum i poveznicu.",
+    "evalCost.js odbija računati trošak udaljene izvedbe dok su cijene null —",
+    "radije nema brojke nego brojka bez izvora."
+  ],
+
+  "cijene_tokena": {
+    "_jedinica": "EUR za 1.000.000 tokena",
+    "_napomena": "Cjenik se mijenja i ovisi o razini računa i regiji; zato datum i izvor.",
+    "gemini-3.5-flash": {
+      "ulaz": null,
+      "izlaz": null,
+      "datum_provjere": null,
+      "izvor": null,
+      "valuta_cjenika": null,
+      "tecaj_ako_nije_eur": null
+    }
+  },
+
+  "hardver": {
+    "_izvor": "Podaci vlasnika uređaja; preneseno iz ranije inačice evalCost.js.",
+    "uredaj": "Mac Mini M4, 16 GB",
+    "nabavna_cijena_eur": 800,
+    "vijek_godina": 5,
+    "ostatak_vrijednosti_eur": null,
+    "_napomena_ostatak": "Ako se ne procjenjuje, ostaje null i amortizacija ide na punu cijenu."
+  },
+
+  "energija": {
+    "_izvor": "Cjenik HEP-a; snaga je procjena vlasnika uređaja, nije izmjerena.",
+    "snaga_pod_opterecenjem_w": 65,
+    "snaga_u_mirovanju_w": null,
+    "izmjereno": false,
+    "_napomena_mjerenje": [
+      "Stvarna potrošnja nije izmjerena. Na macOS-u se dobiva s",
+      "`sudo powermetrics --samplers cpu_power,gpu_power`, koji traži sudo i zato se",
+      "pokreće ručno, usporedo s kampanjom. Dok se to ne napravi, 65 W je",
+      "PRETPOSTAVKA i tako se mora navesti u radu."
+    ],
+    "tarife_eur_kwh": {
+      "jedinstvena": 0.0913,
+      "visa_dan": 0.0972,
+      "niza_noc": 0.0477
+    },
+    "zadana_tarifa": "jedinstvena"
+  },
+
+  "volumen": {
+    "_izvor": "Sustav nije u produkciji; brojka je procjena i tako se navodi.",
+    "ponuda_godisnje_procjena": null,
+    "raspon_za_analizu_osjetljivosti": [100, 500, 2000, 6000]
+  },
+
+  "krivulja_isplativosti": {
+    "_opis": "Točka pokrića se ne iskazuje kao jedan broj nego kao krivulja preko raspona cijene oblaka.",
+    "mnozitelji_cijene_oblaka": [0.25, 0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0]
+  }
+}

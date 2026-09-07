@@ -379,6 +379,31 @@ rezultat koji udaljena izvedba daje sa 110. To je podatak za odluku O2 u okviru 
 
 ---
 
+### Nalaz: razmišljanje je nužno za protokol, ne za čitanje
+
+Odluka O2 provjerena je probom 7. 9. 2026. (`--kind=smoke`, dva scenarija s tekstualnim
+prilogom, po dva ponavljanja, obje izvedbe). Prekidač `OLLAMA_THINK` postoji upravo zato da
+se postavka može provjeriti bez trajne izmjene kataloga; manifest runa bilježi efektivnu
+vrijednost i odakle dolazi.
+
+| Uvjet | Ishod | Medijan e2e | Izlaznih tokena |
+|---|---|---|---|
+| lokalno, `think: true` | 4/4 točno | 57,9 s | 2.832 |
+| lokalno, `think: false` | **0/4 — svi odbijeni** | 10,2 s | — |
+| udaljeno (kontrola) | 4/4 točno | 5,3 s | 193 |
+
+**Uzrok pada nije čitanje ponude nego protokol.** Bez razmišljanja model proizvede ispravan
+sadržaj — iznosi 57,10 € i 25.036,88 € poklapaju se sa zlatnim standardom, kao i nazivi
+stavki — ali ga ispiše kao **običan tekst**, s artefaktima `<|"|>` umjesto navodnika, pa ga
+Ollamin parser ne prepozna kao poziv alata. Ruta zato vraća 422.
+
+Zaključak: `think: true` ostaje za kampanju, a proba se u radu navodi kao pilot koji je tu
+odluku opravdao.
+
+**Za dalji rad:** napuštanje pozivanja alata u korist strukturiranog izlaza (JSON shema)
+donijelo bi oko **5,7 puta brži odziv** lokalne izvedbe pri istom sadržaju. To je izmjena
+nacrta, ne postavke, i ne provodi se prije kampanje.
+
 ## 8. Otvorena pitanja
 
 **`item_name` — ulazi li u mjeru utemeljenosti.** C-proba je na `gemma4:e2b` dala 13/13

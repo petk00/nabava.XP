@@ -48,11 +48,24 @@ const MAX_AMOUNT = 999999999999.99;
 // dobije upozorenje s izvornom vrijednošću.
 const EURO_ALIASES = ['', 'EUR', 'EURO', 'EURA', '€'];
 
-/** Očekivana greška — ruta je mapira na `status` bez logiranja stacka. */
+/**
+ * Očekivana greška — ruta je mapira na `status` bez logiranja stacka.
+ *
+ * Nosi i `usage`/`prompt_meta` kad su poznati: odbijanje (422) je VALJAN ishod
+ * mjerenja, ne kvar. Scenarij koji odbijanje očekuje inače bi za svaki pokušaj
+ * izgubio trajanje i tokene, a to su podaci koji ulaze u trošak i odziv.
+ */
 class ItemExtractionError extends Error {
-  constructor(status, message) {
+  constructor(status, message, { usage = null, promptMeta = null, provider = null, model = null,
+    serverTextExtraction = null, inputKinds = null } = {}) {
     super(message);
     this.status = status;
+    this.usage = usage;
+    this.promptMeta = promptMeta;
+    this.provider = provider;
+    this.model = model;
+    this.serverTextExtraction = serverTextExtraction;
+    this.inputKinds = inputKinds;
   }
 }
 
@@ -349,6 +362,17 @@ async function extractItemsFromQuotes({ attachments, categories, providerKey = n
 
   let lastText = null;
 
+  // Mjerni kontekst se pripaja i greškama, da odbijanje ne ostane bez trajanja
+  // i tokena — vidi ItemExtractionError.
+  const measurementContext = () => ({
+    usage,
+    promptMeta,
+    provider: resolvedKey,
+    model: capabilities.model ?? null,
+    serverTextExtraction: images.length === 0,
+    inputKinds: attachments.map((a) => a.kind),
+  });
+
   for (let call = 0; call < MAX_MODEL_CALLS; call++) {
     const result = await provider.chat(convo, [SET_ITEMS_TOOL]);
 
@@ -382,7 +406,8 @@ async function extractItemsFromQuotes({ attachments, categories, providerKey = n
         // safety net koji je prije čuvao odgovore asistenta.
         throw new ItemExtractionError(
           422,
-          `Model nije izvukao stavke iz ponude. Njegov odgovor: ${fixEkavica(result.text.trim())}`
+          `Model nije izvukao stavke iz ponude. Njegov odgovor: ${fixEkavica(result.text.trim())}`,
+          measurementContext()
         );
       }
       convo.push({ role: 'assistant', content: '' });
@@ -423,7 +448,8 @@ async function extractItemsFromQuotes({ attachments, categories, providerKey = n
   throw new ItemExtractionError(
     422,
     'Model nakon više pokušaja nije vratio ispravan popis stavki'
-      + (lastText && lastText.trim() ? `. Njegov zadnji odgovor: ${fixEkavica(lastText.trim())}` : '.')
+      + (lastText && lastText.trim() ? `. Njegov zadnji odgovor: ${fixEkavica(lastText.trim())}` : '.'),
+    measurementContext()
   );
 }
 
