@@ -5,7 +5,7 @@
   "input_modality": "image",
   "server_text_extraction": false,
   "attachments": [
-    "scenario11_.jpeg"
+    "scenario11_slika_zaslona.jpeg"
   ],
   "paired_with": "scenario1_standardna",
   "fields": {
@@ -16,7 +16,7 @@
       ],
       "provenance": {
         "source": "image",
-        "file": "scenario11_.jpeg",
+        "file": "scenario11_slika_zaslona.jpeg",
         "note": "Prilog je slika: poslužiteljske ekstrakcije teksta nema, pa nema ni lokatora prema retku niti bajt-jednakog citata. Vrijednost je PREUZETA iz zlatnog standarda scenarija 1 — isti dokument, drugi ulazni kanal. Na slici: „Ukupno za uplatu  57,10 €\""
       }
     },
@@ -26,7 +26,7 @@
           "value": "Univerzalni strujni adapter 230V/3-12V DC max. 27W 2,25A",
           "provenance": {
             "source": "image",
-            "file": "scenario11_.jpeg",
+            "file": "scenario11_slika_zaslona.jpeg",
             "note": "Prilog je slika: poslužiteljske ekstrakcije teksta nema, pa nema ni lokatora prema retku niti bajt-jednakog citata. Vrijednost je PREUZETA iz zlatnog standarda scenarija 1 — isti dokument, drugi ulazni kanal. Na slici: redak 1, stupac „Proizvod\""
           }
         },
@@ -34,7 +34,7 @@
           "value": 1,
           "provenance": {
             "source": "image",
-            "file": "scenario11_.jpeg",
+            "file": "scenario11_slika_zaslona.jpeg",
             "note": "Prilog je slika: poslužiteljske ekstrakcije teksta nema, pa nema ni lokatora prema retku niti bajt-jednakog citata. Vrijednost je PREUZETA iz zlatnog standarda scenarija 1 — isti dokument, drugi ulazni kanal. Na slici: redak 1, stupac „Količina\" = 1"
           },
           "form": "digit"
@@ -65,7 +65,7 @@
           "value": "Eksperimentalna pločica (breadboard) s 400 rupica",
           "provenance": {
             "source": "image",
-            "file": "scenario11_.jpeg",
+            "file": "scenario11_slika_zaslona.jpeg",
             "note": "Prilog je slika: poslužiteljske ekstrakcije teksta nema, pa nema ni lokatora prema retku niti bajt-jednakog citata. Vrijednost je PREUZETA iz zlatnog standarda scenarija 1 — isti dokument, drugi ulazni kanal. Na slici: redak 2, stupac „Proizvod\""
           }
         },
@@ -73,7 +73,7 @@
           "value": 2,
           "provenance": {
             "source": "image",
-            "file": "scenario11_.jpeg",
+            "file": "scenario11_slika_zaslona.jpeg",
             "note": "Prilog je slika: poslužiteljske ekstrakcije teksta nema, pa nema ni lokatora prema retku niti bajt-jednakog citata. Vrijednost je PREUZETA iz zlatnog standarda scenarija 1 — isti dokument, drugi ulazni kanal. Na slici: redak 2, stupac „Količina\" = 2"
           },
           "form": "digit"
@@ -102,7 +102,7 @@
           "value": "Eksperimentalna pločica (breadboard) s 830 rupica",
           "provenance": {
             "source": "image",
-            "file": "scenario11_.jpeg",
+            "file": "scenario11_slika_zaslona.jpeg",
             "note": "Prilog je slika: poslužiteljske ekstrakcije teksta nema, pa nema ni lokatora prema retku niti bajt-jednakog citata. Vrijednost je PREUZETA iz zlatnog standarda scenarija 1 — isti dokument, drugi ulazni kanal. Na slici: redak 3, stupac „Proizvod\""
           }
         },
@@ -110,7 +110,7 @@
           "value": 2,
           "provenance": {
             "source": "image",
-            "file": "scenario11_.jpeg",
+            "file": "scenario11_slika_zaslona.jpeg",
             "note": "Prilog je slika: poslužiteljske ekstrakcije teksta nema, pa nema ni lokatora prema retku niti bajt-jednakog citata. Vrijednost je PREUZETA iz zlatnog standarda scenarija 1 — isti dokument, drugi ulazni kanal. Na slici: redak 3, stupac „Količina\" = 2"
           },
           "form": "digit"
@@ -139,7 +139,7 @@
           "value": "Kabeli za eksperimentalnu pločicu (breadboard) - 65 komada",
           "provenance": {
             "source": "image",
-            "file": "scenario11_.jpeg",
+            "file": "scenario11_slika_zaslona.jpeg",
             "note": "Prilog je slika: poslužiteljske ekstrakcije teksta nema, pa nema ni lokatora prema retku niti bajt-jednakog citata. Vrijednost je PREUZETA iz zlatnog standarda scenarija 1 — isti dokument, drugi ulazni kanal. Na slici: redak 4, stupac „Proizvod\""
           }
         },
@@ -147,7 +147,7 @@
           "value": 2,
           "provenance": {
             "source": "image",
-            "file": "scenario11_.jpeg",
+            "file": "scenario11_slika_zaslona.jpeg",
             "note": "Prilog je slika: poslužiteljske ekstrakcije teksta nema, pa nema ni lokatora prema retku niti bajt-jednakog citata. Vrijednost je PREUZETA iz zlatnog standarda scenarija 1 — isti dokument, drugi ulazni kanal. Na slici: redak 4, stupac „Količina\" = 2"
           },
           "form": "digit"
@@ -174,7 +174,7 @@
       }
     ]
   },
-  "notes": "UPARENA PROBA ULAZNOG KANALA sa scenarijem 1. Isti dokument (Mikrotron d.o.o., ponuda 14852), jedina razlika je ulazi li kroz poslužiteljsko izdvajanje teksta (scenarij 1) ili kao slika (ovaj scenarij). Zlatni standard je doslovan prijepis scenarija 1: iste četiri stavke, iste količine, isti iznos 57,10 €. Njegove stavke NE ulaze u polazišnu vrijednost ni u ukupnu točnost — countsTowardOverall je false. Napomena o prilogu: fotografija je snimljena sa ZASLONA na kojem je dokument otvoren u pregledniku, ne s ispisanog papira; degradacija je moiré, ne artefakti ispisa i skeniranja. To navesti u opisu testnog skupa.",
+  "notes": "UPARENA PROBA ULAZNOG KANALA sa scenarijem 1. Isti dokument (Mikrotron d.o.o., ponuda 14852), jedina razlika je ulazi li kroz poslužiteljsko izdvajanje teksta (scenarij 1) ili kao slika (ovaj scenarij). Zlatni standard je doslovan prijepis scenarija 1: iste četiri stavke, iste količine, isti iznos 57,10 €. Njegove stavke NE ulaze u polazišnu vrijednost ni u ukupnu točnost — countsTowardOverall je false. Napomena o prilogu: riječ je o SNIMCI ZASLONA na kojem je dokument otvoren u pregledniku — ravnoj i oštroj slici bez sjena i nakošenja, dakle NAJPOVOLJNIJEM slučaju slikovnog ulaza. Realan slučaj (snimka papira, sjene, nakošenje) pokriva scenarij 8. Razliku između to dvoje navesti pri tumačenju.",
   "_schema": "ground-truth/v2-image",
   "category_codebook_sha256_16": "be6c9b1400f6598e"
 }

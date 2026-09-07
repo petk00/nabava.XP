@@ -14,6 +14,19 @@
  * njom i cijeli zaključak, pa se računa krivulja preko raspona 0,25×–2× cijene
  * iz cjenika. Jedan broj bi tvrdio preciznost koje nema.
  *
+ * DVA RAČUNA, NE JEDAN. Ista mjerenja daju dva poštena, a vrlo različita odgovora,
+ * ovisno o tome pripisuje li se uređaj zaključivanju:
+ *
+ *   PUNI RAČUN — cijela amortizacija uređaja tereti zaključivanje. Odgovara
+ *   pitanju „isplati li se KUPITI uređaj radi ove funkcije".
+ *
+ *   GRANIČNI RAČUN — uređaj je ionako u pogonu jer na njemu rade aplikacija i
+ *   baza, pa zaključivanju pripada samo utrošena energija. Odgovara pitanju
+ *   „isplati li se DODATI ovu funkciju na uređaj koji već postoji".
+ *
+ * Razlika između njih JEST nalaz i oba idu u rad; iskazati samo jedan značilo bi
+ * odabrati odgovor prije nego se postavi pitanje.
+ *
  * Uporaba:
  *   node scripts/evalCost.js                       (najnoviji run po izvedbi)
  *   node scripts/evalCost.js run_A.jsonl run_B.jsonl
@@ -140,26 +153,51 @@ function main() {
     if (needsFx) console.log(`  tečaj                   : ${fx.datum || '—'} | izvor: ${fx.izvor || '—'}`);
   }
 
-  // ── krivulja isplativosti ──
-  console.log('\nKRIVULJA ISPLATIVOSTI');
+  // ── dva računa i dvije krivulje ──
+  console.log('\nDVA RAČUNA');
   if (cloudPerQuote == null || localEnergyPerQuote == null) {
-    console.log('  Ne može se izračunati dok cijena tokena nije upisana i dok nema izmjerenog');
-    console.log('  trajanja lokalne izvedbe. Krivulja se iskazuje preko raspona '
-      + `${a.krivulja_isplativosti.mnozitelji_cijene_oblaka.join('×, ')}× cijene iz cjenika.`);
+    console.log('  Ne mogu se izračunati dok cijena tokena nije upisana i dok nema izmjerenog');
+    console.log('  trajanja lokalne izvedbe.');
     return;
   }
-  console.log('  Volumen pri kojem lokalna izvedba postaje jeftinija od udaljene,');
-  console.log('  ovisno o tome koliko cijena oblaka odstupa od današnjeg cjenika.\n');
-  console.log('  množitelj   cijena oblaka/ponuda   točka pokrića (ponuda/god.)');
+
+  const volumen = a.volumen || {};
+  const volumeni = volumen.raspon_za_analizu_osjetljivosti
+    || [volumen.ponuda_godisnje_procjena].filter(Boolean);
+
+  console.log('  PUNI     — cijela amortizacija tereti zaključivanje;');
+  console.log('             pitanje je "isplati li se KUPITI uređaj radi ove funkcije".');
+  console.log('  GRANIČNI — uređaj je ionako u pogonu (aplikacija i baza), pa zaključivanju');
+  console.log('             pripada samo energija; pitanje je "isplati li se DODATI funkciju".');
+
+  console.log('\n  Godišnji trošak pri stvarnom opterećenju');
+  console.log('  ponuda/god.        oblak        lokalno (puni)   lokalno (granični)');
+  for (const v of volumeni) {
+    const cloudYear = cloudPerQuote * v;
+    const localFull = amortPerYear + localEnergyPerQuote * v;
+    const localMarginal = localEnergyPerQuote * v;
+    console.log(`  ${String(v).padStart(11)}   ${cloudYear.toFixed(2).padStart(10)} EUR   `
+      + `${localFull.toFixed(2).padStart(12)} EUR   ${localMarginal.toFixed(2).padStart(14)} EUR`);
+  }
+
+  console.log('\n  KRIVULJA — volumen pri kojem lokalna izvedba postaje jeftinija od udaljene\n');
+  console.log('  množitelj   cijena oblaka/ponuda   točka pokrića PUNI      točka pokrića GRANIČNI');
   for (const k of a.krivulja_isplativosti.mnozitelji_cijene_oblaka) {
     const cloudK = cloudPerQuote * k;
     const perQuoteDiff = cloudK - localEnergyPerQuote;
-    const breakEven = perQuoteDiff > 0 ? amortPerYear / perQuoteDiff : null;
+    // Puni račun: fiksni trošak je amortizacija, pa točka pokrića postoji.
+    const beFull = perQuoteDiff > 0 ? Math.ceil(amortPerYear / perQuoteDiff) : null;
+    // Granični račun: fiksnog troška NEMA, pa je lokalno jeftinije od prve ponude
+    // čim je energija po ponudi ispod cijene oblaka po ponudi.
+    const beMarginal = perQuoteDiff > 0 ? 'od prve ponude' : 'nikad';
     console.log(`  ${String(k).padStart(9)}   ${cloudK.toFixed(6).padStart(20)}   `
-      + `${breakEven === null ? 'nikad — oblak je jeftiniji i po ponudi' : Math.ceil(breakEven).toLocaleString('hr')}`);
+      + `${(beFull === null ? 'nikad' : beFull.toLocaleString('hr')).padStart(20)}   ${beMarginal.padStart(20)}`);
   }
-  console.log('\n  Amortizacija je jedini fiksni trošak lokalne izvedbe; struja je varijabilna.');
-  console.log('  Točka pokrića = godišnja amortizacija / (trošak oblaka po ponudi − struja po ponudi).');
+  console.log(`\n  Puni:     točka pokrića = amortizacija (${amortPerYear.toFixed(2)} EUR/god.) / `
+    + '(oblak po ponudi − struja po ponudi).');
+  console.log('  Granični: nema fiksnog troška, pa je lokalno jeftinije čim je struja po ponudi');
+  console.log(`            (${localEnergyPerQuote.toFixed(6)} EUR) ispod cijene oblaka po ponudi.`);
+  console.log('\n  Razlika između ta dva računa JEST nalaz — oba idu u rad.');
 }
 
 main();

@@ -146,6 +146,9 @@ const SCENARIOS = [
   {
     // UPARENA PROBA ULAZNOG KANALA sa scenarijem 1: isti dokument, jedina
     // razlika je ulazi li kroz poslužiteljsko izdvajanje teksta ili kao slika.
+    // Prilog je SNIMKA ZASLONA — ravna, oštra, bez sjena i nakošenja, dakle
+    // NAJPOVOLJNIJI slučaj slikovnog ulaza. Realan slučaj pokriva scenarij 8,
+    // koji je snimka papira.
     // Zlatni standard je prijepis scenarija 1, pa stavke NE ulaze u ukupnu
     // točnost ni u raspodjelu — inače bi ista četiri artikla ušla dvaput.
     id: 'scenario11_slika_uparena',
@@ -153,8 +156,8 @@ const SCENARIOS = [
     expectsRefusal: false,
     countsTowardOverall: false,
     pairedWith: 'scenario1_standardna',
-    description: 'Ponuda scenarija 1 kao slika — uparena proba ulaznog kanala, bez poslužiteljske ekstrakcije.',
-    attachments: [path.join(FIXTURES_DIR, 'scenario11_.jpeg')],
+    description: 'Ponuda scenarija 1 kao SNIMKA ZASLONA — uparena proba kanala, najpovoljniji slikovni ulaz.',
+    attachments: [path.join(FIXTURES_DIR, 'scenario11_slika_zaslona.jpeg')],
     repeatCount: 5,
   },
 ];

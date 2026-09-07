@@ -457,8 +457,21 @@ Popis postoji da ne ovisi o pamćenju.
       pomiče latenciju i trošak
 
 ### Trošak
-- [ ] `eval/cost-assumptions.json`: cijena po tokenu s datumom i izvorom, hardver,
+
+**Dva računa, ne jedan.** Ista mjerenja daju dva poštena i vrlo različita odgovora, ovisno o
+tome pripisuje li se uređaj zaključivanju:
+
+| Račun | Što tereti zaključivanje | Na koje pitanje odgovara |
+|---|---|---|
+| **puni** | cijela amortizacija uređaja + energija | isplati li se **kupiti** uređaj radi ove funkcije |
+| **granični** | samo energija — uređaj je ionako u pogonu jer na njemu rade aplikacija i baza | isplati li se **dodati** funkciju na uređaj koji već postoji |
+
+Razlika između njih **jest nalaz** i oba idu u rad; iskazati samo jedan značilo bi odabrati
+odgovor prije nego se postavi pitanje. Puni račun je stroži prema samoposluženoj izvedbi,
+granični odgovara stvarnoj postavci u kojoj uređaj ionako poslužuje aplikaciju i bazu.
+
+- [x] `eval/cost-assumptions.json`: cijena po tokenu s datumom i izvorom, hardver,
       amortizacija, kWh, vati
 - [ ] stvarna potrošnja tijekom runa ako je izvediva na macOS-u; inače izrijekom označeno
       kao pretpostavka
-- [ ] točka isplativosti kao **krivulja** preko raspona 0,25×–2× cijene oblaka
+- [x] točka isplativosti kao **krivulja** preko raspona 0,25×–2× cijene oblaka, i to za **oba računa**

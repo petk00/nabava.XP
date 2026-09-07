@@ -21,7 +21,7 @@ pa scenarij nije niz poruka nego **jedan zahtjev s jednom ili dvije priložene p
 | 8 | `scenario8_slika` | ponuda s fotografije, **bez ekstrakcije** | `scenario8_slika.jpeg` | 5 | 109,94 € |
 | 9 | `scenario9_negativ` | negativna stavka (odbitak) se izostavlja | `scenario9_negativ.pdf` | 3 | 2.575,00 € |
 | 10 | `scenario10_cetiri_ponude` | četiri ponude, iznos je zbroj | `scenario10_ponuda1–4.pdf` | 46 | 75.867,18 € |
-| 11 | `scenario11_slika_uparena` | ponuda scenarija 1 kao **slika** — uparena proba kanala | `scenario11_.jpeg` | 4 | 57,10 € |
+| 11 | `scenario11_slika_uparena` | ponuda scenarija 1 kao **slika** — uparena proba kanala | `scenario11_slika_zaslona.jpeg` | 4 | 57,10 € |
 
 ### Scenariji 5 i 6 — uparena proba s jednom promjenjivom
 
@@ -53,10 +53,15 @@ Razlika u točnosti između ta dva scenarija mjeri **cijenu ulaznog kanala**, ne
 čitanja ponude. Stavke scenarija 11 su prijepis, pa **ne ulaze u ukupnu točnost ni u
 raspodjelu kategorija** (`countsTowardOverall: false`).
 
-Napomena o prilogu: fotografija je snimljena **sa zaslona** na kojem je dokument otvoren u
-pregledniku, ne s ispisanog papira. Degradacija je zato moiré, a ne artefakti ispisa i
-skeniranja. To ograničava koliko se nalaz smije poopćiti na stvarne fotografije papirnatih
-ponuda — vidi scenarij 8, koji jest snimka papira.
+**Dva slikovna scenarija pokrivaju dva kraja raspona.** Scenarij 11 je **snimka zaslona** —
+ravna, oštra, jednoliko osvijetljena, bez sjena i nakošenja. To je **najpovoljniji slučaj**
+slikovnog ulaza i gornja granica onoga što se od čitanja slike može očekivati. Scenarij 8
+je **snimka papira**, sa sjenama, nakošenjem i neravnim listom, i pokriva realan slučaj
+kakav bi referent doista poslao.
+
+Zbog toga se rezultat scenarija 11 ne smije čitati kao „model dobro čita slike" nego kao
+„toliko može kad je slika idealna". Razlika između scenarija 8 i 11 mjeri koliko kvaliteta
+snimke stoji.
 
 ### Scenarij 10 — mjeri spajanje, ne čitanje
 
