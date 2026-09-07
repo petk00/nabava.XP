@@ -268,10 +268,21 @@ async function chat(messages, tools = []) {
   }
 
   const data = await res.json();
+  // Modeli s `think` vraćaju razmišljanje u ZASEBNOM polju `message.thinking`,
+  // ali `eval_count` je ZBROJ — Ollamin API ne dijeli tokene na misaone i
+  // izlazne. Zato se bilježi duljina obaju tekstova u znakovima, da se udio
+  // razmišljanja barem vidi, i zastavica da su tokeni zbrojeni.
+  // Vidi docs/mjerni-plan.md § 7.
+  const thinking = data?.message?.thinking ?? null;
   return {
     text: data?.message?.content || null,
     tool_calls: normalizeToolCalls(data?.message?.tool_calls),
     latencyMs: Number((process.hrtime.bigint() - startedAt) / 1000000n),
+    // Ollama ne prijavljuje verziju gradnje, samo oznaku modela iz odgovora.
+    modelVersion: data?.model ?? null,
+    thinkingChars: thinking ? thinking.length : 0,
+    contentChars: (data?.message?.content || '').length,
+    completionTokensIncludeThinking: Boolean(thinking),
     // Zašto je generacija stala. "length" znači da je odgovor ODREZAN na
     // num_predict — bodovanje bi to zabilježilo kao grešku modela, iako je
     // artefakt mjerne postavke. Vidi docs/mjerni-plan.md.

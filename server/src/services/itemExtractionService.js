@@ -328,9 +328,23 @@ async function extractItemsFromQuotes({ attachments, categories, providerKey = n
     promptTokens: 0,
     completionTokens: 0,
     modelLatencyMs: 0,
+    // Sirovo trajanje, PRIJE odbijanja čekanja na kvotu. Razlika prema
+    // modelLatencyMs je rateLimitWaitMs — vidi docs/mjerni-plan.md § 7.
+    modelLatencyRawMs: 0,
+    rateLimitWaitMs: 0,
     modelCalls: 0,
     modelCallLatenciesMs: [],
     truncated: false,
+    // Misaoni tokeni: Ollamin API ih NE odvaja od izlaznih (eval_count je
+    // zbroj), pa se bilježi duljina misaonog i izlaznog teksta u znakovima i
+    // zastavica da su tokeni zbrojeni. Bez toga completionTokens lokalne i
+    // udaljene izvedbe nisu ista veličina.
+    thinkingChars: 0,
+    contentChars: 0,
+    completionTokensIncludeThinking: false,
+    // Verzija koju prijavljuje SAM ODGOVOR, ne konfiguracija.
+    modelVersion: null,
+    modelVersionsSeen: [],
   };
 
   let lastText = null;
@@ -341,8 +355,19 @@ async function extractItemsFromQuotes({ attachments, categories, providerKey = n
     usage.promptTokens += result.usage?.promptTokens || 0;
     usage.completionTokens += result.usage?.completionTokens || 0;
     usage.modelLatencyMs += result.latencyMs || 0;
+    usage.modelLatencyRawMs += result.latencyRawMs ?? result.latencyMs ?? 0;
+    usage.rateLimitWaitMs += result.rateLimitWaitMs || 0;
     usage.modelCalls += 1;
     usage.modelCallLatenciesMs.push(result.latencyMs ?? null);
+    usage.thinkingChars += result.thinkingChars || 0;
+    usage.contentChars += result.contentChars || 0;
+    if (result.completionTokensIncludeThinking) usage.completionTokensIncludeThinking = true;
+    if (result.modelVersion) {
+      usage.modelVersion = result.modelVersion;
+      if (!usage.modelVersionsSeen.includes(result.modelVersion)) {
+        usage.modelVersionsSeen.push(result.modelVersion);
+      }
+    }
     if (result.finishReason === 'length' || result.finishReason === 'MAX_TOKENS') usage.truncated = true;
     lastText = result.text ?? lastText;
 

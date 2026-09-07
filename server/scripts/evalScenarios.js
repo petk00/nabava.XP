@@ -27,6 +27,10 @@
 //   repeatCount       — koliko puta ponoviti (default 5, promjenjivo po scenariju)
 //   inputModality     — 'pdf' | 'image'; mora se poklapati s ground truthom.
 //                        'image' znači BEZ poslužiteljske ekstrakcije teksta.
+//   countsTowardOverall — ulaze li stavke ovog scenarija u UKUPNU točnost i u
+//                        raspodjelu kategorija. false kod scenarija čije su stavke
+//                        prijepis drugih; scenarij se i dalje izvodi i izvještava,
+//                        samo se ne pribraja da isti artikl ne bi ušao dvaput.
 //   expectsRefusal    — je li ispravan ishod da stavke NE budu izvučene.
 //                        Mora se poklapati s ground truthom; evalHarness.js to
 //                        provjerava prije mjerenja i puca ako se raziđu.
@@ -85,6 +89,9 @@ const SCENARIOS = [
     id: 'scenario6_format_brojeva',
     inputModality: 'pdf',
     expectsRefusal: false,
+    // Parnjak scenariju 5: isti sadržaj, drugi zapis broja. U ukupnu točnost i
+    // raspodjelu ulazi samo scenarij 5, inače bi ista četiri artikla ušla dvaput.
+    countsTowardOverall: false,
     description: 'Ponuda s drugim formatom zapisa cijene (anglosaksonski, 1,398.00) — čita li ga model točno.',
     attachments: [path.join(FIXTURES_DIR, 'scenario6_jedinice.pdf')],
     repeatCount: 5,
@@ -123,6 +130,10 @@ const SCENARIOS = [
     id: 'scenario10_cetiri_ponude',
     inputModality: 'pdf',
     expectsRefusal: false,
+    // Prilozi su bajt-jednake kopije dokumenata scenarija 4a, 3, 1 i 2. Mjeri
+    // spajanje i zbrajanje, ne čitanje — boduje se samo po broju stavki (46) i
+    // po tome je li iznos zbroj svih četiriju ponuda.
+    countsTowardOverall: false,
     description: 'Četiri ponude uz isti zahtjev — spaja li model stavke iz svih i zbraja li iznose.',
     attachments: [
       path.join(FIXTURES_DIR, 'scenario10_ponuda1.pdf'),
@@ -134,4 +145,9 @@ const SCENARIOS = [
   },
 ];
 
-module.exports = { SCENARIOS, FIXTURES_DIR };
+// Scenariji čije stavke NE ulaze u ukupnu točnost ni u raspodjelu kategorija.
+const EXCLUDED_FROM_OVERALL = SCENARIOS
+  .filter((s) => s.countsTowardOverall === false)
+  .map((s) => s.id);
+
+module.exports = { SCENARIOS, FIXTURES_DIR, EXCLUDED_FROM_OVERALL };

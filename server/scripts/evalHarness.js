@@ -525,6 +525,20 @@ async function runOneAttempt(scenario, prepared, token, provider, attemptNumber,
     prompt_tokens: usage.promptTokens ?? null,
     completion_tokens: usage.completionTokens ?? null,
     model_latency_ms: usage.modelLatencyMs ?? null,
+    // Sirovo trajanje prije odbijanja čekanja na kvotu, i samo čekanje.
+    // Kvota je operativno ograničenje udaljene usluge i zaseban je nalaz, pa se
+    // ne smije stopiti s mjerom brzine modela.
+    model_latency_raw_ms: usage.modelLatencyRawMs ?? null,
+    rate_limit_wait_ms: usage.rateLimitWaitMs ?? null,
+    // Verzija koju prijavljuje sam odgovor. Endpoint iza istog imena zna se
+    // tiho promijeniti između poziva.
+    model_version_reported: usage.modelVersion ?? null,
+    model_versions_seen: usage.modelVersionsSeen ?? [],
+    // Misaoni tokeni nisu odvojeni u API-ju; bilježi se udio u znakovima i
+    // zastavica da su uključeni u completion_tokens.
+    thinking_chars: usage.thinkingChars ?? null,
+    content_chars: usage.contentChars ?? null,
+    completion_tokens_include_thinking: usage.completionTokensIncludeThinking ?? null,
     model_calls: usage.modelCalls ?? null,
     // Trajanje SVAKOG poziva zasebno — medijan i p95 po pozivu se iz zbroja ne
     // mogu izračunati. Više od jednog poziva znači da se model ispravljao.

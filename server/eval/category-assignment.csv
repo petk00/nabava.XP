@@ -59,9 +59,9 @@ scenario8_slika,2,TRG.PAPIR A3 VK 1/200,5,,,,,nova
 scenario8_slika,3,FL.MARKER EDING 360 ZA PLOČU CRNI,10,,,,,nova
 scenario8_slika,4,GT-U-147/NP OMOT SPISA,50,,,,,nova
 scenario8_slika,5,LJEPILO U STIKU STAEDTLER 20g,5,,,,,nova
-scenario9_negativ,1,prijenosno računalo,2,,,,,nova
-scenario9_negativ,2,uredski programski paket,2,,,,,nova
-scenario9_negativ,3,set bežične tipkovnice i miša,2,,,,,nova
+scenario9_negativ,1,"Prijenosno računalo Business Pro 15""",2,,,,,nova
+scenario9_negativ,2,Uredski paket Microsoft Office 365 (Godišnja pretplata),2,,,,,nova
+scenario9_negativ,3,Bežična tipkovnica i miš set,2,,,,,nova
 scenario10_cetiri_ponude,1,"Ljubičasti laserski modul, 12x45mm, 0.5mW, 650nm, linijski",1,,Elektronička i elektrotehnička oprema,Nastavna i laboratorijska oprema,Laserski modul je elektronička komponenta/oprema za eksperimentalni rad.,prenesena
 scenario10_cetiri_ponude,2,28BYJ-48 5V koračni (stepper) motor + ULN2003 motor driver,2,,Elektronička i elektrotehnička oprema,Nastavna i laboratorijska oprema,Koračni motor i driver čine elektrotehničku komponentu.,prenesena
 scenario10_cetiri_ponude,3,STSPIN220 stepper motor driver,2,,Elektronička i elektrotehnička oprema,Nastavna i laboratorijska oprema,Driver za koračni motor je elektronička komponenta.,prenesena

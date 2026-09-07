@@ -339,15 +339,43 @@ se mjeri **primjenjivost codebooka**, instrumenta koji se u radu brani.
 
 ---
 
-## 7. Latencija *(nedovršeno — faza E)*
+## 7. Latencija i tokeni
 
-- warm-up poziv lokalnom modelu prije mjerenja, `warmup_performed`
+Provedeno 7. 9. 2026.
+
+- warm-up poziv lokalnom modelu prije mjerenja; `warmup` u manifestu nosi je li izveden i
+  koliko je trajao. Za udaljenu izvedbu se ne radi — nema učitavanja modela, a poziv bi
+  trošio kvotu; razlog se zapisuje umjesto da polje ostane prazno
 - `model_call_latencies_ms[]` — trajanje svakog poziva zasebno; medijan i p95 se iz zbroja
   ne mogu izračunati
-- vrijeme do prvog odgovora modela
-- **`rate_limit_wait_ms` se oduzima od `latencyMs`** — svjesna odluka: bez toga mjera brzine
-  modela mjeri tuđi rate limit. Sirova vrijednost se i dalje zapisuje, jer je kvota kao
-  operativno ograničenje zaseban nalaz.
+- **`rate_limit_wait_ms` se oduzima od `model_latency_ms`** — bez toga mjera brzine modela
+  mjeri tuđi rate limit. Sirova vrijednost ostaje u `model_latency_raw_ms`, jer je kvota
+  kao operativno ograničenje zaseban nalaz. Razlika dvaju polja jest čekanje
+- `model_version_reported` dolazi **iz odgovora**, ne iz konfiguracije, uz
+  `model_versions_seen` za slučaj da se unutar runa promijeni
+
+### Misaoni tokeni nisu odvojivi u API-ju
+
+Lokalni model radi s `think: true`. Ollamin odgovor **razdvaja tekstove** (`message.thinking`
+i `message.content`), ali `eval_count` je **zbroj** — API ne dijeli tokene na misaone i
+izlazne. Odvajanje na razini tokena stoga nije izvedivo bez procjene.
+
+Zapisuje se ono što jest mjerljivo: `thinking_chars`, `content_chars` i zastavica
+`completion_tokens_include_thinking`. **Kad je zastavica postavljena, `completion_tokens`
+lokalne i udaljene izvedbe nisu ista veličina i ne smiju se izravno uspoređivati** — ni u
+propusnosti ni u trošku.
+
+Izmjereno na scenariju 9 (isti dokument, oba pružatelja, jednak ishod — tri stavke i
+2.575,00 €):
+
+| | izlaznih tokena | misaonih znakova | izlaznih znakova | trajanje modela |
+|---|---|---|---|---|
+| lokalna | 1.307 | 3.376 | 0 | 31,1 s |
+| udaljena | 110 | 0 | 0 | 3,0 s |
+
+Izlaznih znakova je nula na obje strane jer odgovor nije tekst nego poziv alata. Kod
+lokalne izvedbe to znači da **gotovo sav izlaz otpada na razmišljanje** — 1.307 tokena za
+rezultat koji udaljena izvedba daje sa 110. To je podatak za odluku O2 u okviru rada.
 
 ---
 

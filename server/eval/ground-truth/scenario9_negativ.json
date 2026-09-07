@@ -22,13 +22,12 @@
     "items": [
       {
         "item_name": {
-          "value": "prijenosno računalo",
+          "value": "Prijenosno računalo Business Pro 15\"",
           "provenance": {
             "source": "attachment",
             "file": "scenario9_negativ.pdf",
             "line": 16,
-            "quote": "Prijenosno računalo Business Pro 15\"",
-            "surface_form": "Prijenosno računalo Business Pro 15\""
+            "quote": "Prijenosno računalo Business Pro 15\""
           }
         },
         "quantity": {
@@ -61,13 +60,12 @@
       },
       {
         "item_name": {
-          "value": "uredski programski paket",
+          "value": "Uredski paket Microsoft Office 365 (Godišnja pretplata)",
           "provenance": {
             "source": "attachment",
             "file": "scenario9_negativ.pdf",
             "line": 18,
-            "quote": "2. | Uredski paket Microsoft Office 365 (Godišnja pretplata) | 2,00 | 120,00 | 240,00",
-            "surface_form": "Uredski paket Microsoft Office 365 (Godišnja pretplata)"
+            "quote": "2. | Uredski paket Microsoft Office 365 (Godišnja pretplata) | 2,00 | 120,00 | 240,00"
           }
         },
         "quantity": {
@@ -100,13 +98,12 @@
       },
       {
         "item_name": {
-          "value": "set bežične tipkovnice i miša",
+          "value": "Bežična tipkovnica i miš set",
           "provenance": {
             "source": "attachment",
             "file": "scenario9_negativ.pdf",
             "line": 19,
-            "quote": "3. | Bežična tipkovnica i miš set | 2,00 | 35,00 | 70,00",
-            "surface_form": "Bežična tipkovnica i miš set"
+            "quote": "3. | Bežična tipkovnica i miš set | 2,00 | 35,00 | 70,00"
           }
         },
         "quantity": {
@@ -139,7 +136,7 @@
       }
     ]
   },
-  "notes": "Ponuda PON-2026-089 s negativnom stavkom. Redak 4 „Zamjena starog hardvera (Kompenzacija / Otkup starih uređaja)\" s iznosom -150,00 NIJE stavka — odbitak je, kao i rabat, a shema stavke ionako nema polje za cijenu. Ispravan ishod su TRI stavke. Iznos je SVEUKUPNO ZA PLATITI (2.575,00 €), ne osnovica (2.060,00 €) ni PDV (515,00 €).",
+  "notes": "Ponuda PON-2026-089 s negativnom stavkom. Redak 4 „Zamjena starog hardvera (Kompenzacija / Otkup starih uređaja)\" s iznosom -150,00 NIJE stavka — odbitak je, kao i rabat, a shema stavke ionako nema polje za cijenu. Ispravan ishod su TRI stavke. Iznos je SVEUKUPNO ZA PLATITI (2.575,00 €), ne osnovica (2.060,00 €) ni PDV (515,00 €). Nazivi stavki su doslovni oblici iz ponude; kraće radne verzije autora („prijenosno računalo\", „uredski programski paket\", „set bežične tipkovnice i miša\") ne ulaze u mjerilo.",
   "_schema": "ground-truth/v2",
   "category_codebook_sha256_16": "08f7e418f4e86c46"
 }
