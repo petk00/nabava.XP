@@ -5,8 +5,20 @@ Folder `rad/` sadrži pomoćne datoteke rada — **ne i sam tekst rada**.
 
 ## Prije bilo kakvog rada na radu
 
-Pročitaj `rad/KONTEKST.md`. Sadrži cilj, hipotezu, opis sustava, kriterije,
-mjerni plan, pojmovnik i granice poglavlja. Sve što ondje nije zapisano — ne postoji.
+Pročitaj `rad/KONTEKST.md` — okvir rada: predmet, hipoteza, granice poglavlja,
+pojmovnik i pravila rada.
+
+Izvori istine se ne preklapaju:
+
+| Dokument | Nadređen za |
+|---|---|
+| `rad/KONTEKST.md` | okvir rada |
+| `docs/mjerni-plan.md` | **mjerenje** — definicije mjera, klase grešaka, ground truth, protokol runova |
+| `docs/AI.md` | **sustav** — kako radi danas |
+| `docs/EVAL_SCENARIOS.md` | **testni skup** |
+
+Kad se KONTEKST i mjerni plan razilaze, vrijedi mjerni plan, a KONTEKST se ispravi —
+nikad obrnuto.
 
 ## Podjela uloga
 
@@ -32,7 +44,7 @@ Kad vraćaš dorađen tekst: čisti tekst bez Markdown formatiranja
 
 ## Granice poglavlja
 
-Vidi tablicu u `KONTEKST.md`, § 7. Ukratko:
+Vidi tablicu u `KONTEKST.md`, § 11. Ukratko:
 
 - **Uvod** — namjera i najava, buduće vrijeme, nijedan broj
 - **Prethodna istraživanja** — samo tuđi nalazi, svaki s citatom
@@ -58,23 +70,50 @@ ne navodi „općenito se smatra" bez izvora. IEEE numerički stil.
 
 ## Pojmovi
 
-Koristi fiksne nazive iz `KONTEKST.md`, § 6. Bez sinonima.
+Koristi fiksne nazive iz `KONTEKST.md`, § 10. Bez sinonima.
 
 ## Na kraju svakog poglavlja
 
-Sažmi donesene odluke u ~10 redaka i dopiši ih u `KONTEKST.md`, § 10.
+Sažmi donesene odluke u ~10 redaka i dopiši ih u `KONTEKST.md`, § 14.
 Sljedeći razgovor nasljeđuje odluke, ne cijeli tekst.
 
 ## Mjerni aparat
 
-```
-server/scripts/evalScenarios.js      scenariji + ground truth
-server/scripts/evalHarness.js        runner
-scripts/scoreEvalResults.js          bodovanje
-scripts/evalCost.js                  trošak i TCO
-server/eval-scenarios/fixtures/      PDF prilozi
-server/eval-results/                 JSONL rezultati
-```
+Mjeri se ruta `POST /api/requests/:id/ai-items`.
+
+| Putanja | Što je |
+|---|---|
+| `server/scripts/evalHarness.js` | runner — prikuplja sirove podatke; nazive stavki ne boduje |
+| `server/scripts/evalScenarios.js` | scenariji — izvodi se svih **7** (1–7), svi imaju prilog |
+| `server/scripts/scoreEvalResults.js` | bodovanje točnosti — putanja provjerena 5. 9. 2026. |
+| `server/scripts/analyze.js` | analiza runova — **ne postoji, treba je napisati** (mjerni plan § 9, faza H) |
+| `server/scripts/aggregateEvalResults.js` | agregacija kroz runove (brzina, tokeni, pouzdanost) |
+| `server/scripts/groundTruth.js` | jedan čitač ground trutha za sve skripte |
+| `server/eval/ground-truth/<scenario_id>.json` | ground truth s provenanceom |
+| `server/eval/category-codebook.md` | pravilnik za dodjelu — **zastario:** šest kategorija, a baza ih ima 33 (O1) |
+| `server/eval/category-secondrater.csv` | uzorak za drugu procjenu (22 stavke) — **zastario s O1** |
+| `server/eval-scenarios/fixtures/` | prilozi — 8 datoteka, **sve PDF**; slikovnih više nema |
+| `server/eval-results/` | JSONL po pokušaju (generirano, nije u gitu) |
+| `docs/eval-runs/scoring-worksheet.md` | izlaz bodovanja |
+| `server/eval/cost-assumptions.json` | pretpostavke troška — cijene tokena čekaju autora |
+| `server/scripts/verifyProvenance.js` | strojna provjera citata u zlatnom standardu |
+| `server/scripts/sampleResources.js` | uzorkovač memorije i procesora (GPU izvan njega) |
+| `server/scripts/concurrencyProbe.js` | istodobne obrade 1/3/5 |
+| `server/scripts/appLatencyProbe.js` | odziv aplikacije u mirovanju i pod obradom |
+
+Sustav koji se mjeri:
+
+| Putanja | Što je |
+|---|---|
+| `server/src/services/itemExtractionService.js` | `buildSystemPrompt`, alat `set_items` |
+| `server/src/services/quoteExtractionService.js` | ekstrakcija teksta iz PDF-a |
+| `server/src/services/llm/providerSelector.js` | obje izvedbe iza istog sučelja |
+| `server/src/services/llm/samplingConfig.js` | parametri uzorkovanja |
+| `server/src/services/promptVariant.js` | uvjet prompta (nije u `llm/`) |
+
+Svaki run nosi `run_kind` u `run_manifest.json`. Zadana vrijednost je `smoke`;
+run koji ulazi u rad mora biti izričito označen `final`. Runovi različite vrste
+se ne spajaju u istu tablicu.
 
 ## Poštenje rezultata
 

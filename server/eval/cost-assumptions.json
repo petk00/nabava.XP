@@ -1,0 +1,81 @@
+{
+  "_naputak": [
+    "Sve vrijednosti koje ulaze u izračun troška stoje OVDJE, ne u kodu.",
+    "Polja s null MORA popuniti autor iz službenog izvora i upisati datum i poveznicu.",
+    "evalCost.js odbija računati trošak udaljene izvedbe dok su cijene null —",
+    "radije nema brojke nego brojka bez izvora."
+  ],
+  "cijene_tokena": {
+    "_jedinica": "EUR za 1.000.000 tokena",
+    "_napomena": "Cjenik se mijenja i ovisi o razini računa i regiji; zato datum i izvor.",
+    "gemini-3.5-flash": {
+      "ulaz": 1.5,
+      "izlaz": 9.0,
+      "valuta_cjenika": "USD",
+      "jedinica": "po 1.000.000 tokena",
+      "razina": "standardna — nije batch niti context caching",
+      "datum_provjere": "2026-09-07",
+      "izvor": "https://ai.google.dev/gemini-api/docs/pricing"
+    }
+  },
+  "hardver": {
+    "_izvor": "Podaci vlasnika uređaja; preneseno iz ranije inačice evalCost.js.",
+    "uredaj": "Mac Mini M4, 16 GB",
+    "nabavna_cijena_eur": 800,
+    "vijek_godina": 5,
+    "ostatak_vrijednosti_eur": null,
+    "_napomena_ostatak": "Ako se ne procjenjuje, ostaje null i amortizacija ide na punu cijenu."
+  },
+  "energija": {
+    "_izvor": "Cjenik HEP-a; snaga je procjena vlasnika uređaja, nije izmjerena.",
+    "snaga_pod_opterecenjem_w": 65,
+    "snaga_u_mirovanju_w": null,
+    "izmjereno": false,
+    "_napomena_mjerenje": [
+      "Snaga NIJE izmjerena — 65 W je PRETPOSTAVKA i tako se navodi u radu.",
+      "Mjeri se powermetricsom tijekom kampanje, ručno u zasebnom terminalu:",
+      "sudo powermetrics --samplers cpu_power,gpu_power -i 500 > snaga.log",
+      "Harness ne zove sudo; zapisi se spajaju po vremenu (timestamp/finished_at)."
+    ],
+    "tarife_eur_kwh": {
+      "jedinstvena": 0.0913,
+      "visa_dan": 0.0972,
+      "niza_noc": 0.0477
+    },
+    "zadana_tarifa": "jedinstvena"
+  },
+  "volumen": {
+    "_izvor": "Služba nabave Veleučilišta u Rijeci, razgovor rujan 2026.",
+    "_napomena": "Sustav nije u produkciji; brojka je procjena službe, ne izmjereni podatak.",
+    "ponuda_godisnje_procjena": 400,
+    "raspon_procjene": [
+      300,
+      500
+    ],
+    "raspon_za_analizu_osjetljivosti": [
+      300,
+      400,
+      500
+    ]
+  },
+  "krivulja_isplativosti": {
+    "_opis": "Točka pokrića se ne iskazuje kao jedan broj nego kao krivulja preko raspona cijene oblaka.",
+    "mnozitelji_cijene_oblaka": [
+      0.25,
+      0.5,
+      0.75,
+      1.0,
+      1.25,
+      1.5,
+      1.75,
+      2.0
+    ]
+  },
+  "tecaj": {
+    "_napomena": "Cjenik je u USD, trošak se iskazuje u EUR. usd_u_eur je IZVEDEN iz objavljenog tečaja (1 / eur_u_usd) i tako ga koristi evalCost.js.",
+    "eur_u_usd": 1.1622,
+    "usd_u_eur": 0.8604371,
+    "datum": "2026-09-04",
+    "izvor": "Referentni tečaj Europske središnje banke, https://www.ecb.europa.eu/stats/policy_and_exchange_rates/euro_reference_exchange_rates/"
+  }
+}

@@ -75,7 +75,11 @@ function summarize(rows) {
     maxLatencySec: latenciesSec.length ? round(Math.max(...latenciesSec)) : null,
     meanPromptTokens: round(mean(promptToks), 0),
     meanCompletionTokens: round(mean(complToks), 0),
-    createCalledRate: round((rows.filter((r) => r.create_request_called).length / rows.length) * 100, 0),
+    // Udio pokušaja u kojima je model odbio pretvoriti dokument u stavke.
+    // Kod scenarija koji odbijanje očekuje to je poželjan ishod, ne kvar —
+    // ocjena je u accuracy.decision_match, ovdje je samo činjenica.
+    refusedRate: round((rows.filter((r) => r.refused).length / rows.length) * 100, 0),
+    meanItemsReturned: round(mean(ok.map((r) => r.items_returned).filter((v) => v != null)), 1),
   };
 }
 

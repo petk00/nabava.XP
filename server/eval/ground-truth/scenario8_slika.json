@@ -1,0 +1,218 @@
+{
+  "scenario_id": "scenario8_slika",
+  "expected_decision": "create",
+  "expects_refusal": false,
+  "input_modality": "image",
+  "server_text_extraction": false,
+  "attachments": [
+    "scenario8_slika.jpeg"
+  ],
+  "fields": {
+    "total_amount": {
+      "value": 109.94,
+      "acceptable": [
+        109.94
+      ],
+      "provenance": {
+        "source": "image",
+        "file": "scenario8_slika.jpeg",
+        "note": "Prilog je slika: poslužiteljske ekstrakcije teksta nema, pa nema ni lokatora prema retku niti bajt-jednakog citata. Vrijednost je očitana s fotografije. Očitano: UKUPNO SA PDV-om: 109,94 EUR"
+      }
+    },
+    "items": [
+      {
+        "item_name": {
+          "value": "ETIK.45,7x21,2mm A4 1/100",
+          "provenance": {
+            "source": "image",
+            "file": "scenario8_slika.jpeg",
+            "note": "Prilog je slika: poslužiteljske ekstrakcije teksta nema, pa nema ni lokatora prema retku niti bajt-jednakog citata. Vrijednost je očitana s fotografije. Očitano: redak 1, stupac „Naziv artikla-usluge\""
+          }
+        },
+        "quantity": {
+          "value": 5,
+          "provenance": {
+            "source": "image",
+            "file": "scenario8_slika.jpeg",
+            "note": "Prilog je slika: poslužiteljske ekstrakcije teksta nema, pa nema ni lokatora prema retku niti bajt-jednakog citata. Vrijednost je očitana s fotografije. Očitano: redak 1, stupac „količina\" = 5,000"
+          },
+          "form": "digit"
+        },
+        "category_name": {
+          "value": "Uredski materijal",
+          "acceptable_categories": [
+            "Uredski materijal",
+            "Tiskani materijali"
+          ],
+          "ambiguous": true,
+          "acceptable_reason_type": null,
+          "acceptable_reason": null,
+          "rule": null,
+          "note": "prema namjeni kao potrošni materijal za označavanje i administraciju dokumenata.",
+          "provenance": {
+            "source": "codebook",
+            "table": "ItemCategory",
+            "document": "server/eval/category-codebook.md",
+            "sha256_16": "be6c9b1400f6598e"
+          },
+          "assignment": "author"
+        }
+      },
+      {
+        "item_name": {
+          "value": "TRG.PAPIR A3 VK 1/200",
+          "provenance": {
+            "source": "image",
+            "file": "scenario8_slika.jpeg",
+            "note": "Prilog je slika: poslužiteljske ekstrakcije teksta nema, pa nema ni lokatora prema retku niti bajt-jednakog citata. Vrijednost je očitana s fotografije. Očitano: redak 2, stupac „Naziv artikla-usluge\""
+          }
+        },
+        "quantity": {
+          "value": 5,
+          "provenance": {
+            "source": "image",
+            "file": "scenario8_slika.jpeg",
+            "note": "Prilog je slika: poslužiteljske ekstrakcije teksta nema, pa nema ni lokatora prema retku niti bajt-jednakog citata. Vrijednost je očitana s fotografije. Očitano: redak 2, stupac „količina\" = 5,000"
+          },
+          "form": "digit"
+        },
+        "category_name": {
+          "value": "Uredski materijal",
+          "acceptable_categories": [
+            "Uredski materijal",
+            "Tiskani materijali"
+          ],
+          "ambiguous": true,
+          "acceptable_reason_type": null,
+          "acceptable_reason": null,
+          "rule": null,
+          "note": "prema fizičkoj prirodi kao papirni potrošni materijal za uredsku upotrebu.",
+          "provenance": {
+            "source": "codebook",
+            "table": "ItemCategory",
+            "document": "server/eval/category-codebook.md",
+            "sha256_16": "be6c9b1400f6598e"
+          },
+          "assignment": "author"
+        }
+      },
+      {
+        "item_name": {
+          "value": "FL.MARKER EDING 360 ZA PLOČU CRNI",
+          "provenance": {
+            "source": "image",
+            "file": "scenario8_slika.jpeg",
+            "note": "Prilog je slika: poslužiteljske ekstrakcije teksta nema, pa nema ni lokatora prema retku niti bajt-jednakog citata. Vrijednost je očitana s fotografije. Očitano: redak 3, stupac „Naziv artikla-usluge\""
+          }
+        },
+        "quantity": {
+          "value": 10,
+          "provenance": {
+            "source": "image",
+            "file": "scenario8_slika.jpeg",
+            "note": "Prilog je slika: poslužiteljske ekstrakcije teksta nema, pa nema ni lokatora prema retku niti bajt-jednakog citata. Vrijednost je očitana s fotografije. Očitano: redak 3, stupac „količina\" = 10,000"
+          },
+          "form": "digit"
+        },
+        "category_name": {
+          "value": "Nastavne potrepštine",
+          "acceptable_categories": [
+            "Nastavne potrepštine",
+            "Uredska oprema i potrepštine"
+          ],
+          "ambiguous": true,
+          "acceptable_reason_type": null,
+          "acceptable_reason": null,
+          "rule": null,
+          "note": "prema primarnoj namjeni za rad i označavanje na nastavnim pločama.",
+          "provenance": {
+            "source": "codebook",
+            "table": "ItemCategory",
+            "document": "server/eval/category-codebook.md",
+            "sha256_16": "be6c9b1400f6598e"
+          },
+          "assignment": "author"
+        }
+      },
+      {
+        "item_name": {
+          "value": "GT-U-147/NP OMOT SPISA",
+          "provenance": {
+            "source": "image",
+            "file": "scenario8_slika.jpeg",
+            "note": "Prilog je slika: poslužiteljske ekstrakcije teksta nema, pa nema ni lokatora prema retku niti bajt-jednakog citata. Vrijednost je očitana s fotografije. Očitano: redak 4, stupac „Naziv artikla-usluge\""
+          }
+        },
+        "quantity": {
+          "value": 50,
+          "provenance": {
+            "source": "image",
+            "file": "scenario8_slika.jpeg",
+            "note": "Prilog je slika: poslužiteljske ekstrakcije teksta nema, pa nema ni lokatora prema retku niti bajt-jednakog citata. Vrijednost je očitana s fotografije. Očitano: redak 4, stupac „količina\" = 50,000"
+          },
+          "form": "digit"
+        },
+        "category_name": {
+          "value": "Uredski materijal",
+          "acceptable_categories": [
+            "Uredski materijal",
+            "Uredska oprema i potrepštine"
+          ],
+          "ambiguous": true,
+          "acceptable_reason_type": null,
+          "acceptable_reason": null,
+          "rule": null,
+          "note": "prema namjeni za organizaciju, zaštitu i pohranu službene dokumentacije.",
+          "provenance": {
+            "source": "codebook",
+            "table": "ItemCategory",
+            "document": "server/eval/category-codebook.md",
+            "sha256_16": "be6c9b1400f6598e"
+          },
+          "assignment": "author"
+        }
+      },
+      {
+        "item_name": {
+          "value": "LJEPILO U STIKU STAEDTLER 20g",
+          "provenance": {
+            "source": "image",
+            "file": "scenario8_slika.jpeg",
+            "note": "Prilog je slika: poslužiteljske ekstrakcije teksta nema, pa nema ni lokatora prema retku niti bajt-jednakog citata. Vrijednost je očitana s fotografije. Očitano: redak 5, stupac „Naziv artikla-usluge\""
+          }
+        },
+        "quantity": {
+          "value": 5,
+          "provenance": {
+            "source": "image",
+            "file": "scenario8_slika.jpeg",
+            "note": "Prilog je slika: poslužiteljske ekstrakcije teksta nema, pa nema ni lokatora prema retku niti bajt-jednakog citata. Vrijednost je očitana s fotografije. Očitano: redak 5, stupac „količina\" = 5,000"
+          },
+          "form": "digit"
+        },
+        "category_name": {
+          "value": "Uredski materijal",
+          "acceptable_categories": [
+            "Uredski materijal",
+            "Nastavne potrepštine"
+          ],
+          "ambiguous": true,
+          "acceptable_reason_type": null,
+          "acceptable_reason": null,
+          "rule": null,
+          "note": "prema mogućnosti korištenja kao potrošni materijal u nastavnom i administrativnom radu.",
+          "provenance": {
+            "source": "codebook",
+            "table": "ItemCategory",
+            "document": "server/eval/category-codebook.md",
+            "sha256_16": "be6c9b1400f6598e"
+          },
+          "assignment": "author"
+        }
+      }
+    ]
+  },
+  "notes": "Ponuda 225/2025, biooprema d.o.o., 27. 11. 2025. Samostalan dokument, NIJE fotografija ponude iz scenarija 1 — uparene probe na razini ulaznog kanala nema. Prilog je slika, pa poslužiteljske ekstrakcije teksta nema i ulaz nije izjednačen među izvedbama; rezultati idu u zasebnu tablicu točnosti, s odvojenim brojanjem tokena. Uz točnost se bilježi i je li izvedba uopće izvukla ijednu stavku — prazan rezultat na slici valjan je nalaz.",
+  "_schema": "ground-truth/v2-image",
+  "category_codebook_sha256_16": "be6c9b1400f6598e"
+}

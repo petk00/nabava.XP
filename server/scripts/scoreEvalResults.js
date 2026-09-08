@@ -1,22 +1,18 @@
 #!/usr/bin/env node
-// Bodovanje TOČNOSTI/KVALITETE (RQ1) za jedan ili više eval runova (docs/AI.md,
-// docs/EVAL_SCENARIOS.md) — nadopuna aggregateEvalResults.js, koji mjeri
-// isplativost/trošak (latenciju, tokene — RQ2), ne i je li AI stvarno napravio
-// ISPRAVAN zahtjev.
+// Bodovanje TOČNOSTI čitanja ponude za jedan ili više eval runova
+// (docs/mjerni-plan.md) — nadopuna aggregateEvalResults.js, koji mjeri brzinu i
+// potrošnju, ne i je li model stavke pročitao ispravno.
 //
-// Uspoređuje STVARNO spremljeno stanje zahtjeva iz baze (evalHarness.js
-// polje "actual_created_request", upisano NAKON create_request poziva —
-// vidi fetchCreatedRequest u evalHarness.js) s ručno utvrđenim ground
-// truthom po scenariju (evalScenarios.js polje "expectedResult").
+// Mjeri se ono što vrati ruta POST /api/requests/:id/ai-items: popis stavki
+// (naziv, količina, kategorija) i ukupan iznos pročitan iz ponude. Usporedba
+// ide protiv ground trutha u eval/ground-truth/<scenario_id>.json.
 //
-// NIJE potpuno automatski bodovač: nazivi stavki koje AI izvuče iz ponude
-// gotovo nikad neće biti slovo-po-slovo isti kao u expectedResult (model
-// parafrazira, skraćuje, ponekad prevodi) — pa se automatski provjerava samo
-// ono što je mehanički provjerljivo (je li create_request uopće pozvan kad je
-// trebao, odjel, BROJ stavki, ukupan iznos unutar prihvatljivog raspona), a
-// SADRŽAJ stavki (jesu li to STVARNO iste stavke) ostaje prazno polje u
-// izlaznom markdownu za RUČNU procjenu uz checklistu — vidi dogovorenu
-// rubriku u razgovoru koji je proizveo ovaj skript.
+// NIJE potpuno automatski bodovač. Nazivi stavki gotovo nikad nisu slovo po
+// slovo isti kao u ground truthu (model parafrazira, skraćuje, izbacuje šifre),
+// pa se automatski provjerava samo ono što je mehanički provjerljivo — je li
+// stavaka izvučeno koliko treba, poklapaju li se količine, je li iznos u
+// prihvatljivom rasponu i je li kategorija ispravno dodijeljena. SADRŽAJ
+// stavki ostaje prazno polje za RUČNU procjenu uz usporedni ispis.
 //
 // Korištenje:
 //   node scripts/scoreEvalResults.js                          (svi .jsonl u eval-results/)
@@ -25,15 +21,12 @@
 
 const fs = require('fs');
 const path = require('path');
-const { SCENARIOS } = require('./evalScenarios');
 // Ground truth dolazi iz eval/ground-truth/*.json, ISTOG izvora koji koristi
-// evalHarness.js. Ranije je svaka skripta imala vlastitu kopiju očekivanja
-// (evalScenarios.expectedResult ovdje, ista struktura ondje), pa su se dvije
-// implementacije istog mjerila mogle tiho razići.
+// evalHarness.js. Prije je svaka skripta imala vlastitu kopiju očekivanja, pa
+// su se dvije implementacije istog mjerila mogle tiho razići.
 const { loadGroundTruthForScoring } = require('./groundTruth');
 
 const RESULTS_DIR = path.join(__dirname, '..', 'eval-results');
-const SCENARIO_BY_ID = new Map(SCENARIOS.map((s) => [s.id, s]));
 const AMOUNT_TOLERANCE = 0.01;
 
 function resolveInputFiles(args) {
@@ -66,30 +59,48 @@ function checkbox(value) {
   return value ? '[x]' : '[ ]';
 }
 
-/** Mehanički provjerljiv dio bodovanja za JEDAN pokušaj. Vraća null gdje provjera zahtijeva ljudsku prosudbu. */
+function sortedQuantities(items) {
+  return (items || []).map((i) => Number(i?.quantity)).sort((a, b) => a - b);
+}
+
+/**
+ * Mehanički provjerljiv dio bodovanja za JEDAN pokušaj.
+ * Vraća null ondje gdje provjera nije primjenjiva.
+ */
 function autoScore(row, expected) {
   if (!expected) return null;
 
-  const created = row.actual_created_request;
-  const expectsCreate = expected.decision === 'create';
-  const decisionOk = expectsCreate ? row.create_request_called === true : row.create_request_called === false;
-
-  let departmentOk = null;
-  let itemCountOk = null;
-  let totalOk = null;
-
-  if (expectsCreate && created) {
-    departmentOk = expected.department_name ? created.department_name === expected.department_name : null;
-    itemCountOk = expected.items ? created.items.length === expected.items.length : null;
-    totalOk = amountMatches(created.total_amount, expected.total_amount_acceptable);
+  // Scenarij koji očekuje odbijanje točan je upravo kad stavaka nema.
+  if (expected.expects_refusal) {
+    return {
+      decisionOk: row.items_returned === null || row.items_returned === 0,
+      itemCountOk: null,
+      quantitiesOk: null,
+      amountOk: null,
+    };
   }
 
-  return { decisionOk, departmentOk, itemCountOk, totalOk };
+  const extracted = row.extracted_items;
+  if (!extracted) {
+    return { decisionOk: false, itemCountOk: null, quantitiesOk: null, amountOk: null };
+  }
+
+  const expectedQty = sortedQuantities(expected.items);
+  const actualQty = sortedQuantities(extracted);
+
+  return {
+    decisionOk: true,
+    itemCountOk: expected.items.length === extracted.length,
+    quantitiesOk: expectedQty.length === actualQty.length && expectedQty.every((q, i) => q === actualQty[i]),
+    amountOk: amountMatches(row.amount_read, expected.total_amount_acceptable),
+  };
 }
 
-function formatItemList(items) {
+function formatItemList(items, withCategory = false) {
   if (!items || items.length === 0) return '_(nema stavki)_';
-  return items.map((i) => `- ${i.item_name} (${i.quantity})`).join('\n');
+  return items
+    .map((i) => `- ${i.item_name} (${i.quantity})${withCategory && i.category_name ? ` — ${i.category_name}` : ''}`)
+    .join('\n');
 }
 
 function main() {
@@ -113,65 +124,103 @@ function main() {
   }
 
   const lines = [
-    '# Radni list za bodovanje točnosti (RQ1)',
+    '# Radni list za bodovanje točnosti čitanja ponude',
     '',
     `Generirano: ${new Date().toISOString()}`,
     `Uključeni runovi: ${files.map((f) => path.basename(f)).join(', ')}`,
     '',
-    '**Kako čitati:** `[x]`/`[ ]` uz "Odluka", "Odjel", "Broj stavki", "Iznos" su AUTOMATSKI izračunati',
-    '(usporedba s ground truthom iz eval/ground-truth/). Redak "Sadržaj stavki" NIJE automatski —',
-    'usporedi "STVARNE STAVKE" sa "OČEKIVANE STAVKE" ispod i ručno označi. Prazan `[ ]` kod automatskih',
-    'polja gdje scenarij ne kreira zahtjev (ask/refuse) znači "nije primjenjivo", ne "netočno".',
+    '**Kako čitati:** `[x]`/`[ ]` uz "Ishod", "Broj stavki", "Količine", "Iznos" i "Kategorije" su',
+    'AUTOMATSKI izračunati (usporedba s ground truthom iz eval/ground-truth/). Redak "Sadržaj stavki"',
+    'NIJE automatski — usporedi "PROČITANE STAVKE" s "OČEKIVANE STAVKE" i ručno označi. Prazan `[ ]`',
+    'kod automatskih polja znači "nije primjenjivo", ne "netočno".',
+    '',
+    'Kategorije se boduju dvojako: STROGO priznaje samo očekivanu kategoriju, BLAGO bilo koju iz',
+    'popisa prihvatljivih. Razlika mjeri koliko dodjela ovisi o konvenciji ustanove, a koliko o',
+    'prepoznavanju predmeta.',
     '',
   ];
 
-  let autoTotals = { decision: 0, department: 0, itemCount: 0, total: 0, applicable: 0 };
+  const totals = {
+    applicable: 0, decision: 0,
+    itemCountApplicable: 0, itemCount: 0,
+    quantitiesApplicable: 0, quantities: 0,
+    amountApplicable: 0, amount: 0,
+    categoriesChecked: 0, categoriesStrict: 0, categoriesLenient: 0,
+  };
 
   for (const [scenarioId, rows] of [...byScenario.entries()].sort()) {
-    const scenario = SCENARIO_BY_ID.get(scenarioId);
-    const expected = loadGroundTruthForScoring(row.scenario_id);
+    const expected = loadGroundTruthForScoring(scenarioId);
     lines.push(`## ${scenarioId}`, '');
     if (!expected) {
       lines.push('_Nema ground trutha za ovaj scenarij (eval/ground-truth/) — preskočeno._', '');
       continue;
     }
-    lines.push(`**Očekivano:** odluka=\`${expected.decision}\`, odjel=\`${expected.department_name ?? '-'}\`, ${expected.items.length} stavki, iznos∈${JSON.stringify(expected.total_amount_acceptable)}`);
+    lines.push(
+      `**Očekivano:** ${expected.expects_refusal ? 'odbijanje (dokument nije ponuda)' : `${expected.items.length} stavki`}`
+        + `, iznos∈${JSON.stringify(expected.total_amount_acceptable)}`
+    );
     if (expected.notes) lines.push(`> ${expected.notes}`);
-    lines.push('', 'OČEKIVANE STAVKE:', formatItemList(expected.items), '');
+    lines.push('', 'OČEKIVANE STAVKE:', formatItemList(expected.items, true), '');
 
     for (const row of rows.sort((a, b) => a.attempt - b.attempt)) {
       const score = autoScore(row, expected);
-      const created = row.actual_created_request;
-      lines.push(`### Pokušaj ${row.attempt} (${row._run})`, '');
-      if (!row.success) {
-        lines.push(`- Pokušaj NIJE uspio na razini poziva (error: \`${row.error}\`) — bodovanje točnosti se ne primjenjuje, pouzdanost/latencija se prati u aggregateEvalResults.js (RQ2).`, '');
+      lines.push(`### Pokušaj ${row.attempt} — ${row.provider}/${row.model ?? '?'} (${row._run})`, '');
+
+      if (!row.success && !row.refused) {
+        lines.push(
+          `- Pokušaj NIJE uspio na razini poziva (error: \`${row.error}\`) — bodovanje točnosti se ne `
+            + 'primjenjuje; pouzdanost i latencija prate se u aggregateEvalResults.js.',
+          ''
+        );
         continue;
       }
-      lines.push(`- ${checkbox(score.decisionOk)} Odluka: create_request pozvan=${row.create_request_called} (očekivano: ${expected.decision})`);
-      if (score.departmentOk !== null) {
-        lines.push(`- ${checkbox(score.departmentOk)} Odjel: "${created?.department_name}" (očekivano: "${expected.department_name}")`);
-        autoTotals.department += score.departmentOk ? 1 : 0;
-      }
-      if (score.itemCountOk !== null) {
-        lines.push(`- ${checkbox(score.itemCountOk)} Broj stavki: ${created?.items.length} (očekivano: ${expected.items.length})`);
-        autoTotals.itemCount += score.itemCountOk ? 1 : 0;
-      }
-      if (score.totalOk !== null) {
-        lines.push(`- ${checkbox(score.totalOk)} Iznos: ${created?.total_amount ?? 'null'} (prihvatljivo: ${JSON.stringify(expected.total_amount_acceptable)})`);
-        autoTotals.total += score.totalOk ? 1 : 0;
-      }
-      if (expected.decision === 'create') {
-        lines.push(`- [ ] Sadržaj stavki točan (RUČNA PROCJENA)`);
-      }
-      autoTotals.decision += score.decisionOk ? 1 : 0;
-      autoTotals.applicable += 1;
 
-      if (created) {
-        lines.push('', 'STVARNE STAVKE:', formatItemList(created.items), '');
-      } else if (row.create_request_called) {
-        lines.push('', '_(create_request pozvan, ali actual_created_request nedostupan — stariji run prije ove nadogradnje harnessa)_', '');
+      lines.push(`- ${checkbox(score.decisionOk)} Ishod: ${row.refused ? 'odbijeno' : `${row.items_returned} stavki`}`
+        + ` (očekivano: ${expected.expects_refusal ? 'odbijanje' : `${expected.items.length} stavki`})`);
+      totals.decision += score.decisionOk ? 1 : 0;
+      totals.applicable += 1;
+
+      if (row.refused) {
+        lines.push(`- Poruka modela: _${(row.refusal_message || '').slice(0, 300).replace(/\n/g, ' ')}_`, '');
+        continue;
       }
-      lines.push(`- Bilješka: _${row.final_response_text ? row.final_response_text.slice(0, 200).replace(/\n/g, ' ') : ''}_`, '');
+
+      if (score.itemCountOk !== null) {
+        lines.push(`- ${checkbox(score.itemCountOk)} Broj stavki: ${row.items_returned} (očekivano: ${expected.items.length})`);
+        totals.itemCountApplicable += 1;
+        totals.itemCount += score.itemCountOk ? 1 : 0;
+      }
+      if (score.quantitiesOk !== null) {
+        lines.push(`- ${checkbox(score.quantitiesOk)} Količine se poklapaju`);
+        totals.quantitiesApplicable += 1;
+        totals.quantities += score.quantitiesOk ? 1 : 0;
+      }
+      if (score.amountOk !== null) {
+        lines.push(`- ${checkbox(score.amountOk)} Iznos: ${row.amount_read ?? 'null'}`
+          + ` (prihvatljivo: ${JSON.stringify(expected.total_amount_acceptable)}, status: ${row.amount_status ?? '-'})`);
+        totals.amountApplicable += 1;
+        totals.amount += score.amountOk ? 1 : 0;
+      }
+
+      const cat = row.category_accuracy;
+      if (cat && cat.checked > 0) {
+        lines.push(`- ${checkbox(cat.strict === cat.checked)} Kategorije STROGO: ${cat.strict}/${cat.checked}`
+          + ` — BLAGO: ${cat.lenient}/${cat.checked}`);
+        totals.categoriesChecked += cat.checked;
+        totals.categoriesStrict += cat.strict;
+        totals.categoriesLenient += cat.lenient;
+        for (const m of cat.mismatches || []) {
+          lines.push(`  - promašaj: "${m.item_name}" → dobiveno "${m.actual}", očekivano "${m.expected}"`);
+        }
+      } else {
+        lines.push('- [ ] Kategorije: broj stavki se ne poklapa, mjera nije definirana');
+      }
+
+      lines.push('- [ ] Sadržaj stavki točan (RUČNA PROCJENA)');
+      if ((row.warnings || []).length > 0) {
+        lines.push(`- Upozorenja: ${row.warnings.join(' | ')}`);
+      }
+      lines.push('', 'PROČITANE STAVKE:', formatItemList(row.extracted_items, true), '');
     }
   }
 
@@ -180,19 +229,21 @@ function main() {
     '',
     '## Sažetak automatskih provjera',
     '',
-    `- Odluka (create/ne-create) ispravna: ${autoTotals.decision}/${autoTotals.applicable}`,
-    `- Odjel ispravan (gdje primjenjivo): ${autoTotals.department}`,
-    `- Broj stavki ispravan (gdje primjenjivo): ${autoTotals.itemCount}`,
-    `- Iznos u prihvatljivom rasponu (gdje primjenjivo): ${autoTotals.total}`,
+    `- Ishod ispravan: ${totals.decision}/${totals.applicable}`,
+    `- Broj stavki ispravan: ${totals.itemCount}/${totals.itemCountApplicable}`,
+    `- Količine ispravne: ${totals.quantities}/${totals.quantitiesApplicable}`,
+    `- Iznos u prihvatljivom rasponu: ${totals.amount}/${totals.amountApplicable}`,
+    `- Kategorije STROGO: ${totals.categoriesStrict}/${totals.categoriesChecked}`,
+    `- Kategorije BLAGO: ${totals.categoriesLenient}/${totals.categoriesChecked}`,
     '',
-    '_Sadržaj stavki (jesu li to STVARNO iste stavke, ne samo isti broj) i finije razlike ask_clarification vs refuse ostaju za ručnu procjenu iznad._',
+    '_Sadržaj stavki (jesu li to STVARNO iste stavke, ne samo isti broj) ostaje za ručnu procjenu iznad._',
     ''
   );
 
   fs.mkdirSync(path.dirname(outPath), { recursive: true });
   fs.writeFileSync(outPath, lines.join('\n'));
   console.log(`[scoreEvalResults] Radni list zapisan: ${outPath}`);
-  console.log(`[scoreEvalResults] Odluka ispravna: ${autoTotals.decision}/${autoTotals.applicable}`);
+  console.log(`[scoreEvalResults] Ishod ispravan: ${totals.decision}/${totals.applicable}`);
 }
 
 main();

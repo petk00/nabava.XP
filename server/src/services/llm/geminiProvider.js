@@ -236,12 +236,21 @@ async function chat(messages, tools = []) {
   const elapsedMs = Number((process.hrtime.bigint() - startedAt) / 1000000n);
   return {
     ...parseResponse(data),
+    // Čekanje na kvotu se ODBIJA: inače mjera brzine modela mjeri tuđi rate
+    // limit. Sirova vrijednost ostaje zapisana jer je kvota zaseban nalaz —
+    // docs/mjerni-plan.md § 7.
     latencyMs: elapsedMs - waitedMs,
+    latencyRawMs: elapsedMs,
+    // Gemini ne izlaže misaone tokene odvojeno; polja se nose radi jednakog
+    // oblika zapisa s lokalnom izvedbom.
+    thinkingChars: 0,
+    contentChars: (parseResponse(data).text || '').length,
+    completionTokensIncludeThinking: false,
     // Verzija modela kakvu prijavljuje SAM ODGOVOR, ne konfiguracija. Endpoint
     // iza istog imena ("gemini-3.5-flash") zna se tiho promijeniti, pa je za
     // obranjivost mjerenja bitno što je stvarno odgovorilo, a ne što smo tražili.
     ...(data?.modelVersion ? { modelVersion: data.modelVersion } : {}),
-    ...(waitedMs > 0 ? { rateLimitWaitMs: waitedMs } : {}),
+    rateLimitWaitMs: waitedMs,
   };
 }
 
