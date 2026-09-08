@@ -1,12 +1,18 @@
 # BROJEVI — jedini izvor izmjerenih vrijednosti
 
 > **Pravilo:** nijedan broj ne ulazi u tekst rada ako nije ovdje.
-> Popunjava se **skriptom iz JSONL-a** (`server/eval-results/`), ne prepisivanjem iz glave.
-> Svaki redak ima izvor (datoteka + datum prolaza), inače nije upotrebljiv.
+> Popunjava se **skriptom iz JSONL-a**, ne prepisivanjem.
+> Definicije mjera i klase grešaka drži `docs/mjerni-plan.md` — ovdje su samo vrijednosti.
+> Uz svaku vrijednost mora biti jasno je li dobivena **automatski** ili **ručno**.
 
-**Status kampanje:** ⬜ nije pokrenuta ⬜ u tijeku ⬜ završena
-**Datum kampanje:** ‹popuniti›
-**Verzija koda pri mjerenju (git commit):** ‹popuniti›
+**Mjerena ruta:** `POST /api/requests/:id/ai-items` (čitanje priložene ponude, zamjena stavki)
+
+**`run_id`:** ‹popuniti› · **`run_kind`:** `final` · **datum:** ‹popuniti›
+**commit aplikacije:** ‹popuniti› · **commit harnessa:** ‹popuniti› · **dirty:** false
+**`prompt_variant`:** `names_only` (s poslužitelja, `/version`)
+
+> Runovi različite vrste se ne spajaju. Pilot se citira kao pilot, nikad kao rezultat.
+> Odrezan odgovor (`finish_reason` = `length` / `MAX_TOKENS`) poništava run.
 
 ---
 
@@ -14,208 +20,372 @@
 
 | Stavka | Vrijednost |
 |--------|-----------|
-| Hardver (lokalno) | Mac Mini M4, 16 GB RAM |
-| OS i verzija | ‹popuniti› |
-| Ollama verzija | ‹popuniti› |
-| Lokalni model | `gemma4:e2b` (5,1 mlrd. par.) |
-| Temperatura (lokalno) | Modelfile default — ‹vrijednost› |
-| Cloud model | `gemini-2.5-flash` |
-| Cloud regija / endpoint | ‹popuniti› |
-| Broj scenarija | ‹popuniti› |
-| Ponavljanja po scenariju (N) | ‹≥30› |
-| Cool-down između prolaza | 2 s |
-| Mreža (za cloud) | ‹popuniti — vrsta veze, izmjerena latencija do endpointa› |
+| Uređaj | Mac Mini M4, 16 GB objedinjene memorije |
+| Što na njemu radi | ‹popuniti — aplikacija, baza, Ollama, …› |
+| OS / Ollama verzija | ‹popuniti› |
+| Samoposlužena izvedba | `gemma4:e2b` |
+| Distribuirana izvedba | `gemini-2.5-flash`, `modelVersion` iz odgovora: ‹popuniti› |
+| Endpoint / regija | ‹popuniti› |
+| Vrsta veze prema internetu | ‹popuniti› |
+| Osnovni RTT do endpointa | ‹ms, medijan od N› |
+| Uzorkovanje | temp 0, top_p 1, max 4096; sjeme 42 **samo Ollama**; `top_k` neizjednačen |
+| Warm-up lokalnog modela | ‹izveden / nije› |
+| Scenariji u runu | 1, 2, 3, 4, 9, 10 (+ nove ponude: ‹popisati›) |
+| Ponavljanja po scenariju i izvedbi | ‹popuniti› |
+| Stanje baze prije prvog pokušaja | ‹snimka: popuniti› |
+
+**Opterećenje Veleučilišta (sidro hipoteze):**
+nabava godišnje ‹popuniti› · vršna istodobnost ‹popuniti› · izvor ‹popuniti›
+
+**Provjera mjerila** (`server/scripts/verifyProvenance.js`, commit `6d93bbe`) — nad
+sedam izvođenih scenarija:
+
+| Mjera | Vrijednost |
+|---|---|
+| unosa provenance ukupno (s ugniježđenima) | 190 |
+| od toga s citatom | 131 |
+| provjerljivo protiv teksta priloga | 125 |
+| **prolazi provjeru doslovnosti i retka** | **125 (sve)** |
+| bez citata — dodjela iz codebooka | 59 (55 jedinstvenih stavki) |
+
+Tekst se izvlači istim putem kojim ga izvlači mjerena ruta. `line` je nula-indeksiran.
 
 ---
 
-## 1. Latencija
+## 1. Odziv
 
-**TTFT (vrijeme do prvog tokena), ms**
+> Medijan i p95, **nikad prosjek**. `rate_limit_wait_ms` odbijen od `latencyMs`;
+> sirova vrijednost se zadržava kao zaseban nalaz o kvoti.
 
-| Izvedba | N | min | medijan | p95 | max | st. dev. | Izvor |
-|---------|---|-----|---------|-----|-----|----------|-------|
-| lokalna | | | | | | | |
-| cloud | | | | | | | |
+| Izvedba | N | p50 (ms) | p95 (ms) | min | max | Izvor |
+|---------|---|----------|----------|-----|-----|-------|
+| samoposlužena | | | | | | |
+| distribuirana | | | | | | |
 
-**End-to-end latencija, ms**
+**Po pojedinom pozivu modelu** (`model_call_latencies_ms[]` — p50/p95 se iz zbroja ne računaju)
 
-| Izvedba | N | min | medijan | p95 | max | st. dev. | Izvor |
-|---------|---|-----|---------|-----|-----|----------|-------|
-| lokalna | | | | | | | |
-| cloud | | | | | | | |
+| Izvedba | broj poziva (p50) | trajanje poziva p50 | p95 | Izvor |
+|---------|-------------------|---------------------|-----|-------|
+| samoposlužena | | | | |
+| distribuirana | | | | |
 
-**Jitter** (raspršenje uzastopnih mjerenja)
+**Razlaganje odziva — cijena prelaska mreže**
 
-| Izvedba | mjera | vrijednost | Izvor |
-|---------|-------|-----------|-------|
-| lokalna | | | |
-| cloud | | | |
+| Izvedba | mrežni RTT (ms) | vrijeme obrade (ms) | ukupno | udio mreže % | Izvor |
+|---------|-----------------|---------------------|--------|--------------|-------|
+| samoposlužena | — | | | 0 | |
+| distribuirana | | | | | |
 
-**Po scenariju** (za box plot — sirovi podaci ostaju u JSONL-u, ovdje samo sažetak)
+**Čekanje na kvotu** (zaseban nalaz, ne dio brzine modela)
 
-| Scenarij | Izvedba | medijan e2e (ms) | p95 (ms) |
-|----------|---------|------------------|----------|
+| Izvedba | `rate_limit_wait_ms` p50 | p95 | udio pokušaja s čekanjem % |
+|---------|--------------------------|-----|-----------------------------|
+| distribuirana | | | |
+
+**Po scenariju**
+
+| Scenarij | Izvedba | p50 (ms) | p95 (ms) |
+|----------|---------|----------|----------|
 | | | | |
 
 ---
 
-## 2. Propusnost
+## 2. Potrošnja tokena
 
-| Izvedba | tokeni/s (medijan) | eval_count (prosj.) | eval_duration (prosj.) | Izvor |
-|---------|--------------------|---------------------|------------------------|-------|
-| lokalna | | | | |
-| cloud | | | | |
+> Odvojeno po izvedbi, nikad kao omjer — različiti tokenizatori.
 
----
-
-## 3. Točnost
-
-**JSON validity rate** — udio odgovora koji zadovoljavaju shemu
-
-| Izvedba | ispravnih / ukupno | % | Izvor |
-|---------|--------------------|---|-------|
-| lokalna | | | |
-| cloud | | | |
-
-**Field accuracy** — usporedba sa `gold_standard.json`
-
-| Izvedba | točnih polja / ukupno | % | Izvor |
-|---------|------------------------|---|-------|
-| lokalna | | | |
-| cloud | | | |
-
-**Po polju** (gdje sustav griješi)
-
-| Polje | Lokalna % | Cloud % | Napomena |
-|-------|-----------|---------|----------|
-| | | | |
-
-**S prilogom vs bez priloga**
-
-| Izvedba | bez priloga % | s prilogom (PDF) % | Izvor |
-|---------|---------------|--------------------|-------|
-| lokalna | | | |
-| cloud | | | |
-
-**Izmišljanje podataka (fabrication)** — polja popunjena vrijednošću koje nema u ulazu
-
-| Izvedba | broj slučajeva | stopa % | Izvor |
-|---------|----------------|---------|-------|
-| lokalna | | | |
-| cloud | | | |
-
-**Dosljednost** — isti ulaz, ponovljeni prolazi, identičan izlaz?
-
-| Izvedba | udio identičnih izlaza % | Izvor |
-|---------|--------------------------|-------|
-| lokalna | | | |
-| cloud | | | |
+| Izvedba | ulazni (p50) | izlazni (p50) | izlazni tokeni/s (p50) | Izvor |
+|---------|--------------|---------------|------------------------|-------|
+| samoposlužena | | | | |
+| distribuirana | | | | |
 
 ---
 
-## 4. Resursi (samo lokalna izvedba)
+## 3. Točnost čitanja ponude
 
-Uzorkovanje svakih 500 ms tijekom obrade.
+> **Podjela mjere.** Nosivi dio i jedini koji ulazi u prag H1: **iznos i stavke**
+> (§ 3.3 i § 3.4). Dopunska mjera bez praga: **dodjela kategorije** (§ 3.2), gdje je
+> glavna brojka blago bodovanje, a strogo se navodi uz nju.
+> Raspodjela grešaka po klasama (§ 3.1) opisuje narav grešaka u oba dijela.
 
-| Mjera | Mirovanje | Prosjek pod opterećenjem | Vršno | Izvor |
-|-------|-----------|--------------------------|-------|-------|
-| CPU % | | | | |
-| RAM (GB) | | | | |
-| ‹temperatura / potrošnja, ako se mjeri› | | | | |
+### 3.1 Raspodjela grešaka po klasama
+
+> Nije „stopa izmišljanja". Klase: `supported`, `derived`, `misgrounded`, `fabricated`, `contradicted`.
+
+| Polje | Klasa | Samoposlužena (n) | Distribuirana (n) |
+|-------|-------|-------------------|-------------------|
+| `total_amount` | supported | | |
+| `total_amount` | derived | | |
+| `total_amount` | misgrounded | | |
+| `total_amount` | fabricated | | |
+| `total_amount` | contradicted | | |
+| `quantity` | supported | | |
+| `quantity` | misgrounded | | |
+| `quantity` | fabricated | | |
+| `item_name` | ‹odluka čeka — v. mjerni plan § 8› | | |
+
+**`item_name` — prag odluke:** ≥ 80 % `obvious` → ulazi u mjeru utemeljenosti; ispod →
+izlazi, a parafraziranje se opisuje kao razlika u ponašanju. Izmjereno: ‹popuniti›
+
+### 3.2 Dodjela kategorije — DOPUNSKA MJERA, ne ulazi u prag H1
+
+> Šifrarničko polje ne može biti izmišljeno — samo krivo dodijeljeno.
+> **Glavna brojka je blago bodovanje** (je li kategorija obranjiva); strogo se navodi
+> uz nju. Model bira između **33 kategorije** iz baze; zlatni standard obuhvaća
+> **55 jedinstvenih stavki** u sedam scenarija.
+
+**Polazišna vrijednost većinske klase: 25,4 %** nad 59 bodovanih stavki
+*(27,3 % nad 55 jedinstvenih; 65,0 % vrijedilo je za stari šifrarnik od šest kategorija)*
+*Uvijek stoji u istoj tablici kao rezultati.*
+
+Raspodjela zlatnog standarda (59 bodovanih stavki, šifrarnik od 33 kategorije):
+
+| Kategorija | Stavaka | Udio |
+|---|---|---|
+| Elektronička i elektrotehnička oprema | 15 | 25,4 % |
+| Nastavna i laboratorijska oprema | 13 | 22,0 % |
+| Računalna oprema | 13 | 22,0 % |
+| Mjerna i ispitna oprema | 6 | 10,2 % |
+| Mrežna i telekomunikacijska oprema | 5 | 8,5 % |
+| Usluge razvoja i održavanja informacijskih sustava | 2 | 3,4 % |
+| ostalih pet kategorija | po 1 | po 1,7 % |
+
+Spornih (s prihvatljivim alternativama): **56 od 59**. Osam stavki ima tri prihvatljive
+kategorije, 44 ih ima dvije.
+
+| Izvedba | strogo % | blago % | razlika | Wilsonov interval (strogo) | Izvor |
+|---------|----------|---------|---------|-----------------------------|-------|
+| samoposlužena | | | | | |
+| distribuirana | | | | | |
+| **polazišna (većinska klasa)** | 65,0 | — | — | — | codebook |
+
+**Razlaganje razlike strogo/blago po granicama**
+
+> Za svaku strogo pogrešnu dodjelu koja prolazi blago bilježi se par
+> (očekivana → odabrana). U mjerilu je najzastupljenija granica laboratorijsko naspram
+> elektroničkog: 21 od 55 stavki u oba smjera, 38 % skupa. Nosi li ona i izmjerenu
+> razliku, vidjet će se tek iz rezultata.
+
+| Granica (očekivana → odabrana) | Samoposlužena | Distribuirana |
+|---|---|---|
+| Elektronička → Nastavna i laboratorijska | | |
+| Nastavna i laboratorijska → Elektronička | | |
+| Mjerna i ispitna → Nastavna i laboratorijska | | |
+| Računalna → Nastavna i laboratorijska | | |
+| Računalna → Elektronička | | |
+| ostale granice (ukupno 21 par) | | |
+
+**Točnost po kategoriji** (kategorije s jednom stavkom: **pogodak/promašaj, ne postotak**)
+
+| Kategorija | Stavaka | Samoposlužena | Distribuirana |
+|------------|---------|---------------|---------------|
+| Nastavna i laboratorijska oprema | 39 | | |
+| Računalna oprema | 14 | | |
+| Usluge održavanja | 5 | | |
+| Programska oprema i licence | 1 | pogodak/promašaj | pogodak/promašaj |
+| Namještaj | 1 | pogodak/promašaj | pogodak/promašaj |
+| **mikro (ukupno)** | 60 | | |
+| **makro (prosjek po kategorijama)** | — | | |
+
+**Matrica zabune** — apsolutni brojevi, uz napomenu o dominantnoj ćeliji: ‹prilog›
+
+**Uparena usporedba:** McNemar ‹popuniti› · bootstrap razlike ‹popuniti›
+
+### 3.3 Broj stavki i iznos — PRIMARNA MJERA *(H1)*
+
+| Mjera | Samoposlužena | Distribuirana | Izvor |
+|-------|---------------|---------------|-------|
+| točan broj stavki % | | | |
+| točne količine % | | | |
+| `amount_status` = `read` % | | | |
+| `amount_status` = `missing` % | | | |
+| `amount_status` = `foreign_currency` % | | | |
+| iznos točan kad je pročitan % | | | |
+
+### 3.4 Naziv stavke — PRIMARNA MJERA *(H1)*, RUČNO bodovano
+
+| Mjera | Samoposlužena | Distribuirana | Bodovao | Datum |
+|-------|---------------|---------------|---------|-------|
+| sadržajno ispravni nazivi % | | | Igor Petković | |
+| prosječna duljina naziva (znakova) | | | | |
+
+### 3.5 Upozorenja i odbijanja poslužitelja
+
+| Mjera | Samoposlužena | Distribuirana | Izvor |
+|-------|---------------|---------------|-------|
+| pokušaja s `warnings` % | | | |
+| najčešće upozorenje | | | |
+| 422 (nije izvukao stavke) % | | | |
+| nepostojeća kategorija u pozivu % | | | |
+| broj ispravaka nakon greške alata (p50) | | | |
+
+### 3.6 Dosljednost kroz ponavljanja
+
+| Izvedba | broj različitih ishoda po scenariju (p50) | udio scenarija s jednim ishodom % |
+|---------|-------------------------------------------|-----------------------------------|
+| samoposlužena | | |
+| distribuirana | | |
+
+### 3.7 Po vrsti ponude
+
+| Vrsta | Samoposlužena % | Distribuirana % |
+|-------|-----------------|-----------------|
+| HR PDF, tekstualni sloj (sc. 1) | | |
+| slika, dobra (sc. 2) | | |
+| slika, otežani uvjeti (sc. 3) | | |
+| EN PDF, GBP (sc. 4) | | |
+| dvije ponude odjednom (sc. 9) | | |
+| nije ponuda (sc. 10) — očekuje se 422 | | |
+| ‹nova: rabat› | | |
+| ‹nova: dvadesetak stavki› | | |
+| ‹nova: višestranična› | | |
 
 ---
 
-## 5. Stress test (5–10 istodobnih naloga)
+## 4. Istodobnost *(H3)*
 
-| Istodobnih | Izvedba | medijan e2e (ms) | p95 (ms) | neuspjelih | RAM vršno (GB) | Izvor |
-|-----------|---------|------------------|----------|------------|----------------|-------|
-| 1 (osnovica) | lokalna | | | | | |
-| 5 | lokalna | | | | | |
-| 10 | lokalna | | | | | |
-| 5 | cloud | | | | — | |
-| 10 | cloud | | | | — | |
+| Istodobnih | Izvedba | p50 (ms) | p95 (ms) | neuspjelih | RAM vršno (GB) | Izvor |
+|-----------|---------|----------|----------|------------|----------------|-------|
+| 1 | samoposlužena | | | | | |
+| 3 | samoposlužena | | | | | |
+| 5 | samoposlužena | | | | | |
+| 1 | distribuirana | | | | — | |
+| 3 | distribuirana | | | | — | |
+| 5 | distribuirana | | | | — | |
+
+**Stvarna vršna istodobnost Veleučilišta:** ‹popuniti› · **Podnosi li je čvor:** ‹da/ne›
 
 ---
 
-## 6. Offline test
+## 5. Suživot komponenti na istom čvoru *(H4)*
 
-| Scenarij | Lokalna izvedba | Cloud izvedba |
-|----------|-----------------|---------------|
-| Mreža prekinuta tijekom obrade | | |
-| Mreža nedostupna pri pokretanju | | |
-| Vrijeme oporavka nakon vraćanja veze | | |
+> Samo samoposlužena izvedba.
+
+| Operacija | U mirovanju (ms) | Tijekom obrade (ms) | Porast % | Izvor |
+|-----------|------------------|---------------------|----------|-------|
+| ‹dohvat popisa zahtjeva› | | | | |
+| ‹otvaranje zahtjeva› | | | | |
+| ‹spremanje izmjene› | | | | |
+
+Zaključak o suživotu: ‹popuniti›
+
+---
+
+## 6. Resursni otisak čvora
+
+> Uzorkovanje 500 ms. **Rad na grafičkom procesoru nije obuhvaćen** — ograničenje.
+
+| Mjera | Mirovanje | 1 obrada | 5 istodobnih | Vršno | Izvor |
+|-------|-----------|----------|--------------|-------|-------|
+| CPU % | | | | | |
+| Memorija (GB) | | | | | |
+
+**Procijenjeni kapacitet čvora:** ‹ponuda/sat pri prihvatljivom p95›
+
+---
+
+## 7. Dostupnost bez vanjske veze *(H5)*
+
+| Scenarij | Samoposlužena | Distribuirana |
+|----------|---------------|---------------|
+| Veza prekinuta prije obrade | prolaz / pad | prolaz / pad |
+| Veza prekinuta usred obrade | | |
+| Ostaje li polovičan zapis u bazi? | | |
+| Vrijeme oporavka (s) | | |
 
 Opis ponašanja: ‹popuniti›
 
 ---
 
-## 7. Trošak i TCO
+## 8. Lokalnost podataka *(H6)*
 
-**Ulazne pretpostavke**
+| Izvedba | Odlazna odredišta | Prelazi li sadržaj ponude izvan mreže? | Volumen (KB) | Izvor zapisa |
+|---------|-------------------|----------------------------------------|--------------|--------------|
+| samoposlužena | | | | |
+| distribuirana | | | | |
 
-| Stavka | Vrijednost | Izvor pretpostavke |
-|--------|-----------|--------------------|
-| Volumen naloga | 500 mj. / ~6.000 god. | radna procjena, sustav nije u produkciji |
-| Cijena uređaja (CapEx) | | |
-| Životni vijek uređaja | ‹36 mj.› | |
-| Potrošnja struje | | |
-| Cijena struje | | |
-| Cijena cloud tokena (ulaz) | | cjenik, datum ‹›|
-| Cijena cloud tokena (izlaz) | | cjenik, datum ‹›|
-| Prosj. tokena po nalogu (ulaz/izlaz) | | izmjereno |
-
-**Rezultat**
-
-| Horizont | Lokalna izvedba | Cloud izvedba | Razlika |
-|----------|-----------------|---------------|---------|
-| 12 mj. | | | |
-| 24 mj. | | | |
-| 36 mj. | | | |
-
-**Točka pokrića:** ‹popuniti› naloga godišnje
-
-> Napomena: raniji izračun dao je 37.589 naloga/god. Ta brojka potječe iz ranije
-> postavke i **mora se ponovno izračunati** za finalnu kampanju prije ulaska u rad.
+Uvjeti pružatelja o obradi i treniranju: ‹popuniti + izvor s datumom› · DPA: ‹da/ne›
 
 ---
 
-## 8. Ponderirana matrica odlučivanja
+## 9. Trošak *(H7)*
 
-Ponder = težina (1–5) × ocjena (1–5). Težine određene prije uvida u rezultate.
+**Pretpostavke — `eval/cost-assumptions.json`**
 
-| # | Kriterij | Težina | Ocjena — lokalna | Ponder L | Ocjena — cloud | Ponder C | Obrazloženje ocjene |
-|---|----------|--------|------------------|----------|----------------|----------|---------------------|
-| 1 | Performanse / latencija | | | | | | |
-| 2 | Propusnost | | | | | | |
-| 3 | Točnost | | | | | | |
-| 4 | Resursi | | | | | | |
-| 5 | Financije (TCO) | | | | | | |
-| 6 | Sigurnost / GDPR | | | | | | |
-| 7 | Otpornost i offline rad | | | | | | |
-| 8 | Održavanje | | | | | | |
-| 9 | Neovisnost o dobavljaču | | | | | | |
-| 10 | Fleksibilnost / skalabilnost | | | | | | |
+| Stavka | Vrijednost | Izvor i datum |
+|--------|-----------|---------------|
+| Cijena uređaja | | |
+| Amortizacija | ‹36 mj.› | |
+| Snaga pod opterećenjem (W) | | izmjereno / **označeno kao pretpostavka** |
+| Tarifa kWh | | |
+| Cijena tokena ulaz / izlaz | | cjenik, datum |
+| Prosj. tokena po ponudi | | izmjereno |
+
+**Trošak po ponudi**
+
+| Izvedba | trošak | sastavnice |
+|---------|--------|-----------|
+| samoposlužena | | energija + amortizacija |
+| distribuirana | | tokeni |
+
+**Točka isplativosti kao krivulja** preko raspona **0,25× – 2×** cijene oblaka
+
+| Množitelj cijene oblaka | Točka pokrića (nabava/god.) | Napomena |
+|-------------------------|------------------------------|----------|
+| 0,25× | | |
+| 0,5× | | |
+| 1× | | |
+| 2× | | |
+
+---
+
+## 10. Ponderirana matrica odlučivanja
+
+| # | Kriterij | Težina | Ocjena samopos. | Ponder S | Ocjena distrib. | Ponder D | Obrazloženje |
+|---|----------|--------|------------------|----------|------------------|----------|--------------|
+| 1 | Točnost iznosa i stavki | | | | | | |
+| 2 | Točnost dodjele kategorije | *niža* | | | | | |
+| 3 | Odziv | | | | | | |
+| 4 | Istodobnost i suživot | | | | | | |
+| 5 | Resursni otisak | | | | | | |
+| 6 | Trošak | | | | | | |
+| 7 | Sigurnost i lokalnost | | | | | | |
+| 8 | Dostupnost bez veze | | | | | | |
+| 9 | Održavanje | | | | | | |
+| 10 | Neovisnost o dobavljaču | | | | | | |
+| 11 | Skalabilnost i granice | | | | | | |
 | | **UKUPNO** | | | | | | |
 
 ---
 
-## 9. Provjera hipoteze
+## 11. Provjera hipoteze
 
 | # | Tvrdnja | Prag | Izmjereno | Potvrđeno? |
 |---|---------|------|-----------|-----------|
-| H1 | točka pokrića postoji i dostižna je | | | |
-| H2 | prag točnosti zadovoljen | | | |
-| H3 | prag brzine zadovoljen | | | |
-| H4 | podaci ostaju kod naručitelja | rubrika | | |
+| H1 | točnost **iznosa i stavki** iznad praga | | | |
+| H1s | *(dopunski, bez praga)* dodjela kategorije naspram polazišne vrijednosti | — | | |
+| H2 | odziv prihvatljiv za klik | | | |
+| H3 | podnosi vršnu istodobnost | | | |
+| H4 | ne ugrožava ostatak sustava | | | |
+| H5 | radi bez vanjske veze | | | |
+| H6 | podaci ne napuštaju ustanovu | | | |
+| H7 | niži trošak u horizontu | | | |
+
+**Ukupni odgovor:** ‹dostatno / dostatno uz uvjet / nedostatno› — ‹obrazloženje›
 
 ---
 
-## 10. Grafovi
+## 12. Grafovi
 
-| Oznaka | Vrsta | Podaci iz | Datoteka slike | U poglavlju |
-|--------|-------|-----------|----------------|-------------|
-| Slika 1 | box plot — latencija | § 1 | | Diskusija |
-| Slika 2 | bar chart — točnost | § 3 | | Diskusija |
-| Slika 3 | grouped bar — usporedba izvedbi | § 1–3 | | Diskusija |
-| Slika 4 | resource timeline — CPU/RAM | § 4 | | Diskusija |
-| Slika 5 | line chart — točka pokrića | § 7 | | Diskusija |
+| Oznaka | Vrsta | Podaci iz | Datoteka | Poglavlje |
+|--------|-------|-----------|----------|-----------|
+| Slika 1 | dijagram dviju izvedbi | — | | Metodologija |
+| Slika 2 | točnost kategorija: strogo, blago, polazišna 65 % | § 3.2 | | Diskusija |
+| Slika 3 | matrica zabune | § 3.2 | | Diskusija |
+| Slika 4 | raspodjela grešaka po klasama | § 3.1 | | Diskusija |
+| Slika 5 | box plot — odziv | § 1 | | Diskusija |
+| Slika 6 | stacked bar — RTT vs obrada | § 1 | | Diskusija |
+| Slika 7 | krivulja istodobnosti | § 4 | | Diskusija |
+| Slika 8 | odziv aplikacije: mirovanje vs obrada | § 5 | | Diskusija |
+| Slika 9 | resource timeline | § 6 | | Diskusija |
+| Slika 10 | krivulja isplativosti 0,25×–2× | § 9 | | Diskusija |
