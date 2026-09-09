@@ -42,23 +42,26 @@ umetanju navoda.
 
 | Oznaka | Zapis (APA 6) | Provjereno | Poglavlje | Za koju tvrdnju |
 |---|---|---|---|---|
-| `Sat17` | Satyanarayanan, M. (2017.). The Emergence of Edge Computing. *Computer, 50*(1), 30-39. | ⬜ | 2 | smještaj komponente je problem distribuiranih sustava |
-| `Bel25` | Belcastro, L., Marozzo, F., Orsino, A., Talia, D., & Trunfio, P. (2025.). *Navigating the Edge-Cloud Continuum: A State-of-Practice Survey.* arXiv:2506.02003. | ⬜ | 2 | pitanje smještaja i danas je otvoreno u praksi |
-| `Pou25` | Pournazari, J., Ullah, A., Al-Dubai, A., & Liu, X. (2025.). Computation offloading in the edge-to-cloud compute continuum: a survey of federated architectural solutions. *Cluster Computing, 28*(13), 839. | ⬜ | 2, 3.5 | kriteriji odluke o smještaju (latencija, energija, privatnost, trošak) |
-| `Alm25` | Almeida, L., & Peixoto, M. (2025.). *Tetris: An SLA-aware Application Placement Strategy in the Edge-Cloud Continuum.* arXiv:2511.00294. | ⬜ | 2, 3.5 | smještaj vođen dogovorenom razinom usluge → pragovi H2, H3 |
-| `Bre12` | Brewer, E. (2012.). CAP Twelve Years Later: How the „Rules" Have Changed. *Computer, 45*(2), 23-29. | ⬜ | 2, diskusija | H5 — izbor dostupnosti pri particiji mreže |
-| `Dea13` | Dean, J., & Barroso, L. A. (2013.). The Tail at Scale. *Communications of the ACM, 56*(2), 74-80. | ⬜ | 3.6, diskusija | zašto medijan i p95, nikad prosjek |
-| `Nie93` | Nielsen, J. (1993.). *Response Time Limits.* Nielsen Norman Group. | ⬜ | 3.5, diskusija | H4 (< 1 s) i tumačenje praga od 60 s |
-| `GDPR28` | Uredba (EU) 2016/679 (Opća uredba o zaštiti podataka), SL L 119, čl. 28. | ⬜ | 3.2, diskusija | H6 — obveze pri obradi kod vanjskog izvršitelja |
-| `EDPB24` | Europski odbor za zaštitu podataka. (2024.). *Opinion 22/2024 on certain obligations following from reliance on processors and sub-processors.* Bruxelles. | ⬜ | 3.2, diskusija | lanac podizvršitelja kao trošak udaljene izvedbe |
-| `Pan25` | Pan, G., Chodnekar, V., Roy, A., & Wang, H. (2025.). *A Cost-Benefit Analysis of On-Premise Large Language Model Deployment: Breaking Even with Commercial LLM Services.* arXiv:2509.18101. | ⬜ | 2, 3.6, diskusija | H7 — usporedna metodologija točke pokrića |
-| `Kaz00` | Kazman, R., Klein, M., & Clements, P. (2000.). *ATAM: Method for Architecture Evaluation* (CMU/SEI-2000-TR-004). Pittsburgh: Software Engineering Institute. | ⬜ | 3.5 | utemeljenje ponderirane matrice i kompromisa među kriterijima |
-| `Hus25` | Husom, E. J. et al. (2025.). Sustainable LLM Inference for Edge AI: Evaluating Quantized LLMs for Energy Efficiency, Output Accuracy, and Inference Latency. *ACM Transactions on Internet of Things.* | ⬜ | 2, 3.4 | mjerenje energije, točnosti i odziva na rubnom uređaju |
-| `Ben25` | Benazir, A., & Lin, F. X. (2025.). *Profiling Large Language Model Inference on Apple Silicon: A Quantization Perspective.* arXiv:2508.08531. | ⬜ | 2, 3.4 | mjerenja na M4 Pro; trošak po milijunu tokena |
-| `Raj25` | Rajesh, V. et al. (2025.). *Production-Grade Local LLM Inference on Apple Silicon: A Comparative Study of MLX, MLC-LLM, Ollama, llama.cpp, and PyTorch MPS.* arXiv:2511.05502. | ⬜ | 3.4, 3.8 | Ollama nije najbrži izvedbeni okvir → „dalji rad" |
-| `Gom26` | Gómez, J., & Sánchez, J. (2026.). *Information Extraction from Electricity Invoices with General-Purpose Large Language Models.* arXiv:2604.25927. | ⬜ | 2, diskusija | H1 — usporedna vrijednost točnosti izdvajanja iz računa |
+| `Sat17` | Satyanarayanan, M. (2017.). The Emergence of Edge Computing. *Computer, 50*(1), 30-39. | ✅ | 2 | smještaj komponente je problem distribuiranih sustava |
+| `Bel25` | Belcastro, L., Marozzo, F., Orsino, A., Talia, D., & Trunfio, P. (2025.). *Navigating the Edge-Cloud Continuum: A State-of-Practice Survey.* arXiv:2506.02003. | ✅ | 2 | pitanje smještaja i danas je otvoreno u praksi |
+| `Pou25` | Pournazari, J., Ullah, A., Al-Dubai, A., & Liu, X. (2025.). Computation offloading in the edge-to-cloud compute continuum: a survey of federated architectural solutions. *Cluster Computing, 28*(13), 839. | ✅ | 2, 3.5 | kriteriji odluke o smještaju (latencija, energija, privatnost, trošak) |
+| `Alm25` | Almeida, L., & Peixoto, M. (2025.). *Tetris: An SLA-aware Application Placement Strategy in the Edge-Cloud Continuum.* arXiv:2511.00294. | ✅ | 2, 3.5 | smještaj vođen dogovorenom razinom usluge → pragovi H2, H3 |
+| `Bre12` | Brewer, E. (2012.). CAP Twelve Years Later: How the „Rules" Have Changed. *Computer, 45*(2), 23-29. | ✅ | 2, diskusija | H5 — izbor dostupnosti pri particiji mreže |
+| `Dea13` | Dean, J., & Barroso, L. A. (2013.). The Tail at Scale. *Communications of the ACM, 56*(2), 74-80. | ✅ | 3.6, diskusija | zašto medijan i p95, nikad prosjek |
+| `Nie93` | Nielsen, J. (1993.). *Response Time Limits.* Nielsen Norman Group. | ✅ | 3.5, diskusija | H4 (< 1 s) i tumačenje praga od 60 s |
+| `GDPR28` | Uredba (EU) 2016/679 (Opća uredba o zaštiti podataka), SL L 119, čl. 28. | ✅ | 3.2, diskusija | H6 — obveze pri obradi kod vanjskog izvršitelja |
+| `EDPB24` | Europski odbor za zaštitu podataka. (2024.). *Opinion 22/2024 on certain obligations following from reliance on processors and sub-processors.* Bruxelles. | ✅ | 3.2, diskusija | lanac podizvršitelja kao trošak udaljene izvedbe |
+| `Pan25` | Pan, G., Chodnekar, V., Roy, A., & Wang, H. (2025.). *A Cost-Benefit Analysis of On-Premise Large Language Model Deployment: Breaking Even with Commercial LLM Services.* arXiv:2509.18101. | ✅ | 2, 3.6, diskusija | H7 — usporedna metodologija točke pokrića |
+| `Kaz00` | Kazman, R., Klein, M., & Clements, P. (2000.). *ATAM: Method for Architecture Evaluation* (CMU/SEI-2000-TR-004). Pittsburgh: Software Engineering Institute. | ✅ | 3.5 | utemeljenje ponderirane matrice i kompromisa među kriterijima |
+| `Hus25` | Husom, E. J. et al. (2025.). Sustainable LLM Inference for Edge AI: Evaluating Quantized LLMs for Energy Efficiency, Output Accuracy, and Inference Latency. *ACM Transactions on Internet of Things.* | ✅ | 2, 3.4 | mjerenje energije, točnosti i odziva na rubnom uređaju |
+| `Ben25` | Benazir, A., & Lin, F. X. (2025.). *Profiling Large Language Model Inference on Apple Silicon: A Quantization Perspective.* arXiv:2508.08531. | ✅ | 2, 3.4 | mjerenja na M4 Pro; trošak po milijunu tokena |
+| `Raj25` | Rajesh, V. et al. (2025.). *Production-Grade Local LLM Inference on Apple Silicon: A Comparative Study of MLX, MLC-LLM, Ollama, llama.cpp, and PyTorch MPS.* arXiv:2511.05502. | ✅ | 3.4, 3.8 | Ollama nije najbrži izvedbeni okvir → „dalji rad" |
+| `Gom26` | Gómez, J., & Sánchez, J. (2026.). *Information Extraction from Electricity Invoices with General-Purpose Large Language Models.* arXiv:2604.25927. | ✅ | 2, diskusija | H1 — usporedna vrijednost točnosti izdvajanja iz računa |
 
-**15 izvora.** Svi su unijeti u `Sources.xml` i spremni za uvoz u Word.
+**15 izvora.** Svi su unijeti u `Sources.xml` i uvezeni u Word.
+
+**Provjera:** autor je 10. 9. 2026. potvrdio da je pregledao svih 15 izvora — poveznice rade,
+autori i godine se slažu, a tvrdnje koje izvori podupiru u njima doista stoje.
 
 ---
 
