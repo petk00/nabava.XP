@@ -206,31 +206,33 @@
               <span>Stavke</span>
               <span class="count-pill">{{ items.length }}</span>
               <!-- AI: pročita priloženu ponudu i zamijeni stavke. Dva gumba, dvije
-                   izvedbe istog posla — lokalni model i Gemini. Vidljivi samo kad
-                   zahtjev smije primiti izmjenu i kad ponuda uopće postoji. -->
+                   izvedbe istog posla — lokalni model Gemma i Gemini. Kalup je
+                   zajednički (btn btn--sm), a boja i tiha animacija ih odvajaju
+                   od ostalih gumba. Vidljivi samo kad zahtjev smije primiti
+                   izmjenu i kad ponuda uopće postoji. -->
               <template v-if="canEdit && hasPonuda">
                 <button
                   type="button"
-                  class="ai-items-btn"
+                  class="btn btn--sm ai-items-btn ai-items-btn--gemma"
                   :class="{ 'ai-items-btn--busy': aiItemsRunning === 'ollama' }"
                   :disabled="aiItemsRunning !== null"
-                  aria-label="Osvježi stavke iz ponude lokalnim modelom"
+                  aria-label="Osvježi stavke iz ponude lokalnim modelom Gemma"
                   @click="openAiItems('ollama')"
                 >
-                  <q-spinner v-if="aiItemsRunning === 'ollama'" size="12px" />
+                  <q-spinner v-if="aiItemsRunning === 'ollama'" size="13px" />
                   <q-icon v-else name="auto_awesome" size="14px" />
-                  <span>{{ aiItemsRunning === 'ollama' ? 'Čitam…' : 'AI' }}</span>
+                  <span>{{ aiItemsRunning === 'ollama' ? 'Čitam…' : 'Gemma (AI)' }}</span>
                   <q-tooltip>Pročitaj ponudu lokalnim modelom i zamijeni stavke</q-tooltip>
                 </button>
                 <button
                   type="button"
-                  class="ai-items-btn ai-items-btn--gemini"
+                  class="btn btn--sm ai-items-btn ai-items-btn--gemini"
                   :class="{ 'ai-items-btn--busy': aiItemsRunning === 'gemini' }"
                   :disabled="aiItemsRunning !== null"
                   aria-label="Osvježi stavke iz ponude Gemini modelom"
                   @click="openAiItems('gemini')"
                 >
-                  <q-spinner v-if="aiItemsRunning === 'gemini'" size="12px" />
+                  <q-spinner v-if="aiItemsRunning === 'gemini'" size="13px" />
                   <q-icon v-else name="cloud" size="14px" />
                   <span>{{ aiItemsRunning === 'gemini' ? 'Čitam…' : 'Gemini' }}</span>
                   <q-tooltip>Pročitaj ponudu Gemini API-jem i zamijeni stavke</q-tooltip>
@@ -1208,103 +1210,93 @@ onMounted(() => { currentUser.value = getStoredUser(); fetchRequestDetails(); })
 .accordion-header .card__title .q-icon {
   color: #16294E;
 }
-/* AI gumb uz naslov Stavke.
-   Namjerno JEDINI element u aplikaciji s gradijentom i animacijom: paleta
-   sustava je plavo-siva (#16294E / #00afdb), pa ljubičasto-cijan-roza prijelaz
-   odmah kaže da radnju izvodi model, a ne obrazac. Sve ostalo na stranici
-   ostaje mirno — da ovaj gumb ostane iznimka, ne novi stil.
-   .q-icon boju mora pregaziti pravilo `.section-header .card__title .q-icon`
-   (ista specificnost, dolazi ranije). */
-.ai-items-btn {
-  all: unset;
-  box-sizing: border-box;
+/* AI gumbi uz naslov Stavke.
+   Kalup — visina, radijus, padding, obrub — dolazi iz zajedničkog `.btn .btn--sm`,
+   pa stoje u istom redu kao „Uredi" ili „PDF" bez iskakanja iz mjere. Odvaja ih
+   samo boja i tiha animacija, jer radnju izvodi model a ne obrazac: Gemma
+   ljubičasto-roza, Gemini indigo-zelena. Tonovi su iz iste logike kao
+   `.btn--primary` (blaga podloga, obojan obrub, zasićeno pismo), da iznimka
+   ostane iznimka a ne novi stil.
+   Obje varijante dijele isti kod, a razlikuju se samo u --ai-btn-* varijablama.
+   `.q-icon` boju mora pregaziti pravilo `.section-header .card__title .q-icon`
+   (ista specifičnost, dolazi ranije), zato je i ovdje sve pisano s punom
+   putanjom — usput preglasava i `.btn:disabled` u stanju obrade. */
+.section-header .card__title .ai-items-btn {
   position: relative;
   overflow: hidden;
-  display: inline-flex; align-items: center; gap: 4px;
-  height: 20px; padding: 0 9px;
-  border-radius: 9999px;
-  color: #fff;
-  font-size: 0.6875rem; font-weight: 700;
-  letter-spacing: 0.04em;
-  cursor: pointer;
-  /* 220% širine da pomak pozadine ima kuda putovati — bez toga animacija stoji.
-     Sva tri tona su namjerno 700-serija: bijeli tekst od 11px mora i na
-     najsvjetlijoj točki prijelaza držati kontrast 4.5:1. Svjetliji cijan
-     (#00afdb iz palete) pao bi na ~2:1 i tekst bi se gubio. */
-  background-image: linear-gradient(100deg, #6d28d9 0%, #0e7490 38%, #be185d 62%, #6d28d9 100%);
+  text-transform: none;
+  letter-spacing: 0.01em;
+  /* Oba gumba jednake širine, mjereno po dužem natpisu („Gemma (AI)").
+     Sadržaj je centriran iz `.btn`, pa kraći natpis („Gemini", „Čitam…")
+     samo dobije više praznog prostora — gumb ne mijenja širinu ni kad
+     tekst prijeđe u stanje obrade. */
+  min-width: 122px;
+  color: var(--ai-btn-ink);
+  border-color: var(--ai-btn-line);
+  /* 220% širine da pomak pozadine ima kuda putovati — bez toga animacija stoji. */
+  background-image: linear-gradient(100deg, var(--ai-btn-wash-a) 0%, var(--ai-btn-wash-b) 50%, var(--ai-btn-wash-a) 100%);
   background-size: 220% 100%;
   background-position: 0% 50%;
-  animation: ai-btn-flow 7s ease-in-out infinite;
-  box-shadow: 0 1px 5px rgba(109, 40, 217, 0.32);
-  transition: transform 0.12s ease, box-shadow 0.12s ease;
+  animation: ai-btn-flow 9s ease-in-out infinite;
+}
+.section-header .card__title .ai-items-btn--gemma {
+  --ai-btn-ink: #6d28d9;
+  --ai-btn-line: rgba(109, 40, 217, 0.42);
+  --ai-btn-wash-a: rgba(109, 40, 217, 0.07);
+  --ai-btn-wash-b: rgba(190, 24, 93, 0.13);
+  --ai-btn-sheen: rgba(109, 40, 217, 0.16);
+  --ai-btn-ring: rgba(109, 40, 217, 0.14);
+  --ai-btn-glow: rgba(109, 40, 217, 0.28);
+}
+.section-header .card__title .ai-items-btn--gemini {
+  --ai-btn-ink: #1d4ed8;
+  --ai-btn-line: rgba(29, 78, 216, 0.40);
+  --ai-btn-wash-a: rgba(29, 78, 216, 0.07);
+  --ai-btn-wash-b: rgba(4, 120, 87, 0.12);
+  --ai-btn-sheen: rgba(29, 78, 216, 0.16);
+  --ai-btn-ring: rgba(29, 78, 216, 0.14);
+  --ai-btn-glow: rgba(29, 78, 216, 0.28);
 }
 /* Odsjaj koji povremeno prijeđe preko gumba. Zaseban sloj, da ne dira
    gradijent pozadine koji teče svojim ritmom. */
-.ai-items-btn::after {
+.section-header .card__title .ai-items-btn::after {
   content: '';
   position: absolute;
   inset: 0;
-  background: linear-gradient(105deg, transparent 38%, rgba(255, 255, 255, 0.38) 50%, transparent 62%);
+  background: linear-gradient(105deg, transparent 38%, var(--ai-btn-sheen) 50%, transparent 62%);
   transform: translateX(-120%);
-  animation: ai-btn-shine 5.5s ease-in-out infinite;
+  animation: ai-btn-shine 6.5s ease-in-out infinite;
   pointer-events: none;
 }
-.section-header .ai-items-btn .q-icon {
+.section-header .card__title .ai-items-btn .q-icon {
   color: inherit;
-  animation: ai-btn-spark 3.2s ease-in-out infinite;
+  animation: ai-btn-spark 3.4s ease-in-out infinite;
 }
-.ai-items-btn:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 3px 12px rgba(109, 40, 217, 0.45);
-  animation-duration: 2.5s;
+.section-header .card__title .ai-items-btn:hover:not(:disabled) {
+  border-color: var(--ai-btn-ink);
+  box-shadow: 0 0 0 3px var(--ai-btn-ring);
+  animation-duration: 3s;
 }
-.ai-items-btn:active {
-  transform: translateY(0);
-  box-shadow: 0 1px 4px rgba(109, 40, 217, 0.35);
-}
-.ai-items-btn:focus-visible {
-  outline: 2px solid #7c3aed;
+.section-header .card__title .ai-items-btn:focus-visible {
+  outline: 2px solid var(--ai-btn-ink);
   outline-offset: 2px;
 }
-/* Gemini gumb: isti oblik i ponašanje, druga obitelj boja (plavo-zeleno-jantarna
-   umjesto ljubičasto-cijan-roze), da se dvije izvedbe razlikuju na prvi pogled
-   a da nijedna ne izgleda kao obični gumb aplikacije. Tonovi su opet 700-serija
-   zbog istog zahtjeva na kontrast bijelog teksta. */
-.ai-items-btn--gemini {
-  background-image: linear-gradient(100deg, #1d4ed8 0%, #047857 40%, #b45309 66%, #1d4ed8 100%);
-  box-shadow: 0 1px 5px rgba(29, 78, 216, 0.32);
-}
-.ai-items-btn--gemini:hover {
-  box-shadow: 0 3px 12px rgba(29, 78, 216, 0.45);
-}
-.ai-items-btn--gemini:focus-visible {
-  outline-color: #1d4ed8;
-}
-.ai-items-btn--gemini.ai-items-btn--busy {
-  animation: ai-btn-flow 1.6s linear infinite, ai-btn-pulse-gemini 1.4s ease-in-out infinite;
-}
-@keyframes ai-btn-pulse-gemini {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(29, 78, 216, 0.45); }
-  60%      { box-shadow: 0 0 0 5px rgba(29, 78, 216, 0); }
-}
-
-/* Dok model radi: gradijent teče brže i gumb pulsira, da se vidi da traje. */
-.ai-items-btn--busy {
-  animation: ai-btn-flow 1.6s linear infinite, ai-btn-pulse 1.4s ease-in-out infinite;
+/* Dok model radi: gradijent teče brže i gumb pulsira, da se vidi da traje.
+   Gumb je tad `disabled`, pa mu se vraća puna vidljivost — zatamnjenje iz
+   `.btn:disabled` znači „ne možeš", a ovdje znači „u toku". */
+.section-header .card__title .ai-items-btn--busy {
+  opacity: 1;
   cursor: progress;
+  animation: ai-btn-flow 2s linear infinite, ai-btn-pulse 1.5s ease-in-out infinite;
 }
-.ai-items-btn--busy::after { animation-duration: 1.8s; }
-/* `all: unset` gore poništava i zatamnjenje onemogućenog gumba — vraća se ručno.
-   Onemogućen, a NE zauzet (npr. dok traje druga radnja) — tad miruje. */
-.ai-items-btn:disabled:not(.ai-items-btn--busy) {
-  opacity: 0.5;
-  cursor: default;
+.section-header .card__title .ai-items-btn--busy::after { animation-duration: 2.2s; }
+/* Onemogućen, a NE zauzet (druga izvedba radi) — tad miruje. */
+.section-header .card__title .ai-items-btn:disabled:not(.ai-items-btn--busy),
+.section-header .card__title .ai-items-btn:disabled:not(.ai-items-btn--busy)::after,
+.section-header .card__title .ai-items-btn:disabled:not(.ai-items-btn--busy) .q-icon {
   animation: none;
-  box-shadow: none;
 }
-.ai-items-btn:disabled:not(.ai-items-btn--busy)::after,
-.ai-items-btn:disabled:not(.ai-items-btn--busy) .q-icon { animation: none; }
-.ai-items-btn:disabled:hover { transform: none; }
+.section-header .card__title .ai-items-btn:disabled:not(.ai-items-btn--busy)::after { opacity: 0; }
 
 @keyframes ai-btn-flow {
   0%   { background-position: 0% 50%; }
@@ -1312,27 +1304,28 @@ onMounted(() => { currentUser.value = getStoredUser(); fetchRequestDetails(); })
   100% { background-position: 0% 50%; }
 }
 @keyframes ai-btn-shine {
-  0%, 62%  { transform: translateX(-120%); }
-  85%, 100% { transform: translateX(120%); }
+  0%, 68%   { transform: translateX(-120%); }
+  88%, 100% { transform: translateX(120%); }
 }
 @keyframes ai-btn-spark {
-  0%, 72%, 100% { transform: scale(1) rotate(0deg); opacity: 0.9; }
-  80%           { transform: scale(1.25) rotate(-12deg); opacity: 1; }
-  88%           { transform: scale(1.1) rotate(8deg); opacity: 1; }
+  0%, 74%, 100% { transform: scale(1) rotate(0deg); opacity: 0.9; }
+  82%           { transform: scale(1.2) rotate(-12deg); opacity: 1; }
+  90%           { transform: scale(1.08) rotate(8deg); opacity: 1; }
 }
 @keyframes ai-btn-pulse {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(124, 58, 237, 0.45); }
-  60%      { box-shadow: 0 0 0 5px rgba(124, 58, 237, 0); }
+  0%, 100% { box-shadow: 0 0 0 0 var(--ai-btn-glow); }
+  60%      { box-shadow: 0 0 0 6px transparent; }
 }
-/* Korisnik koji je isključio animacije dobiva isti gumb, samo miran. */
+/* Korisnik koji je isključio animacije dobiva iste gumbe, samo mirne —
+   boja i obrub nose razliku i bez pokreta. */
 @media (prefers-reduced-motion: reduce) {
-  .ai-items-btn,
-  .ai-items-btn--busy,
-  .ai-items-btn::after,
-  .section-header .ai-items-btn .q-icon {
+  .section-header .card__title .ai-items-btn,
+  .section-header .card__title .ai-items-btn--busy,
+  .section-header .card__title .ai-items-btn::after,
+  .section-header .card__title .ai-items-btn .q-icon {
     animation: none;
   }
-  .ai-items-btn::after { opacity: 0; }
+  .section-header .card__title .ai-items-btn::after { opacity: 0; }
 }
 
 .count-pill {
