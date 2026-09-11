@@ -319,6 +319,65 @@ Pravila:
 | 404 | Zahtjev nije pronađen. |
 | 500 | Greška pri ažuriranju zahtjeva. |
 
+### POST `/api/requests/:id/ai-items`
+
+AI pročita ponudu **već priloženu uz zahtjev** i njome zamijeni stavke i ukupan
+iznos. Vidi `docs/AI.md`.
+
+Prava su ista kao za `PUT /api/requests/:id`: zaključan zahtjev se ne dira, a
+korisnik koji nije administrator smije mijenjati samo svoj zahtjev i samo dok je
+vraćen na dopunu. Mijenjaju se isključivo stavke i iznos — odjel, obrazloženje i
+status ostaju nepromijenjeni.
+
+#### Request body
+
+| Polje | Tip | Obavezno | Opis |
+|---|---|---|---|
+| `provider` | string | ne | `ollama` ili `gemini`. Bez njega se uzima zadani iz AI postavki. |
+
+Zaglavlje `X-Include-System-Prompt: 1` dodaje puni tekst sustavnog prompta u
+odgovor (koristi mjerni harness).
+
+#### Odgovor 200
+
+```json
+{
+  "message": "Stavke su osvježene iz ponude.",
+  "previous_count": 1,
+  "items": [
+    { "fk_item_category": 1, "item_name": "Mrežni pisač", "quantity": 2, "category_name": "Računalna oprema" }
+  ],
+  "previous_amount": null,
+  "new_amount": 1249.90,
+  "amount_changed": true,
+  "amount_status": "read",
+  "quotes_used": ["ponuda-2026-118.pdf"],
+  "warnings": [],
+  "provider": "ollama",
+  "model": "gemma4:e2b",
+  "usage": { "promptTokens": 4210, "completionTokens": 312, "modelLatencyMs": 18422, "modelCalls": 1 },
+  "prompt_variant": "names_only",
+  "system_prompt_hash": "fe4b0225e7121cd1"
+}
+```
+
+`amount_status` je `read` (iznos pročitan i upisan), `missing` (ponuda ga ne
+navodi) ili `foreign_currency` (ponuda nije u eurima). U zadnja dva slučaja
+`new_amount` je `null` i postojeći iznos zahtjeva ostaje nepromijenjen.
+
+#### Status kodovi
+
+| Kod | Kada |
+|---|---|
+| 200 | Stavke zamijenjene. |
+| 400 | Nema priložene ponude, nijedna nije čitljiv PDF, nepoznat provider, zahtjev zaključan ili model bez podrške za alate. |
+| 403 | Korisnik nema pravo mijenjati stavke ovog zahtjeva. |
+| 404 | Zahtjev nije pronađen. |
+| 409 | Status zahtjeva se promijenio dok je model radio — ništa nije izmijenjeno. |
+| 422 | Model nije izvukao stavke (npr. dokument nije ponuda); poruka nosi njegovo objašnjenje. |
+| 429 | Previše AI obrada ponude. |
+| 502 | AI obrada nije uspjela. |
+
 ### PATCH `/api/requests/:id/status`
 
 Mijenja status zahtjeva prema definiranim workflow akcijama.

@@ -77,14 +77,6 @@ const checkEmailLimiter = rateLimit({
   message: { message: 'Previše pokušaja. Pokušajte ponovo za 15 minuta.' },
 });
 
-const assistantChatLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: Number(process.env.ASSISTANT_CHAT_RATE_LIMIT_MAX) || 30,
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: { message: 'Previše zahtjeva AI asistentu. Pokušajte ponovo za 15 minuta.' },
-});
-
 const allowedOrigins = process.env.CLIENT_URL
   ? process.env.CLIENT_URL.split(',').map((o) => o.trim())
   : ['http://localhost:9000', 'http://localhost:8080'];
@@ -99,10 +91,8 @@ app.use(cors({
   },
   credentials: true,
 }));
-// 10mb je ostatak iz vremena kad su bajtovi priloga putovali kroz klijenta kao
-// base64 u carrier poruci; danas ostaju server-side (assistantAttachmentStore.js)
-// pa su JSON tijela razgovora ponovno mala. Limit je zadržan kao rezerva —
-// upload priloga ionako ide kroz multer (multipart), ne kroz ovaj parser.
+// Upload priloga ide kroz multer (multipart), ne kroz ovaj parser, pa su JSON
+// tijela mala. Limit je zadržan kao rezerva.
 app.use(express.json({ limit: '10mb' }));
 app.use(cookieParser());
 
@@ -116,7 +106,8 @@ app.use('/api/requests', requestRoutes);
 app.use('/api/reference', referenceRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/fiscal-years', fiscalYearRoutes);
-app.use('/api/assistant/chat', assistantChatLimiter);
+// Ograničivač AI poziva stoji uz samu rutu (requestRoutes.js: /:id/ai-items),
+// jer je putanja s parametrom — app.use ovdje je ne bi pogodio.
 app.use('/api/assistant', assistantRoutes);
 
 // Verzija koda koji OVAJ PROCES vrti. Eval harness je uspoređuje sa svojim

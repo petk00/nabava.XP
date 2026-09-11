@@ -205,11 +205,39 @@
               <q-icon name="list" size="15px" />
               <span>Stavke</span>
               <span class="count-pill">{{ items.length }}</span>
-              <!-- AI analiza stavki: zasad samo gumb, akcija se dodaje naknadno. -->
-              <button type="button" class="ai-items-btn" aria-label="AI analiza stavki">
-                <q-icon name="auto_awesome" size="14px" />
-                <span>AI</span>
-              </button>
+              <!-- AI: pročita priloženu ponudu i zamijeni stavke. Dva gumba, dvije
+                   izvedbe istog posla — lokalni model Gemma i Gemini. Kalup je
+                   zajednički (btn btn--sm), a boja i tiha animacija ih odvajaju
+                   od ostalih gumba. Vidljivi samo kad zahtjev smije primiti
+                   izmjenu i kad ponuda uopće postoji. -->
+              <template v-if="canEdit && hasPonuda">
+                <button
+                  type="button"
+                  class="btn btn--sm ai-items-btn ai-items-btn--gemma"
+                  :class="{ 'ai-items-btn--busy': aiItemsRunning === 'ollama' }"
+                  :disabled="aiItemsRunning !== null"
+                  aria-label="Osvježi stavke iz ponude lokalnim modelom Gemma"
+                  @click="openAiItems('ollama')"
+                >
+                  <q-spinner v-if="aiItemsRunning === 'ollama'" size="13px" />
+                  <q-icon v-else name="auto_awesome" size="14px" />
+                  <span>{{ aiItemsRunning === 'ollama' ? 'Čitam…' : 'Gemma (AI)' }}</span>
+                  <q-tooltip>Pročitaj ponudu lokalnim modelom i zamijeni stavke</q-tooltip>
+                </button>
+                <button
+                  type="button"
+                  class="btn btn--sm ai-items-btn ai-items-btn--gemini"
+                  :class="{ 'ai-items-btn--busy': aiItemsRunning === 'gemini' }"
+                  :disabled="aiItemsRunning !== null"
+                  aria-label="Osvježi stavke iz ponude Gemini modelom"
+                  @click="openAiItems('gemini')"
+                >
+                  <q-spinner v-if="aiItemsRunning === 'gemini'" size="13px" />
+                  <q-icon v-else name="cloud" size="14px" />
+                  <span>{{ aiItemsRunning === 'gemini' ? 'Čitam…' : 'Gemini' }}</span>
+                  <q-tooltip>Pročitaj ponudu Gemini API-jem i zamijeni stavke</q-tooltip>
+                </button>
+              </template>
             </span>
           </div>
           <div class="card__body card__body--flush">
@@ -418,6 +446,56 @@
             <q-spinner v-if="submittingAction" size="14px" color="white" />
             <q-icon v-else :name="dialogConfirmIcon" size="16px" />
             <span>{{ dialogConfirmLabel }}</span>
+          </button>
+        </div>
+      </q-card>
+    </q-dialog>
+
+    <!-- ═══ Dialog: AI zamjena stavki iz ponude ═══ -->
+    <q-dialog v-model="aiItemsDialog" persistent>
+      <q-card class="dialog-card">
+        <div class="dialog-header">
+          <div class="dialog-title">Osvježi stavke iz ponude</div>
+          <div class="dialog-desc">
+            {{ aiProviderLabel }} čita priloženu ponudu te njome zamjenjuje popis stavki i ukupan iznos.
+          </div>
+        </div>
+        <div class="dialog-body">
+          <div class="dialog-budget dialog-budget--over">
+            <div class="dialog-budget__row">
+              <span class="dialog-budget__label">Izvedba</span>
+              <span class="dialog-budget__value">{{ aiProviderLabel }}</span>
+            </div>
+            <div class="dialog-budget__row">
+              <span class="dialog-budget__label">Ponuda</span>
+              <span class="dialog-budget__value">{{ ponudaFile?.file_name || '—' }}</span>
+            </div>
+            <div class="dialog-budget__row">
+              <span class="dialog-budget__label">Postojeće stavke</span>
+              <span class="dialog-budget__value">{{ items.length }}</span>
+            </div>
+            <div class="dialog-budget__row">
+              <span class="dialog-budget__label">Postojeći iznos</span>
+              <span class="dialog-budget__value">
+                {{ hasAmount ? formatCurrency(request.total_amount) : 'nije određen' }}
+              </span>
+            </div>
+            <div class="dialog-budget__warn">
+              <q-icon name="warning" size="14px" />
+              Postojeće stavke bit će obrisane i zamijenjene onima iz ponude, a iznos postavljen na
+              onaj za uplatu iz ponude. Odjel, obrazloženje i status ostaju nepromijenjeni.
+              Kod lokalnog modela obrada zna potrajati; Gemini šalje tekst ponude vanjskoj usluzi.
+            </div>
+          </div>
+        </div>
+        <div class="dialog-actions">
+          <button class="btn btn--ghost" :disabled="aiItemsRunning !== null" @click="aiItemsDialog = false">
+            Odustani
+          </button>
+          <button class="btn btn--primary" :disabled="aiItemsRunning !== null" @click="runAiItems">
+            <q-spinner v-if="aiItemsRunning !== null" size="14px" color="white" />
+            <q-icon v-else :name="aiItemsProvider === 'gemini' ? 'cloud' : 'auto_awesome'" size="16px" />
+            <span>{{ aiItemsRunning !== null ? 'Čitam ponudu…' : 'Osvježi stavke' }}</span>
           </button>
         </div>
       </q-card>
@@ -813,6 +891,71 @@ const confirmAction = async () => {
   finally { submittingAction.value = false; }
 };
 
+/* ── AI: stavke iz priložene ponude ── */
+// Izvedba se bira gumbom, ne administratorskom postavkom — oba modela moraju
+// biti dostupna istovremeno, na istom zahtjevu i istoj ponudi.
+const AI_PROVIDER_LABELS = { ollama: 'Lokalni model', gemini: 'Gemini' };
+
+const aiItemsDialog   = ref(false);
+const aiItemsProvider = ref('ollama');
+// null dok ništa ne radi, inače ime izvedbe koja radi — tako se vrti samo
+// onaj gumb koji je pritisnut, a drugi je onemogućen.
+const aiItemsRunning  = ref(null);
+
+const aiProviderLabel = computed(() => AI_PROVIDER_LABELS[aiItemsProvider.value] || 'AI');
+
+const openAiItems = (provider) => {
+  aiItemsProvider.value = provider;
+  aiItemsDialog.value = true;
+};
+
+const runAiItems = async () => {
+  aiItemsRunning.value = aiItemsProvider.value;
+  try {
+    const { data } = await api.post(`/requests/${route.params.id}/ai-items`, {
+      provider: aiItemsProvider.value,
+    });
+    aiItemsDialog.value = false;
+    const amountNote = data.amount_changed
+      ? ` Iznos: ${data.previous_amount === null ? 'nije bio određen' : formatCurrency(data.previous_amount)} \u2192 ${formatCurrency(data.new_amount)}.`
+      : '';
+    $q.notify({
+      type: 'positive',
+      message: `${AI_PROVIDER_LABELS[data.provider] || 'AI'}: stavke su osvježene iz ponude `
+        + `(${data.previous_count} \u2192 ${data.items.length}).${amountNote}`,
+      timeout: 5000,
+      multiLine: true,
+    });
+    // Ponuda bez iznosa nije greška, ali korisnik mora znati da je stari iznos
+    // ostao. Kod strane valute upozorenje već stiže iz warnings — ne dupliraj.
+    if (data.amount_status === 'missing') {
+      $q.notify({
+        type: 'warning',
+        message: 'Iznos u ponudi nije pronađen — postojeći iznos zahtjeva ostaje nepromijenjen.',
+        timeout: 6000,
+        multiLine: true,
+      });
+    }
+    // Preskočeni prilog ili skraćen naziv nisu greška, ali korisnik mora znati
+    // da rezultat nije doslovan prijepis ponude.
+    for (const warning of data.warnings || []) {
+      $q.notify({ type: 'warning', message: warning, timeout: 6000, multiLine: true });
+    }
+    await fetchRequestDetails(true);
+  } catch (error) {
+    // Poruka zna nositi modelovo objašnjenje zašto stavke nije izvukao
+    // (npr. priloženi dokument nije ponuda) — zato duže i preko više redaka.
+    $q.notify({
+      type: 'negative',
+      message: error.response?.data?.message || 'Greška pri AI obradi ponude.',
+      timeout: 10000,
+      multiLine: true,
+    });
+  } finally {
+    aiItemsRunning.value = null;
+  }
+};
+
 const editRequest = () => router.push(`/zahtjevi/${route.params.id}/edit`);
 const goBack      = () => router.push(isAdmin.value ? '/zahtjevi' : '/dashboard');
 
@@ -1067,31 +1210,122 @@ onMounted(() => { currentUser.value = getStoredUser(); fetchRequestDetails(); })
 .accordion-header .card__title .q-icon {
   color: #16294E;
 }
-/* AI gumb uz naslov Stavke — .q-icon boju mora pregaziti pravilo
-   `.section-header .card__title .q-icon` (ista specificnost, dolazi ranije). */
-.ai-items-btn {
-  all: unset;
-  box-sizing: border-box;
-  display: inline-flex; align-items: center; gap: 4px;
-  height: 20px; padding: 0 8px;
-  border: 1px solid rgba(0, 175, 219, 0.35);
-  border-radius: 9999px;
-  background: rgba(0, 175, 219, 0.08);
-  color: #0e7490;
-  font-size: 0.6875rem; font-weight: 700;
-  letter-spacing: 0.04em;
-  cursor: pointer;
-  transition: background 0.12s, border-color 0.12s, color 0.12s;
+/* AI gumbi uz naslov Stavke.
+   Kalup — visina, radijus, padding, obrub — dolazi iz zajedničkog `.btn .btn--sm`,
+   pa stoje u istom redu kao „Uredi" ili „PDF" bez iskakanja iz mjere. Odvaja ih
+   samo boja i tiha animacija, jer radnju izvodi model a ne obrazac: Gemma
+   ljubičasto-roza, Gemini indigo-zelena. Tonovi su iz iste logike kao
+   `.btn--primary` (blaga podloga, obojan obrub, zasićeno pismo), da iznimka
+   ostane iznimka a ne novi stil.
+   Obje varijante dijele isti kod, a razlikuju se samo u --ai-btn-* varijablama.
+   `.q-icon` boju mora pregaziti pravilo `.section-header .card__title .q-icon`
+   (ista specifičnost, dolazi ranije), zato je i ovdje sve pisano s punom
+   putanjom — usput preglasava i `.btn:disabled` u stanju obrade. */
+.section-header .card__title .ai-items-btn {
+  position: relative;
+  overflow: hidden;
+  text-transform: none;
+  letter-spacing: 0.01em;
+  /* Oba gumba jednake širine, mjereno po dužem natpisu („Gemma (AI)").
+     Sadržaj je centriran iz `.btn`, pa kraći natpis („Gemini", „Čitam…")
+     samo dobije više praznog prostora — gumb ne mijenja širinu ni kad
+     tekst prijeđe u stanje obrade. */
+  min-width: 122px;
+  color: var(--ai-btn-ink);
+  border-color: var(--ai-btn-line);
+  /* 220% širine da pomak pozadine ima kuda putovati — bez toga animacija stoji. */
+  background-image: linear-gradient(100deg, var(--ai-btn-wash-a) 0%, var(--ai-btn-wash-b) 50%, var(--ai-btn-wash-a) 100%);
+  background-size: 220% 100%;
+  background-position: 0% 50%;
+  animation: ai-btn-flow 9s ease-in-out infinite;
 }
-.section-header .ai-items-btn .q-icon { color: inherit; }
-.ai-items-btn:hover {
-  background: rgba(0, 175, 219, 0.18);
-  border-color: #00afdb;
-  color: #0369a1;
+.section-header .card__title .ai-items-btn--gemma {
+  --ai-btn-ink: #6d28d9;
+  --ai-btn-line: rgba(109, 40, 217, 0.42);
+  --ai-btn-wash-a: rgba(109, 40, 217, 0.07);
+  --ai-btn-wash-b: rgba(190, 24, 93, 0.13);
+  --ai-btn-sheen: rgba(109, 40, 217, 0.16);
+  --ai-btn-ring: rgba(109, 40, 217, 0.14);
+  --ai-btn-glow: rgba(109, 40, 217, 0.28);
 }
-.ai-items-btn:focus-visible {
-  outline: 2px solid #00afdb;
+.section-header .card__title .ai-items-btn--gemini {
+  --ai-btn-ink: #1d4ed8;
+  --ai-btn-line: rgba(29, 78, 216, 0.40);
+  --ai-btn-wash-a: rgba(29, 78, 216, 0.07);
+  --ai-btn-wash-b: rgba(4, 120, 87, 0.12);
+  --ai-btn-sheen: rgba(29, 78, 216, 0.16);
+  --ai-btn-ring: rgba(29, 78, 216, 0.14);
+  --ai-btn-glow: rgba(29, 78, 216, 0.28);
+}
+/* Odsjaj koji povremeno prijeđe preko gumba. Zaseban sloj, da ne dira
+   gradijent pozadine koji teče svojim ritmom. */
+.section-header .card__title .ai-items-btn::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(105deg, transparent 38%, var(--ai-btn-sheen) 50%, transparent 62%);
+  transform: translateX(-120%);
+  animation: ai-btn-shine 6.5s ease-in-out infinite;
+  pointer-events: none;
+}
+.section-header .card__title .ai-items-btn .q-icon {
+  color: inherit;
+  animation: ai-btn-spark 3.4s ease-in-out infinite;
+}
+.section-header .card__title .ai-items-btn:hover:not(:disabled) {
+  border-color: var(--ai-btn-ink);
+  box-shadow: 0 0 0 3px var(--ai-btn-ring);
+  animation-duration: 3s;
+}
+.section-header .card__title .ai-items-btn:focus-visible {
+  outline: 2px solid var(--ai-btn-ink);
   outline-offset: 2px;
+}
+/* Dok model radi: gradijent teče brže i gumb pulsira, da se vidi da traje.
+   Gumb je tad `disabled`, pa mu se vraća puna vidljivost — zatamnjenje iz
+   `.btn:disabled` znači „ne možeš", a ovdje znači „u toku". */
+.section-header .card__title .ai-items-btn--busy {
+  opacity: 1;
+  cursor: progress;
+  animation: ai-btn-flow 2s linear infinite, ai-btn-pulse 1.5s ease-in-out infinite;
+}
+.section-header .card__title .ai-items-btn--busy::after { animation-duration: 2.2s; }
+/* Onemogućen, a NE zauzet (druga izvedba radi) — tad miruje. */
+.section-header .card__title .ai-items-btn:disabled:not(.ai-items-btn--busy),
+.section-header .card__title .ai-items-btn:disabled:not(.ai-items-btn--busy)::after,
+.section-header .card__title .ai-items-btn:disabled:not(.ai-items-btn--busy) .q-icon {
+  animation: none;
+}
+.section-header .card__title .ai-items-btn:disabled:not(.ai-items-btn--busy)::after { opacity: 0; }
+
+@keyframes ai-btn-flow {
+  0%   { background-position: 0% 50%; }
+  50%  { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+@keyframes ai-btn-shine {
+  0%, 68%   { transform: translateX(-120%); }
+  88%, 100% { transform: translateX(120%); }
+}
+@keyframes ai-btn-spark {
+  0%, 74%, 100% { transform: scale(1) rotate(0deg); opacity: 0.9; }
+  82%           { transform: scale(1.2) rotate(-12deg); opacity: 1; }
+  90%           { transform: scale(1.08) rotate(8deg); opacity: 1; }
+}
+@keyframes ai-btn-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 var(--ai-btn-glow); }
+  60%      { box-shadow: 0 0 0 6px transparent; }
+}
+/* Korisnik koji je isključio animacije dobiva iste gumbe, samo mirne —
+   boja i obrub nose razliku i bez pokreta. */
+@media (prefers-reduced-motion: reduce) {
+  .section-header .card__title .ai-items-btn,
+  .section-header .card__title .ai-items-btn--busy,
+  .section-header .card__title .ai-items-btn::after,
+  .section-header .card__title .ai-items-btn .q-icon {
+    animation: none;
+  }
+  .section-header .card__title .ai-items-btn::after { opacity: 0; }
 }
 
 .count-pill {

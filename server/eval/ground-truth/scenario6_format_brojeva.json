@@ -51,19 +51,21 @@
         "category_name": {
           "value": "Računalna oprema",
           "acceptable_categories": [
-            "Računalna oprema"
+            "Računalna oprema",
+            "Elektronička i elektrotehnička oprema"
           ],
-          "ambiguous": false,
+          "ambiguous": true,
           "acceptable_reason_type": null,
           "acceptable_reason": null,
-          "rule": "P5",
+          "rule": null,
+          "note": "Procesor je računalna komponenta.",
           "provenance": {
             "source": "codebook",
             "table": "ItemCategory",
             "document": "server/eval/category-codebook.md",
-            "sha256_16": "26ac4a44b9f3bf14"
+            "sha256_16": "be6c9b1400f6598e"
           },
-          "assignment": "inferred"
+          "assignment": "author"
         }
       },
       {
@@ -89,19 +91,21 @@
         "category_name": {
           "value": "Računalna oprema",
           "acceptable_categories": [
-            "Računalna oprema"
+            "Računalna oprema",
+            "Elektronička i elektrotehnička oprema"
           ],
-          "ambiguous": false,
+          "ambiguous": true,
           "acceptable_reason_type": null,
           "acceptable_reason": null,
-          "rule": "P5",
+          "rule": null,
+          "note": "Grafička kartica je računalna komponenta.",
           "provenance": {
             "source": "codebook",
             "table": "ItemCategory",
             "document": "server/eval/category-codebook.md",
-            "sha256_16": "26ac4a44b9f3bf14"
+            "sha256_16": "be6c9b1400f6598e"
           },
-          "assignment": "inferred"
+          "assignment": "author"
         }
       },
       {
@@ -127,19 +131,21 @@
         "category_name": {
           "value": "Računalna oprema",
           "acceptable_categories": [
-            "Računalna oprema"
+            "Računalna oprema",
+            "Elektronička i elektrotehnička oprema"
           ],
-          "ambiguous": false,
+          "ambiguous": true,
           "acceptable_reason_type": null,
           "acceptable_reason": null,
-          "rule": "P5",
+          "rule": null,
+          "note": "Matična ploča je računalna komponenta.",
           "provenance": {
             "source": "codebook",
             "table": "ItemCategory",
             "document": "server/eval/category-codebook.md",
-            "sha256_16": "26ac4a44b9f3bf14"
+            "sha256_16": "be6c9b1400f6598e"
           },
-          "assignment": "inferred"
+          "assignment": "author"
         }
       },
       {
@@ -165,19 +171,21 @@
         "category_name": {
           "value": "Računalna oprema",
           "acceptable_categories": [
-            "Računalna oprema"
+            "Računalna oprema",
+            "Elektronička i elektrotehnička oprema"
           ],
-          "ambiguous": false,
+          "ambiguous": true,
           "acceptable_reason_type": null,
           "acceptable_reason": null,
-          "rule": "P5",
+          "rule": null,
+          "note": "RAM je računalna komponenta.",
           "provenance": {
             "source": "codebook",
             "table": "ItemCategory",
             "document": "server/eval/category-codebook.md",
-            "sha256_16": "26ac4a44b9f3bf14"
+            "sha256_16": "be6c9b1400f6598e"
           },
-          "assignment": "inferred"
+          "assignment": "author"
         }
       }
     ]
@@ -185,5 +193,5 @@
   "notes": "Zamka je zarez kao separator tisućica: \"4,974.00 €\" je 4974, ne 4,974. Isti sadržaj kao scenarij 5, pa razlika u rezultatu ide ISKLJUČIVO na račun formata.",
   "_schema": "nabava.XP eval ground truth v1",
   "_note": "Očekivani ishod scenarija, s provenanceom po polju. Provenance je lokator u ULAZU (poruka ili prilog) plus doslovan citat — citat mora biti bajt-jednak izvoru, uključujući nedjeljive razmake. category_name NIJE dio provjere utemeljenosti (vrijednost je iz šifrarnika, ne može biti izmišljena) nego zasebne mjere točnosti dodjele.",
-  "category_codebook_sha256_16": "26ac4a44b9f3bf14"
+  "category_codebook_sha256_16": "be6c9b1400f6598e"
 }

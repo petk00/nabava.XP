@@ -26,6 +26,7 @@ const routes = [
 
       { path: 'zahtjevi',          component: () => import('pages/RequestsPage.vue') },
       { path: 'novizahtjev',        component: () => import('pages/NewRequestPage.vue') },
+      { path: 'unutarnjanabava',    component: () => import('pages/InternalProcurementPage.vue') },
       { path: 'zahtjevi/:id',      component: () => import('pages/RequestDetailsPage.vue') },
       { path: 'zahtjevi/:id/edit', component: () => import('pages/EditRequestPage.vue') },
 

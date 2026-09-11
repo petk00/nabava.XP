@@ -49,22 +49,24 @@
           }
         },
         "category_name": {
-          "value": "Nastavna i laboratorijska oprema",
+          "value": "Elektronička i elektrotehnička oprema",
           "acceptable_categories": [
+            "Elektronička i elektrotehnička oprema",
             "Nastavna i laboratorijska oprema",
-            "Računalna oprema"
+            "Mjerna i ispitna oprema"
           ],
           "ambiguous": true,
-          "acceptable_reason_type": "codebook_tie",
-          "acceptable_reason": "P4 (napajanje za vježbe) protiv def.1 (oprema za napajanje računalne opreme)",
-          "rule": "P4",
+          "acceptable_reason_type": null,
+          "acceptable_reason": null,
+          "rule": null,
+          "note": "Napajanje/adapterski uređaj; primarno elektronička oprema.",
           "provenance": {
             "source": "codebook",
             "table": "ItemCategory",
             "document": "server/eval/category-codebook.md",
-            "sha256_16": "26ac4a44b9f3bf14"
+            "sha256_16": "be6c9b1400f6598e"
           },
-          "assignment": "inferred"
+          "assignment": "author"
         }
       },
       {
@@ -95,14 +97,15 @@
           "ambiguous": false,
           "acceptable_reason_type": null,
           "acceptable_reason": null,
-          "rule": "P4",
+          "rule": null,
+          "note": "Komponenta za eksperimentalni rad.",
           "provenance": {
             "source": "codebook",
             "table": "ItemCategory",
             "document": "server/eval/category-codebook.md",
-            "sha256_16": "26ac4a44b9f3bf14"
+            "sha256_16": "be6c9b1400f6598e"
           },
-          "assignment": "inferred"
+          "assignment": "author"
         }
       },
       {
@@ -133,14 +136,15 @@
           "ambiguous": false,
           "acceptable_reason_type": null,
           "acceptable_reason": null,
-          "rule": "P4",
+          "rule": null,
+          "note": "Komponenta za eksperimentalni rad.",
           "provenance": {
             "source": "codebook",
             "table": "ItemCategory",
             "document": "server/eval/category-codebook.md",
-            "sha256_16": "26ac4a44b9f3bf14"
+            "sha256_16": "be6c9b1400f6598e"
           },
-          "assignment": "inferred"
+          "assignment": "author"
         }
       },
       {
@@ -166,19 +170,21 @@
         "category_name": {
           "value": "Nastavna i laboratorijska oprema",
           "acceptable_categories": [
-            "Nastavna i laboratorijska oprema"
+            "Nastavna i laboratorijska oprema",
+            "Elektronička i elektrotehnička oprema"
           ],
-          "ambiguous": false,
+          "ambiguous": true,
           "acceptable_reason_type": null,
           "acceptable_reason": null,
-          "rule": "P4",
+          "rule": null,
+          "note": "Povezni pribor za eksperimentalne pločice.",
           "provenance": {
             "source": "codebook",
             "table": "ItemCategory",
             "document": "server/eval/category-codebook.md",
-            "sha256_16": "26ac4a44b9f3bf14"
+            "sha256_16": "be6c9b1400f6598e"
           },
-          "assignment": "inferred"
+          "assignment": "author"
         }
       }
     ]
@@ -186,5 +192,5 @@
   "notes": "Referentni scenarij — najlakši slučaj. Zamka je u izvučenom tekstu, gdje se stupci spajaju: \"[12947]126,40 €26,40 €\" je količina 1 po 26,40 €, a ne 12 × 6,40 €.",
   "_schema": "nabava.XP eval ground truth v1",
   "_note": "Očekivani ishod scenarija, s provenanceom po polju. Provenance je lokator u ULAZU (poruka ili prilog) plus doslovan citat — citat mora biti bajt-jednak izvoru, uključujući nedjeljive razmake. category_name NIJE dio provjere utemeljenosti (vrijednost je iz šifrarnika, ne može biti izmišljena) nego zasebne mjere točnosti dodjele.",
-  "category_codebook_sha256_16": "26ac4a44b9f3bf14"
+  "category_codebook_sha256_16": "be6c9b1400f6598e"
 }

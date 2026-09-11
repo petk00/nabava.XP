@@ -20,44 +20,29 @@
         <!-- Cards grid -->
         <section class="card-grid">
 
-          <!-- Novi zahtjev: kompaktni CTA banner -->
+          <!-- Vanjska nabava: kompaktni CTA banner -->
           <button class="dash-card dash-card--offer" @click="$router.push('/novizahtjev')">
             <img src="/solarlinear_NOVIZAHTJEV.svg" alt="" class="offer-deco" />
             <div class="offer-banner">
               <img src="/forward-2-svgrepo-com.svg" alt="" class="offer-banner__arrow" />
               <div class="offer-banner__text">
-                <span class="offer-banner__title">Novi zahtjev</span>
+                <span class="offer-banner__title">Vanjska nabava</span>
                 <span class="offer-banner__sub">Recite što trebate, priložite ponudu i pratite status u stvarnom vremenu</span>
               </div>
             </div>
           </button>
 
-          <!-- AI uvidi: zasad samo vizualni placeholder, bez stvarne analize. -->
-          <section class="ai-card">
-            <div class="ai-card__rule" aria-hidden="true"></div>
-
-            <div class="ai-card__main">
-              <div class="ai-card__label">Asistent nabave</div>
-              <h2 class="ai-card__title">Pitajte, ne tražite</h2>
-              <p class="ai-card__sub">
-                Umjesto filtriranja tablice, opišite što vas zanima. Asistent čita zahtjeve,
-                priložene ponude i otpremnice te odgovara s brojevima zahtjeva.
-              </p>
-
-              <div class="ai-card__prompts">
-                <div
-                  v-for="prompt in aiPrompts"
-                  :key="prompt"
-                  class="ai-prompt"
-                >
-                  <span class="ai-prompt__caret">&rsaquo;</span>
-                  {{ prompt }}
-                </div>
+          <!-- Unutarnja nabava: kompaktni CTA banner -->
+          <button class="dash-card dash-card--offer dash-card--internal" @click="$router.push('/unutarnjanabava')">
+            <img src="/solarlinear_NOVIZAHTJEV.svg" alt="" class="offer-deco" />
+            <div class="offer-banner">
+              <img src="/forward-2-svgrepo-com.svg" alt="" class="offer-banner__arrow" />
+              <div class="offer-banner__text">
+                <span class="offer-banner__title">Unutarnja nabava</span>
+                <span class="offer-banner__sub">Recite što trebate, priložite ponudu i pratite status u stvarnom vremenu</span>
               </div>
             </div>
-
-            <div class="ai-card__glyph" aria-hidden="true"></div>
-          </section>
+          </button>
 
           <!-- Nedavni zahtjevi -->
           <div class="requests-section">
@@ -124,12 +109,6 @@ import { getStoredUser } from 'src/utils/authStorage';
 const user = getStoredUser();
 
 // Prijedlozi za AI karticu — placeholder sadržaj, bez interakcije.
-const aiPrompts = [
-  'Sažmi status mojih zahtjeva u ovoj godini',
-  'Usporedi priložene ponude i predloži povoljniju',
-  'Kojim zahtjevima nedostaje ponuda ili otpremnica?',
-];
-
 const loading = ref(true);
 const allRequests = ref([]);
 
@@ -344,112 +323,21 @@ onMounted(async () => {
   transform: translateX(3px);
 }
 
+/* ── CTA: Unutarnja nabava (navy/indigo) ── */
+.dash-card--internal {
+  background: linear-gradient(145deg, #eef0fe 0%, #dde2fb 100%);
+  border-color: #5b6cde;
+  box-shadow: 0 4px 24px rgba(91, 108, 222, 0.12);
+}
+
+.dash-card--internal:hover {
+  background: linear-gradient(145deg, #e0e5fd 0%, #ccd3f8 100%);
+  border-color: #7482e6;
+  box-shadow: 0 10px 32px rgba(91, 108, 222, 0.25);
+}
+
 
 /* ── AI kartica (placeholder) ── */
-.ai-card {
-  position: relative;
-  display: grid;
-  grid-template-columns: 1fr 190px;
-  gap: 20px;
-  align-items: center;
-  overflow: hidden;
-  padding: 24px 26px;
-  border-radius: 16px;
-  border: 1.5px solid rgba(0, 175, 219, 0.42);
-  /* Dvije mreže crta preko navy gradijenta — "nacrt" ispod sadržaja. */
-  background:
-    linear-gradient(rgba(0, 175, 219, 0.07) 1px, transparent 1px) 0 0 / 100% 26px,
-    linear-gradient(90deg, rgba(0, 175, 219, 0.07) 1px, transparent 1px) 0 0 / 26px 100%,
-    linear-gradient(155deg, #1b2d59 0%, #16294e 58%, #10203f 100%);
-  box-shadow: 0 10px 30px rgba(22, 41, 78, 0.22);
-}
-
-.ai-card__rule {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 2px;
-  background: linear-gradient(90deg, #00afdb 0%, rgba(0, 175, 219, 0) 62%);
-  pointer-events: none;
-}
-
-.ai-card__main {
-  position: relative;
-  z-index: 1;
-  min-width: 0;
-}
-
-.ai-card__label {
-  color: #7fe1f7;
-  font-family: ui-monospace, SFMono-Regular, 'Cascadia Mono', Menlo, Consolas, monospace;
-  font-size: 0.6875rem;
-  font-weight: 500;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-}
-
-.ai-card__title {
-  margin: 7px 0 5px;
-  color: #ffffff;
-  font-size: 1.25rem;
-  font-weight: 700;
-  letter-spacing: -0.005em;
-  line-height: 1.2;
-}
-
-.ai-card__sub {
-  margin: 0;
-  max-width: 44ch;
-  color: #b9c9e2;
-  font-size: 0.8125rem;
-  line-height: 1.4;
-}
-
-.ai-card__prompts {
-  display: flex;
-  flex-direction: column;
-  margin-top: 16px;
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.ai-prompt {
-  all: unset;
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  width: 100%;
-  box-sizing: border-box;
-  padding: 9px 4px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
-  color: #dbe6f6;
-  font-size: 0.8125rem;
-}
-
-.ai-prompt__caret {
-  color: #00afdb;
-  font-family: ui-monospace, SFMono-Regular, 'Cascadia Mono', Menlo, Consolas, monospace;
-  font-size: 0.75rem;
-  font-weight: 600;
-}
-
-/* Glif iz /ai-file-format-svgrepo-com.svg — fill mu je zapečen u datoteci,
-   pa boju dobiva preko CSS maske. */
-.ai-card__glyph {
-  position: relative;
-  z-index: 1;
-  justify-self: center;
-  width: 150px;
-  height: 150px;
-  opacity: 0.85;
-  background: linear-gradient(165deg, #7fe1f7 0%, #00afdb 45%, rgba(0, 175, 219, 0.12) 100%);
-  -webkit-mask: url('/ai-file-format-svgrepo-com.svg') center / contain no-repeat;
-  mask: url('/ai-file-format-svgrepo-com.svg') center / contain no-repeat;
-  filter: drop-shadow(0 0 18px rgba(0, 175, 219, 0.35));
-  pointer-events: none;
-}
-
-/* ── Requests section ── */
 .requests-section {
   display: flex;
   flex-direction: column;
@@ -606,7 +494,5 @@ onMounted(async () => {
   .page { padding: 20px 16px; }
   .page-header__title { font-size: 1.75rem; }
   .status-badge { min-width: unset; }
-  .ai-card { grid-template-columns: 1fr; padding: 20px; }
-  .ai-card__glyph { display: none; }
 }
 </style>

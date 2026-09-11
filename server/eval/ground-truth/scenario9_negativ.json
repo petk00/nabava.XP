@@ -1,0 +1,151 @@
+{
+  "scenario_id": "scenario9_negativ",
+  "expected_decision": "create",
+  "expects_refusal": false,
+  "input_modality": "pdf",
+  "attachments": [
+    "scenario9_negativ.pdf"
+  ],
+  "fields": {
+    "total_amount": {
+      "value": 2575.0,
+      "acceptable": [
+        2575.0
+      ],
+      "provenance": {
+        "source": "attachment",
+        "file": "scenario9_negativ.pdf",
+        "line": 25,
+        "quote": "SVEUKUPNO ZA PLATITI: | 2.575,00 €"
+      }
+    },
+    "items": [
+      {
+        "item_name": {
+          "value": "Prijenosno računalo Business Pro 15\"",
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario9_negativ.pdf",
+            "line": 16,
+            "quote": "Prijenosno računalo Business Pro 15\""
+          }
+        },
+        "quantity": {
+          "value": 2,
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario9_negativ.pdf",
+            "line": 17,
+            "quote": "Intel Core i7, 16GB RAM, 512GB SSD | 2,00 | 950,00 | 1.900,00",
+            "surface_form": "2,00",
+            "form": "digit"
+          }
+        },
+        "category_name": {
+          "value": "Računalna oprema",
+          "acceptable_categories": [
+            "Računalna oprema",
+            "Elektronička i elektrotehnička oprema"
+          ],
+          "ambiguous": true,
+          "acceptable_reason_type": null,
+          "acceptable_reason": null,
+          "rule": null,
+          "note": "Prijenosno računalo Business Pro 15” — prema tome da je riječ o elektroničkom uređaju koji služi za obradu i pohranu podataka.",
+          "provenance": {
+            "source": "codebook",
+            "table": "ItemCategory",
+            "document": "server/eval/category-codebook.md",
+            "sha256_16": "be6c9b1400f6598e"
+          },
+          "assignment": "author"
+        }
+      },
+      {
+        "item_name": {
+          "value": "Uredski paket Microsoft Office 365 (Godišnja pretplata)",
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario9_negativ.pdf",
+            "line": 18,
+            "quote": "2. | Uredski paket Microsoft Office 365 (Godišnja pretplata) | 2,00 | 120,00 | 240,00"
+          }
+        },
+        "quantity": {
+          "value": 2,
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario9_negativ.pdf",
+            "line": 18,
+            "quote": "2. | Uredski paket Microsoft Office 365 (Godišnja pretplata) | 2,00 | 120,00 | 240,00",
+            "surface_form": "2,00",
+            "form": "digit"
+          }
+        },
+        "category_name": {
+          "value": "Programska oprema i licence",
+          "acceptable_categories": [
+            "Programska oprema i licence",
+            "Usluge razvoja i održavanja informacijskih sustava"
+          ],
+          "ambiguous": true,
+          "acceptable_reason_type": null,
+          "acceptable_reason": null,
+          "rule": null,
+          "note": "prema tome da se nabavlja kao digitalna usluga/licenca potrebna za rad informacijskog sustava.",
+          "provenance": {
+            "source": "codebook",
+            "table": "ItemCategory",
+            "document": "server/eval/category-codebook.md",
+            "sha256_16": "be6c9b1400f6598e"
+          },
+          "assignment": "author"
+        }
+      },
+      {
+        "item_name": {
+          "value": "Bežična tipkovnica i miš set",
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario9_negativ.pdf",
+            "line": 19,
+            "quote": "3. | Bežična tipkovnica i miš set | 2,00 | 35,00 | 70,00"
+          }
+        },
+        "quantity": {
+          "value": 2,
+          "provenance": {
+            "source": "attachment",
+            "file": "scenario9_negativ.pdf",
+            "line": 19,
+            "quote": "3. | Bežična tipkovnica i miš set | 2,00 | 35,00 | 70,00",
+            "surface_form": "2,00",
+            "form": "digit"
+          }
+        },
+        "category_name": {
+          "value": "Računalna oprema",
+          "acceptable_categories": [
+            "Računalna oprema",
+            "Elektronička i elektrotehnička oprema"
+          ],
+          "ambiguous": true,
+          "acceptable_reason_type": null,
+          "acceptable_reason": null,
+          "rule": null,
+          "note": "prema tome da predstavljaju periferne uređaje koji proširuju funkcionalnost računala.",
+          "provenance": {
+            "source": "codebook",
+            "table": "ItemCategory",
+            "document": "server/eval/category-codebook.md",
+            "sha256_16": "be6c9b1400f6598e"
+          },
+          "assignment": "author"
+        }
+      }
+    ]
+  },
+  "notes": "Ponuda PON-2026-089 s negativnom stavkom. Redak 4 „Zamjena starog hardvera (Kompenzacija / Otkup starih uređaja)\" s iznosom -150,00 NIJE stavka — odbitak je, kao i rabat, a shema stavke ionako nema polje za cijenu. Ispravan ishod su TRI stavke. Iznos je SVEUKUPNO ZA PLATITI (2.575,00 €), ne osnovica (2.060,00 €) ni PDV (515,00 €). Nazivi stavki su doslovni oblici iz ponude; kraće radne verzije autora („prijenosno računalo\", „uredski programski paket\", „set bežične tipkovnice i miša\") ne ulaze u mjerilo.",
+  "_schema": "ground-truth/v2",
+  "category_codebook_sha256_16": "be6c9b1400f6598e"
+}
