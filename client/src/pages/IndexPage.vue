@@ -20,13 +20,25 @@
         <!-- Cards grid -->
         <section class="card-grid">
 
-          <!-- Novi zahtjev: kompaktni CTA banner -->
+          <!-- Vanjska nabava: kompaktni CTA banner -->
           <button class="dash-card dash-card--offer" @click="$router.push('/novizahtjev')">
             <img src="/solarlinear_NOVIZAHTJEV.svg" alt="" class="offer-deco" />
             <div class="offer-banner">
               <img src="/forward-2-svgrepo-com.svg" alt="" class="offer-banner__arrow" />
               <div class="offer-banner__text">
-                <span class="offer-banner__title">Novi zahtjev</span>
+                <span class="offer-banner__title">Vanjska nabava</span>
+                <span class="offer-banner__sub">Recite što trebate, priložite ponudu i pratite status u stvarnom vremenu</span>
+              </div>
+            </div>
+          </button>
+
+          <!-- Unutarnja nabava: kompaktni CTA banner -->
+          <button class="dash-card dash-card--offer dash-card--internal" @click="$router.push('/unutarnjanabava')">
+            <img src="/solarlinear_NOVIZAHTJEV.svg" alt="" class="offer-deco" />
+            <div class="offer-banner">
+              <img src="/forward-2-svgrepo-com.svg" alt="" class="offer-banner__arrow" />
+              <div class="offer-banner__text">
+                <span class="offer-banner__title">Unutarnja nabava</span>
                 <span class="offer-banner__sub">Recite što trebate, priložite ponudu i pratite status u stvarnom vremenu</span>
               </div>
             </div>
@@ -309,6 +321,19 @@ onMounted(async () => {
 
 .dash-card--offer:hover .offer-banner__arrow {
   transform: translateX(3px);
+}
+
+/* ── CTA: Unutarnja nabava (navy/indigo) ── */
+.dash-card--internal {
+  background: linear-gradient(145deg, #eef0fe 0%, #dde2fb 100%);
+  border-color: #5b6cde;
+  box-shadow: 0 4px 24px rgba(91, 108, 222, 0.12);
+}
+
+.dash-card--internal:hover {
+  background: linear-gradient(145deg, #e0e5fd 0%, #ccd3f8 100%);
+  border-color: #7482e6;
+  box-shadow: 0 10px 32px rgba(91, 108, 222, 0.25);
 }
 
 
